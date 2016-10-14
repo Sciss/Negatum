@@ -14,7 +14,7 @@
 package de.sciss.negatum
 
 import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
-import de.sciss.synth.{GE, UGenSpec, UndefinedRate}
+import de.sciss.synth.{UGenSpec, UndefinedRate}
 import de.sciss.topology.Topology
 
 package object impl {
@@ -22,7 +22,7 @@ package object impl {
 
   type Vec[+A] = scala.collection.immutable.IndexedSeq[A]
 
-  def graphElemName(in: GE): String =
+  def graphElemName(in: Product): String =
     in match {
       case bin: BinaryOpUGen =>
         s"Bin_${bin.selector.id}"

@@ -172,7 +172,9 @@ object MkSynthGraph {
 
     SynthGraph {
       import de.sciss.synth.ugen._
-      RandSeed.ir()
+      if (specialOut) {
+        NegatumIn()
+      }
       val vertices = c.vertices.iterator.toIndexedSeq
       val map   = loop(vertices, Map.empty)
       val ugens = vertices.collect {

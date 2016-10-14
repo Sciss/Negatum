@@ -68,14 +68,18 @@ object NegatumViewImpl {
       val ggNumIter = new Spinner(mNumIter)
 
       // XXX TODO --- should use custom view so we can cancel upon `dispose`
-      val actionRender = new swing.Action("Render") { self =>
+      val actionRender = new swing.Action("Evolve") { self =>
         def apply(): Unit = {
           val numIter = mNumIter.getNumber.intValue()
           val ok = cursor.step { implicit tx =>
             renderRef.get(tx.peer).isEmpty && {
               val obj       = negatumH()
               val cGen      = Negatum.Generation(population = 10)
-              val config    = Negatum.Config(generation = cGen)
+              val cBreed    = Negatum.Breeding(numElitism = 1, numGolem = 1)
+              val cEval     = Negatum.Evaluation()
+              val cPenalty  = Negatum.Penalty()
+              val config    = Negatum.Config(generation = cGen, breeding = cBreed, evaluation = cEval,
+                penalty = cPenalty)
 
               def finished()(implicit tx: S#Tx): Unit = {
                 renderRef.set(None)(tx.peer)
