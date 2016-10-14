@@ -194,8 +194,10 @@ trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
 
   def template: AudioCue.Obj.Var[S]
 
-  /** The folder's children are of type `SynthGraphObj`. Each child's attribute
-    * map contains (after evaluation) the key `attrFitness`, and (after selection)
+  /** The folder's children are of type `Proc`.
+    *
+    * ''NOT:'' Each child's attribute
+    * map contains (after evaluation) the key attrFitness`, and (after selection)
     * the attribute `attrSelected`.
     */
   def population: Folder[S]

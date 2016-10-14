@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{stm, event => evt}
 import de.sciss.negatum.Negatum.{Config, Rendering}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.{AudioCue, Folder, SynthGraphObj, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, Folder, Proc, WorkspaceHandle}
 
 object NegatumImpl {
   private final val SER_VERSION = 0x4e56  // "Ne"
@@ -57,9 +57,10 @@ object NegatumImpl {
     final def run(config: Config, iter: Int)(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                              workspace: WorkspaceHandle[S]): Rendering[S] = {
       val popIn = population.iterator.collect {
-        case gObj: SynthGraphObj[S] =>
+        case p: Proc[S] =>
+          val gObj      = p.graph()
           val g         = gObj.value
-          val attr      = gObj.attr
+          val attr      = p.attr
           val fitness   = attr.$[DoubleObj ](Negatum.attrFitness ).map(_.value).getOrElse(Double.NaN)
 //          val selected  = attr.$[BooleanObj](Negatum.attrSelected).exists(_.value)
           new Individual(g, fitness = fitness)

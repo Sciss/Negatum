@@ -1,22 +1,29 @@
-package de.sciss.negatum
+/*
+ *  NegatumObjView.scala
+ *  (Negatum)
+ *
+ *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU Lesser General Public License v2.1+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
 
-import javax.swing.SpinnerNumberModel
+package de.sciss.negatum
 
 import de.sciss.desktop
 import de.sciss.desktop.OptionPane
 import de.sciss.icons.raphael
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
-import de.sciss.lucre.swing.{View, Window, deferTx}
+import de.sciss.lucre.swing.Window
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.{AudioCueObjView, ListObjViewImpl, ObjViewImpl, WindowImpl}
-import de.sciss.mellite.gui.{AttrCellView, GUI, ListObjView, ObjView}
-import de.sciss.swingplus.Spinner
+import de.sciss.mellite.gui.{AttrCellView, ListObjView, ObjView}
 import de.sciss.synth.proc.{AudioCue, Workspace}
-
-import scala.concurrent.stm.Ref
-import scala.swing.{Component, FlowPanel, Label, ProgressBar}
 
 object NegatumObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = Negatum[~]
@@ -82,82 +89,11 @@ object NegatumObjView extends ListObjView.Factory {
 
     def isViewable = true
 
-    private def mkComponent()(implicit cursor: stm.Cursor[S], workspace: Workspace[S]): Component = {
-      val renderRef = Ref(Option.empty[Negatum.Rendering[S]])
-
-      val ggProgress: ProgressBar = new ProgressBar
-      ggProgress.max = 160
-
-      val actionCancel: swing.Action = new swing.Action(null) {
-        def apply(): Unit = cursor.step { implicit tx =>
-          renderRef.swap(None)(tx.peer).foreach(_.cancel())
-        }
-        enabled = false
-      }
-
-      val ggCancel = GUI.toolButton(actionCancel, raphael.Shapes.Cross, tooltip = "Abort Rendering")
-
-      val mNumIter  = new SpinnerNumberModel(1, 1, 65536, 1)
-      val ggNumIter = new Spinner(mNumIter)
-
-      // XXX TODO --- should use custom view so we can cancel upon `dispose`
-      val actionRender = new swing.Action("Render") { self =>
-        def apply(): Unit = {
-          val numIter = mNumIter.getNumber.intValue()
-          val ok = cursor.step { implicit tx =>
-            renderRef.get(tx.peer).isEmpty && {
-              val obj       = objH()
-              val cGen      = Negatum.Generation(population = 10)
-              val config    = Negatum.Config(generation = cGen)
-
-              def finished()(implicit tx: S#Tx): Unit = {
-                renderRef.set(None)(tx.peer)
-                deferTx {
-                  actionCancel.enabled  = false
-                  self.enabled          = true
-                }
-              }
-
-              val rendering = obj.run(config, iter = numIter)
-              /* val obs = */ rendering.reactNow { implicit tx => {
-                case Negatum.Rendering.Success => finished()
-                case Negatum.Rendering.Failure(Negatum.Rendering.Cancelled()) => finished()
-                case Negatum.Rendering.Failure(ex) =>
-                  finished()
-                  deferTx(ex.printStackTrace())
-                case Negatum.Rendering.Progress(amt) =>
-                  deferTx {
-                    ggProgress.value = (amt * ggProgress.max).toInt
-                  }
-              }}
-              renderRef.set(Some(rendering))(tx.peer)
-              true
-            }
-          }
-          if (ok) {
-            actionCancel.enabled = true
-            self        .enabled = false
-          }
-        }
-      }
-      val ggRender = GUI.toolButton(actionRender, raphael.Shapes.Biohazard)
-
-      //            val ggDebug = Button("Debug") {
-      //              renderRef.single.get.foreach { r =>
-      //                val ctrl = r.control
-      //                println(ctrl.stats)
-      //                ctrl.debugDotGraph()
-      //              }
-      //            }
-
-      val component = new FlowPanel(new Label("Iterations:"), ggNumIter, ggProgress, ggCancel, ggRender)
-      component
-    }
-
     def openView(parent: Option[Window[S]])
                 (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
-      val title     = AttrCellView.name(obj)
-      val _view     = View.wrap[S](mkComponent())
+      val _obj      = objH()
+      val title     = AttrCellView.name(_obj)
+      val _view     = NegatumView(_obj)
       val frame     = new WindowImpl[S](title) {
         val view = _view
       }
