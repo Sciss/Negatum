@@ -7,10 +7,19 @@ description        := "Genetic Algorithms"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
 licenses           := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
+// ---- main dependencies ----
+
 lazy val soundProcessesVersion  = "3.8.0"
+lazy val fscapeVersion          = "2.2.1"
+
+// ---- test dependencies ----
+
+lazy val melliteVersion         = "2.6.0"   // GPL!
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "soundprocesses-core" % soundProcessesVersion
+  "de.sciss" %% "soundprocesses-core" % soundProcessesVersion,
+  "de.sciss" %% "fscape"              % fscapeVersion,
+  "de.sciss" %% "mellite"             % melliteVersion  % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
