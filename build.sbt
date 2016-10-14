@@ -7,7 +7,7 @@ description        := "Genetic Algorithms"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
 licenses           := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
-resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
+resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 // ---- main dependencies ----
 
