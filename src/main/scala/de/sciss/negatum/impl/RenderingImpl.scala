@@ -144,8 +144,8 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       i += 1
     }
     while (i < population) {
-      val g = mkIndividual()
-      pop(i) = new Individual(g)
+      val indiv = mkIndividual()
+      pop(i) = indiv
       i += 1
     }
 
@@ -154,32 +154,37 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       Await.result(fut, Duration(30, TimeUnit.SECONDS))._1
     }
 
-    val PROG_WEIGHT = 1.0 / (numIter.toLong * pop.length)
+    val PROG_WEIGHT = 1.0 / (numIter.toLong * (pop.length * 2))
 
     var iter = 0
     var PROG_COUNT = 0L
     while (iter < numIter) {
-      // evaluate those that haven't been
-      i = 0
-      while (i < pop.length) {
-        val indiv = pop(i)
-        if (indiv.fitness.isNaN) {
-          val numVertices = indiv.graph.sources.size  // XXX TODO -- ok?
-          val fut = evaluateFut(graph = indiv.graph, inputSpec = template.spec,
-            inputExtr = inputExtr, numVertices = numVertices)
-          // XXX TODO --- Mutagen used four parallel processes; should we do the same?
-          val sim = try {
-            Await.result(fut, Duration(30, TimeUnit.SECONDS))
-          } catch {
-            case NonFatal(_) => 0.0f
+
+      def evalPop(): Unit = {
+        var ii = 0
+        while (ii < pop.length) {
+          val indiv = pop(ii)
+          if (indiv.fitness.isNaN) {
+            val numVertices = indiv.graph.sources.size  // XXX TODO -- ok?
+            val fut = evaluateFut(graph = indiv.graph, inputSpec = template.spec,
+              inputExtr = inputExtr, numVertices = numVertices)
+            // XXX TODO --- Mutagen used four parallel processes; should we do the same?
+            val sim = try {
+              Await.result(fut, Duration(30, TimeUnit.SECONDS))
+            } catch {
+              case NonFatal(_) => 0.0f
+            }
+            indiv.fitness = sim
+            checkAborted()
+            PROG_COUNT += 1
+            progress = PROG_COUNT * PROG_WEIGHT
           }
-          indiv.fitness = sim
-          checkAborted()
-          PROG_COUNT += 1
-          progress = PROG_COUNT * PROG_WEIGHT
+          ii += 1
         }
-        i += 1
       }
+
+      // evaluate those that haven't been
+      evalPop()
 
       val el    = elitism(pop)
       val _sel0 = select (pop)
@@ -187,16 +192,36 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
       import config.breeding._
 
-      val nGen    = pop.length - el.size - numGolem
-      val nMut    = (mutProb * nGen + 0.5).toInt
-      val nCross  = nGen - nMut
+      val numGolem1 = math.min(numGolem, pop.length - el.size)
+      val nGen      = pop.length - el.size - numGolem1
+      val nMut      = (mutProb * nGen + 0.5).toInt
+      val nCross    = nGen - nMut
 
-      val mut     = mutate    (sel, nMut)
-      val cross   = ??? // crossover (sel, nCross)
+      val mut       = mutate    (sel, nMut)
+      val cross     = crossover (sel, nCross)
 
-      val golem = Vector.fill(numGolem)(mkIndividual())
-      ??? // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golem
-      ??? // evaluateAndUpdate()
+      val golem     = Vector.fill(numGolem1)(mkIndividual())
+
+      // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golem
+      i = 0
+      el.foreach { indiv =>
+        pop(i) = indiv
+        i += 1
+      }
+      mut.foreach { indiv =>
+        pop(i) = indiv
+        i += 1
+      }
+      cross.foreach { indiv =>
+        pop(i) = indiv
+        i += 1
+      }
+      golem.foreach { indiv =>
+        pop(i) = indiv
+        i += 1
+      }
+
+      evalPop()
 
       iter += 1
     }
@@ -228,10 +253,10 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     val mutationIter  = rrand(mutMin, mutMax)
     require(mutationIter > 0)
     val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
-      val tpe = random.nextInt(7)
+      val tpe = random.nextInt(2 /* 7 */)
       val next: SynthGraphT = (tpe: @switch) match {
         case 0 => addVertex   (pred)
-        case 1 => ??? // removeVertex(pred)
+        case 1 => removeVertex(pred)
         case 2 => ??? // changeVertex(pred)
         case 3 => ??? // changeEdge  (pred)
         case 4 => ??? // swapEdge    (pred)
@@ -239,26 +264,14 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
         case 6 => ??? // mergeVertex (pred)
       }
 
-      if (next ne pred) {
-        ??? // next.validate1()
-      }
+//      if (next ne pred) {
+//        validate1(next)
+//      }
 
       next
     }
 
     if (res ne chosenT) MkSynthGraph(res) else chosen
-  }
-
-  private def scramble[A, CC[~] <: IndexedSeq[~], To](in: CC[A])(implicit cbf: CanBuildFrom[CC[A], A, To]): To = {
-    val b = cbf(in)
-    var rem = in: IndexedSeq[A]
-    while (rem.nonEmpty) {
-      val idx = random.nextInt(rem.size)
-      val e = rem(idx)
-      rem = rem.patch(idx, Nil, 1)
-      b += e
-    }
-    b.result()
   }
 
   /* Runs the selection stage of the algorithm, using `all` inputs which
@@ -320,6 +333,114 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       res.result()
     }
   }
+
+  /* Produces a sequence of `n` items by crossing each two parents from the input `sel` selection. */
+  private def crossover(sq: Vec[Individual], n: Int): Vec[Individual] = {
+    var res = Vector.empty[Individual]
+    while (res.size < n) {
+      val idx0      = res.size << 1
+      val chosen1   = sq( idx0      % sq.size)
+      val chosen2   = sq((idx0 + 1) % sq.size)
+      val chosen1T  = MkTopology(chosen1.graph)
+      val chosen2T  = MkTopology(chosen2.graph)
+
+      val (x1, x2) = performCrossover(top1 = chosen1T, top2 = chosen2T)
+
+      val hs = if (res.size + 1 == n) x1 :: Nil else {
+        x1 :: x2 :: Nil
+      }
+      hs.foreach { h => res :+= new Individual(MkSynthGraph(h)) }
+    }
+    res
+  }
+
+  private def performCrossover(top1: SynthGraphT, top2: SynthGraphT): (SynthGraphT, SynthGraphT) = {
+    import config.generation.maxNumVertices
+    val v1      = top1.vertices
+    val v2      = top2.vertices
+
+    val (pos1, pos2) = if (coin(0.8)) {   // XXX TODO -- make that a parameter
+    val posRel  = random.nextFloat()
+      val _pos1   = (posRel * v1.size - 1).toInt + 1
+      val _pos2   = (posRel * v2.size - 1).toInt + 1
+      (_pos1, _pos2)
+    } else {
+      val posRel1 = random.nextFloat()
+      val _pos1   = (posRel1 * v1.size - 1).toInt + 1
+      val posRel2 = random.nextFloat()
+      val _pos2   = (posRel2 * v2.size - 1).toInt + 1
+      (_pos1, _pos2)
+    }
+
+    val (head1, tail1)  = v1.splitAt(pos1)
+    val (head2, tail2)  = v2.splitAt(pos2)
+    val edgesHead1      = top1.edges.filter(e => head1.contains(e.sourceVertex) && head1.contains(e.targetVertex))
+    val edgesTail1      = top1.edges.filter(e => tail1.contains(e.sourceVertex) && tail1.contains(e.targetVertex))
+    val edgesHead2      = top2.edges.filter(e => head2.contains(e.sourceVertex) && head2.contains(e.targetVertex))
+    val edgesTail2      = top2.edges.filter(e => tail2.contains(e.sourceVertex) && tail2.contains(e.targetVertex))
+
+    val severedHeads1   = top1.edges.collect {
+      case Edge(source: Vertex.UGen, target, _) if head1.contains(source) && tail1.contains(target) => source
+    }
+    val severedHeads2   = top2.edges.collect {
+      case Edge(source: Vertex.UGen, target, _) if head2.contains(source) && tail2.contains(target) => source
+    }
+
+    @tailrec def shrinkTop(top: SynthGraphT, target: Int, iter: Int): SynthGraphT =
+      if (top.vertices.size <= target || iter == maxNumVertices) top else {
+        val (top1, _) = removeVertex1(top)
+        shrinkTop(top1, target = target, iter = iter + 1)
+      }
+
+    def mkTop(vertices1: Vec[Vertex], edges1: Set[Edge], vertices2: Vec[Vertex], edges2: Set[Edge]): SynthGraphT = {
+      val t1a = (Topology.empty[Vertex, Edge] /: vertices1)(_ addVertex _)
+      val t1b = (t1a /: edges1)(_.addEdge(_).get._1)  // this is now the first half of the original top
+
+      val (t2a, e2cpy) = ((t1b, edges2) /: vertices2) { case ((t0, e0), v0) =>
+        // two parents might share the same vertices from a common
+        // ancestry; in that case we must individualize the vertex
+        // (making a copy means they get fresh object identity and hash)
+        val isNew = !vertices1.contains(v0)
+        val v     = if (isNew) v0 else v0.copy()
+        val tRes  = t0.addVertex(v)
+        val eRes  = if (isNew) e0 else e0.map { e =>
+          if      (e.sourceVertex == v0) e.copy(sourceVertex = v)
+          else if (e.targetVertex == v0) e.copy(targetVertex = v)
+          else e
+        }
+        (tRes, eRes)
+      }
+      (t2a /: e2cpy) { (t0, e0) =>
+        val res = t0.addEdge(e0)
+        if (res.isFailure) {
+          println("WARNING: Cross-over mkTop - cycle detected!")
+        }
+        res.toOption.fold(t0)(_._1)
+      }
+    }
+
+    val topC1a = mkTop(head1, edgesHead1, tail2, edgesTail2)
+    val topC2a = mkTop(head2, edgesHead2, tail1, edgesTail1)
+
+    def complete(top: SynthGraphT, inc: Set[Vertex.UGen]): SynthGraphT = {
+      val top1 = if (inc.isEmpty) top else (top /: inc)((res, v) => completeUGenInputs(res, v))
+      val top2 = shrinkTop(top1, top.vertices.size, 0)
+      top2
+    }
+
+    val topC1 = complete(topC1a, severedHeads1)
+    val topC2 = complete(topC2a, severedHeads2)
+
+    if (DEBUG) {
+      val s1 = s"p1 = (${v1.size}, ${top1.edges.size}), p2 = (${v2.size}, ${top2.edges.size})"
+      val s2 = s"c1 = (${topC1.vertices.size}, ${topC1.edges.size}), c2 = (${topC2.vertices.size}, ${topC2.edges.size})"
+      println(s"crossover. $s1. $s2")
+    }
+
+    (topC1, topC2)
+  }
+
+  // ---- evaluation ----
 
   private def calcInputSpec(): Future[(File, AudioFileSpec)] = {
     import config.evaluation._
@@ -533,6 +654,20 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     res
   }
 
+  // ---- utility ----
+
+  private def scramble[A, CC[~] <: IndexedSeq[~], To](in: CC[A])(implicit cbf: CanBuildFrom[CC[A], A, To]): To = {
+    val b = cbf(in)
+    var rem = in: IndexedSeq[A]
+    while (rem.nonEmpty) {
+      val idx = random.nextInt(rem.size)
+      val e = rem(idx)
+      rem = rem.patch(idx, Nil, 1)
+      b += e
+    }
+    b.result()
+  }
+
   @inline
   private[this] def rrand(lo: Int, hi: Int): Int = lo + random.nextInt(hi - lo + 1)
 
@@ -547,16 +682,18 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
   private[this] def choose[A](xs: ISeq[A]): A = xs.toIndexedSeq(random.nextInt(xs.size))
 
   /* Creates an individual chromosome. */
-  private def mkIndividual(): SynthGraph = {
+  private def mkIndividual(): Individual = {
     import config.generation._
     val num = rrand(minNumVertices, maxNumVertices)
     @tailrec def loopGraph(pred: SynthGraphT): SynthGraphT =
       if (pred.vertices.size >= num) pred else loopGraph(addVertex(pred))
 
     val t0  = loopGraph(Topology.empty)
-    val res = MkSynthGraph(t0, mono = true, removeNaNs = true, specialOut = true, ranges = true)
-    res
+    val g   = MkSynthGraph(t0, mono = true, removeNaNs = true, specialOut = true, ranges = true)
+    new Individual(g)
   }
+
+  // ---- mutations ----
 
   private def addVertex(pred: SynthGraphT): SynthGraphT = {
     import config.generation.constProb
@@ -571,6 +708,193 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     }
     next
   }
+
+  private def removeVertex(c: SynthGraphT): SynthGraphT = {
+    import config.generation._
+    val vertices    = c.vertices
+    val numVertices = vertices.size
+    if (numVertices <= minNumVertices) c else {
+      val (res, _) = removeVertex1(c)
+      checkComplete(res, s"removeVertex($c)")
+//      stats(1) += 1
+      res
+    }
+  }
+
+  def removeVertex1(top: SynthGraphT): (SynthGraphT, Vertex) = {
+    val vertices    = top.vertices
+    val numVertices = vertices.size
+    val idx         = random.nextInt(numVertices)
+    val v           = vertices(idx)
+    val targets     = getArgUsages(top, v)
+    val top1        = top.removeVertex(v)
+    val top3        = (top1 /: targets) { (top2, e) =>
+      val x = top2.removeEdge(e)
+      assert(x ne top2)
+      x
+    }
+    val succ = (top3 /: targets) { case (top4, Edge(t: Vertex.UGen, _, _)) =>
+      completeUGenInputs(top4, t)
+    }
+    (succ, v)
+  }
+
+//  private def changeVertex[S <: Sys[S]](config: Algorithm.Config, top: Chromosome[S])
+//                                       (implicit tx: S#Tx, random: TxnRandom[S#Tx]): Boolean = {
+//    val vertices    = top.vertices
+//    val numVertices = vertices.size
+//
+//    val idx     = random.nextInt(numVertices)
+//    val vOld    = vertices(idx)
+//    vOld match {
+//      case f: Vertex.Constant[S] => changeVertexConstant(        top, f)
+//      case u: Vertex.UGen[S]     => changeVertexUGen    (config, top, u)
+//    }
+//    stats(2) += 1
+//
+//    true
+//  }
+//
+//  private def changeVertexConstant[S <: Sys[S]](top: Chromosome[S], vc: Vertex.Constant[S])
+//                                               (implicit tx: S#Tx, random: TxnRandom[S#Tx]): Unit = {
+//    val fNew: Float = if (Util.coin())
+//      ChromosomeImpl.mkConstantValue()            // completely random
+//    else
+//      vc.f * Util.exprand(0.9, 1.0/0.9).toFloat  // gradual change
+//
+//    vc.f = fNew
+//  }
+//
+//  private def changeVertexUGen[S <: Sys[S]](config: Algorithm.Config, top: Chromosome[S], vu: Vertex.UGen[S])
+//                                           (implicit tx: S#Tx, random: TxnRandom[S#Tx]): Unit = {
+//    val outlet  = getTargets(top, vu)
+//    val inlets  = top.targets(vu) // .getOrElse(Set.empty)
+//    outlet.foreach(top.removeEdge)
+//    inlets.foreach(top.removeEdge)
+//    top.removeVertex(vu)
+//
+//    val vNew = ChromosomeImpl.mkUGen()
+//
+//    val oldInletNames: Vec[String] = vu match {
+//      case Vertex.UGen(info) => /* ChromosomeImpl.geArgs(info).map(_.name) */ info.inputs.map(_.arg)
+//      case _ => Vec.empty
+//    }
+//
+//    top.addVertex(vNew)
+//    outlet.map(_.copy1(targetVertex = vNew)).foreach(top.addEdge /* .get */)
+//
+//    // just as many as possible, leaving tail inlets empty
+//    val newInlets = vNew match {
+//      case vNewU: Vertex.UGen[S] if oldInletNames.nonEmpty =>
+//        val newInletNames = vNewU.info.inputs.map(_.arg)
+//        inlets.collect {
+//          case e if oldInletNames.indexOf(e.inlet) < newInletNames.size =>
+//            e.copy1(sourceVertex = vNewU, inletIndex = oldInletNames.indexOf(e.inlet))
+//        }
+//      case _ => Vec.empty
+//    }
+//
+//    newInlets.foreach(top.addEdge /* .get */)
+//    vNew match {
+//      case vu: Vertex.UGen[S] => ChromosomeImpl.completeUGenInputs(config, top, vu)
+//      case _ =>
+//    }
+//  }
+//
+//  private def changeEdge[S <: Sys[S]](config: Algorithm.Config, top: Chromosome[S])
+//                                     (implicit tx: S#Tx, random: TxnRandom[S#Tx]): Boolean = {
+//    val vertices    = top.vertices
+//
+//    val candidates  = vertices.iterator.collect {
+//      case v: Vertex.UGen[S] if ChromosomeImpl.geArgs(v.info).nonEmpty /* spec.inputs.nonEmpty */ => v
+//    } .toIndexedSeq
+//
+//    if (candidates.isEmpty) false else {
+//      val v     = Util.choose(candidates)
+//      val edges = top.targets(v) // edgeMap.get(v).getOrElse(Set.empty)
+//      if (edges.isEmpty) false else {
+//        top.removeEdge(Util.choose(edges))
+//        ChromosomeImpl.completeUGenInputs[S](config, top, v)
+//        stats(3) += 1
+//        true
+//      }
+//    }
+//  }
+//
+//  private def swapEdge[S <: Sys[S]](top: Chromosome[S])(implicit tx: S#Tx, random: TxnRandom[S#Tx]): Boolean = {
+//    val vertices    = top.vertices
+//
+//    val candidates  = vertices.iterator.collect {
+//      case v: Vertex.UGen[S] if top.targets(v).size >= 2 /* edgeMap.get(v).exists(_.size >= 2) */ => v
+//    } .toIndexedSeq
+//
+//    if (candidates.isEmpty) false else {
+//      val v     = Util.choose(candidates)
+//      val edges = top.targets(v) // edgeMap.get(v).getOrElse(Set.empty)
+//      val e1    = Util.choose(edges)
+//      val e2    = Util.choose(edges - e1)
+//      top.removeEdge(e1)
+//      top.removeEdge(e2)
+//      val e1New = e1.copy1(targetVertex = e2.targetVertex)
+//      val e2New = e2.copy1(targetVertex = e1.targetVertex)
+//      top.addEdge(e1New) // .get
+//      top.addEdge(e2New) // .get
+//      stats(4) += 1
+//      true
+//    }
+//  }
+
+  // ---- fix ups ----
+
+  private[this] val CHECK = false
+
+  private def checkComplete(succ: SynthGraphT, message: => String): Unit =
+    if (CHECK) succ.vertices.foreach {
+      case v: Vertex.UGen =>
+        val inc = findIncompleteUGenInputs(succ, v)
+        if (inc.nonEmpty) {
+          println("MISSING SLOTS:")
+          inc.foreach(println)
+          sys.error(s"UGen is not complete: $v - $message")
+        }
+      case _ =>
+    }
+
+//  private def validate1(top: SynthGraphT): Boolean = {
+//    val errors = top.validate()
+//    if (errors.nonEmpty) {
+//      println(s"===== WARNING: found ${errors.size} errors =====")
+//      errors.foreach(println)
+//      println("\nChromosome:")
+//      println(debugString)
+//    }
+//    errors.isEmpty
+//  }
+//
+//  private def validate(top: SynthGraphT): Vec[String] = {
+//    val u = top.unconnected
+//    val b = Vector.newBuilder[String]
+//    if (u < 0 || u > top.vertices.size) b += s"Illegal number of unconnected vertices: $u"
+//    top.vertices.iterator.zipWithIndex.foreach { case (v, idx) =>
+//      val key = v.hashCode()
+//      val hasEdges = sourceEdgeMap.get(key).exists(_.get(v).exists(_.nonEmpty)) ||
+//        targetEdgeMap.get(key).exists(_.get(v).exists(_.nonEmpty))
+//      if (idx  < u &&  hasEdges) b += s"Vertex $v has edges although it is marked unconnected"
+//      if (idx >= u && !hasEdges) b += s"Vertex $v has no edges although it is marked connected"
+//    }
+//    top.edges.iterator.foreach { e =>
+//      val s1 = sourceEdgeMap.get(e.sourceVertex.hashCode()).getOrElse(Map.empty).getOrElse(e.sourceVertex, Set.empty)
+//      if (!s1.contains(e)) b += s"Edge $e is not found in sourceEdgeMap"
+//      val s2 = targetEdgeMap.get(e.targetVertex.hashCode()).getOrElse(Map.empty).getOrElse(e.targetVertex, Set.empty)
+//      if (!s2.contains(e)) b += s"Edge $e is not found in targetEdgeMap"
+//    }
+//    val numEdges1 = top.edges.size
+//    val numEdges2 = sourceEdgeMap.iterator.map { case (_, map) => map.map(_._2.size).sum } .sum
+//    val numEdges3 = targetEdgeMap.iterator.map { case (_, map) => map.map(_._2.size).sum } .sum
+//    if (numEdges1 != numEdges2) b += s"Edge list has size $numEdges1, while sourceEdgeMap contains $numEdges2 entries"
+//    if (numEdges1 != numEdges3) b += s"Edge list has size $numEdges1, while targetEdgeMap contains $numEdges3 entries"
+//    b.result()
+//  }
 
   private def completeUGenInputs(t1: SynthGraphT, v: Vertex.UGen): SynthGraphT = {
     import config.generation.nonDefaultProb
@@ -611,6 +935,11 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     loopVertex(findDef, t1)
   }
 
+  private def getArgUsages(top: SynthGraphT, arg: Vertex): Set[Edge] =
+    top.edges.filter(_.targetVertex == arg)
+
+  // ---- creation ----
+
   private def mkUGen(): Vertex.UGen = {
     val spec = choose(UGens.seq)
     Vertex.UGen(spec)
@@ -623,6 +952,8 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     val f   = if (coin(0.25)) -f0 else f0
     f.toFloat
   }
+
+  // ---- observable ----
 
   def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
     val res = react(fun)
