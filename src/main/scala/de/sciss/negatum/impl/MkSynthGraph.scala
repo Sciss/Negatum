@@ -16,59 +16,57 @@ package impl
 
 import de.sciss.lucre.stm.Sys
 import de.sciss.negatum.impl.ParamRanges.Dynamic
-import de.sciss.synth.ugen.{Constant, LeakDC}
+import de.sciss.synth.ugen.{Constant, ProtectRange}
 import de.sciss.synth.{GE, SynthGraph, UGenSource, UGenSpec, UndefinedRate, ugen}
 
 import scala.annotation.tailrec
 
 object MkSynthGraph {
+  def isDynamic(in: GE): Boolean = in match {
+    case Constant(_) => false
+    case _ =>
+      ParamRanges.map.get(graphElemName(in)).exists { info =>
+        def getArg(name: String): Any = in.getClass.getMethod(name).invoke(in)
+
+        def check(d: Dynamic): Boolean = d match {
+          case Dynamic.Always => true
+          case Dynamic.And(elems @ _*) => elems.forall(check)
+          case Dynamic.Or (elems @ _*) => elems.exists(check)
+          case Dynamic.IfOver (param, v) =>
+            getArg(param) match {
+              case Constant(f) if f >= v => true
+              case _ => false // XXX TODO --- could be more complex
+            }
+          case Dynamic.IfUnder(param, v) =>
+            getArg(param) match {
+              case Constant(f) if f <= v => true
+              case _ => false // XXX TODO --- could be more complex
+            }
+          case Dynamic.In(param) =>
+            getArg(param) match {
+              case argGE: GE => isDynamic(argGE)
+              case _ => false
+            }
+        }
+
+        info.dynamic.exists(check)
+      }
+  }
+
   /** Creates a synth graph from a chromosome, possibly inserting safety
     * measures such as removal of NaNs or protected against out-of-range parameters.
     *
     * @param c            the chromosome that shall be converted
-    * @param mono         if `true`, adds a `Mix.mono`
-    * @param removeNaNs   if `true`, adds a bad-value check and a gate that stops NaNs
     * @param specialOut   if `true`, adds a `NegatumOut`
     * @param ranges       if `true`, inserts range protection checks for known parameters
+    * @param mono         if `true`, adds a `Mix.mono` (only used when `!specialOut`)
+    * @param removeNaNs   if `true`, adds a bad-value check and a gate that stops NaNs (only used when `!specialOut`)
     */
-  def apply[S <: Sys[S]](c: SynthGraphT, mono: Boolean, removeNaNs: Boolean, specialOut: Boolean,
-                         ranges: Boolean): SynthGraph = {
-    val top = c
-
+  def apply[S <: Sys[S]](c: SynthGraphT, specialOut: Boolean = true,
+                         ranges: Boolean = true, mono: Boolean = true, removeNaNs: Boolean = true): SynthGraph = {
     @tailrec def loop(rem: Vec[Vertex], real: Map[Vertex, GE]): Map[Vertex, GE] = rem match {
       case init :+ last =>
-        def isDynamic(in: GE): Boolean = in match {
-          case Constant(_) => false
-          case _ =>
-            ParamRanges.map.get(graphElemName(in)).exists { info =>
-              def getArg(name: String): Any = in.getClass.getMethod(name).invoke(in)
-
-              def check(d: Dynamic): Boolean = d match {
-                case Dynamic.Always => true
-                case Dynamic.And(elems @ _*) => elems.forall(check)
-                case Dynamic.Or (elems @ _*) => elems.exists(check)
-                case Dynamic.IfOver (param, v) =>
-                  getArg(param) match {
-                    case Constant(f) if f >= v => true
-                    case _ => false // XXX TODO --- could be more complex
-                  }
-                case Dynamic.IfUnder(param, v) =>
-                  getArg(param) match {
-                    case Constant(f) if f <= v => true
-                    case _ => false // XXX TODO --- could be more complex
-                  }
-                case Dynamic.In(param) =>
-                  getArg(param) match {
-                    case argGE: GE => isDynamic(argGE)
-                    case _ => false
-                  }
-              }
-
-              info.dynamic.exists(check)
-            }
-        }
-
-        lazy val lastE = top.edgeMap.getOrElse(last, Set.empty) // top.targets(last)
+        lazy val lastE = c.edgeMap.getOrElse(last, Set.empty) // top.targets(last)
 
         def getReal(name: String): Option[GE] =
           lastE.flatMap { e =>
@@ -109,20 +107,10 @@ object MkSynthGraph {
                         val loOk      = inLoOpt.exists(_ >= loThresh)
                         val hiOk      = inHiOpt.exists(_ <= hiThresh)
 
-                        val inGE1: GE = (loOk, hiOk) match {
-                          case (false, _ ) if !loThresh.isInfinity && (hiOk || hiThresh.isInfinity) =>
-                            inGE0.max(loThresh)
-                          case (_ , false) if !hiThresh.isInfinity && (loOk || loThresh.isInfinity) =>
-                            inGE0.min(hiThresh)
-                          case (false, false) if !hiThresh.isInfinity && !loThresh.isInfinity =>
-                            // N.B. Clip.ar seems to be broken
-                            // inGE0.clip(loThresh, hiThresh)
-                            inGE0.max(loThresh).min(hiThresh)
-                          case _ => inGE0
-                        }
-                        // `lessThan` -> see below
-
-                        val inGE2: GE = if (!pSpec.dynamic || isDynamic(inGE1)) inGE1 else LeakDC.ar(inGE1)
+                        val inGE2: GE = if (loOk && hiOk && (!pSpec.dynamic || isDynamic(inGE0)))
+                            inGE0
+                          else
+                            ProtectRange(inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
 
                         inGE2
                       }
@@ -132,10 +120,10 @@ object MkSynthGraph {
                   val inGE = inGEOpt.getOrElse {
                     val xOpt = arg.defaults.get(UndefinedRate)
                     val x    = xOpt.getOrElse {
-                      val inc = findIncompleteUGenInputs(top, u)
+                      val inc = findIncompleteUGenInputs(c, u)
                       println("INCOMPLETE:")
                       inc.foreach(println)
-                      println(top)
+                      println(c)
                       sys.error(s"Vertex $spec has no input for inlet $arg")
                     }
                     x match {
@@ -185,25 +173,26 @@ object MkSynthGraph {
     SynthGraph {
       import de.sciss.synth.ugen._
       RandSeed.ir()
-      val vertices = top.vertices.iterator.toIndexedSeq
+      val vertices = c.vertices.iterator.toIndexedSeq
       val map   = loop(vertices, Map.empty)
       val ugens = vertices.collect {
         case ugen: Vertex.UGen => ugen
       }
       if (ugens.nonEmpty) {
-        val roots = getGraphRoots(top)
+        val roots = getGraphRoots(c)
         val sig0: GE = if (roots.isEmpty) map(ugens.head /* choose(ugens) */) else Mix(roots.map(map.apply))
-        val sig1  = /* if (mono) */ Mix.mono(sig0) /* else sig0 */
-        val sig2  = if (!removeNaNs) sig1 else {
-          val isOk = CheckBadValues.ar(sig1, post = 0) sig_== 0
-          Gate.ar(sig1, isOk)
-        }
-        val sig3  = if (specialOut) sig2 else Limiter.ar(LeakDC.ar(sig2))
-        val sig   = if (mono)   sig3 else Pan2.ar(sig3) // SplayAz.ar(numChannels = 2, in = sig3)
-        if (specialOut)
-          NegatumOut(sig)
-        else
+        if (specialOut) {
+          NegatumOut(sig0)
+        } else {
+          val sig1  = /* if (mono) */ Mix.mono(sig0) /* else sig0 */
+          val sig2  = if (!removeNaNs) sig1 else {
+            val isOk = CheckBadValues.ar(sig1, post = 0) sig_== 0
+            Gate.ar(sig1, isOk)
+          }
+          val sig3  = Limiter.ar(LeakDC.ar(sig2))
+          val sig   = if (mono)   sig3 else Pan2.ar(sig3) // SplayAz.ar(numChannels = 2, in = sig3)
           Out.ar(0, sig)
+        }
       }
     }
   }

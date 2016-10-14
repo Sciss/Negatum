@@ -15,7 +15,6 @@ package de.sciss.synth
 package ugen
 
 import de.sciss.synth.Ops.stringToControl
-import de.sciss.synth.UGenSource._
 
 object NegatumOut {
   var CLIP      = false
@@ -26,11 +25,11 @@ object NegatumOut {
   var AMP       = false
   var FADE_IN   = false
 }
-final case class NegatumOut(in: GE) extends UGenSource.ZeroOut with WritesBus {
-  protected def makeUGens: Unit = unwrap(this, in.expand.outputs)
+final case class NegatumOut(in: GE) extends Lazy.Expander[Unit] {
+//  protected def makeUGens: Unit = unwrap(this, in.expand.outputs)
 
-  private[synth] def makeUGen(ins: Vec[UGenIn]): Unit = {
-    val sig0  = ins: GE
+  protected def makeUGens: Unit = {
+    val sig0  = Mix.mono(in)
     val isOk  = CheckBadValues.ar(sig0, post = 0) sig_== 0
     val sig1  = Gate.ar(sig0, isOk)
     val sig2  = if (!NegatumOut.CLIP     ) sig1 else sig1.clip2(1)

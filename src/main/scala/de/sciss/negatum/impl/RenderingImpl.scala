@@ -17,7 +17,6 @@ package impl
 import java.util.concurrent.TimeUnit
 
 import de.sciss.file._
-import de.sciss.filecache
 import de.sciss.filecache.{TxnConsumer, TxnProducer}
 import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.expr.DoubleObj
@@ -26,23 +25,25 @@ import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.negatum.Negatum.Rendering.State
 import de.sciss.negatum.Negatum.{Config, Rendering}
-import de.sciss.numbers
+import de.sciss.{filecache, numbers}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.span.Span
 import de.sciss.strugatzki.{FeatureCorrelation, FeatureExtraction, Strugatzki}
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.{AudioCue, Bounce, Folder, Proc, SoundProcesses, SynthGraphObj, TimeRef, WorkspaceHandle}
-import de.sciss.synth.{SynthGraph, UGenSpec, UndefinedRate}
+import de.sciss.synth.proc.{AudioCue, Bounce, Folder, Proc, SynthGraphObj, TimeRef, WorkspaceHandle}
+import de.sciss.synth.{SynthGraph, UGenSpec, UndefinedRate, proc}
 import de.sciss.topology.Topology
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
+import scala.collection.breakOut
+import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException, blocking}
 import scala.concurrent.stm.{Ref, TxnExecutor}
+import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException, blocking}
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success, Try}
 
@@ -173,16 +174,151 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
             case NonFatal(_) => 0.0f
           }
           indiv.fitness = sim
+          checkAborted()
+          PROG_COUNT += 1
+          progress = PROG_COUNT * PROG_WEIGHT
         }
         i += 1
-        checkAborted()
-        PROG_COUNT += 1
-        progress = PROG_COUNT * PROG_WEIGHT
       }
+
+      val el    = elitism(pop)
+      val _sel0 = select (pop)
+      val sel   = scramble(_sel0.toIndexedSeq)
+
+      import config.breeding._
+
+      val nGen    = pop.length - el.size - numGolem
+      val nMut    = (mutProb * nGen + 0.5).toInt
+      val nCross  = nGen - nMut
+
+      val mut     = mutate    (sel, nMut)
+      val cross   = ??? // crossover (sel, nCross)
+
+      val golem = Vector.fill(numGolem)(mkIndividual())
+      ??? // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golem
+      ??? // evaluateAndUpdate()
+
       iter += 1
     }
 
     pop.toIndexedSeq
+  }
+
+  /* Produces a sequence of `n` items by mutating the input `sel` selection. */
+  private def mutate(sq: Vec[Individual], n: Int): Vec[Individual] = {
+    var res = Vector.empty[Individual]
+
+    while (res.size < n) {
+      val chosen = sq(res.size % sq.size)
+      val hOpt: Option[Individual] = {
+        val ok = tryMutate(chosen.graph)
+        if (ok ne chosen.graph) {
+          Some(new Individual(ok))
+        } else None
+      }
+      hOpt.foreach { h => res :+= h }
+    }
+    res
+  }
+
+  private def tryMutate(chosen: SynthGraph): SynthGraph = {
+    import config.breeding.{mutMin, mutMax}
+
+    val chosenT       = MkTopology(chosen)
+    val mutationIter  = rrand(mutMin, mutMax)
+    require(mutationIter > 0)
+    val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
+      val tpe = random.nextInt(7)
+      val next: SynthGraphT = (tpe: @switch) match {
+        case 0 => addVertex   (pred)
+        case 1 => ??? // removeVertex(pred)
+        case 2 => ??? // changeVertex(pred)
+        case 3 => ??? // changeEdge  (pred)
+        case 4 => ??? // swapEdge    (pred)
+        case 5 => ??? // splitVertex (pred)
+        case 6 => ??? // mergeVertex (pred)
+      }
+
+      if (next ne pred) {
+        ??? // next.validate1()
+      }
+
+      next
+    }
+
+    if (res ne chosenT) MkSynthGraph(res) else chosen
+  }
+
+  private def scramble[A, CC[~] <: IndexedSeq[~], To](in: CC[A])(implicit cbf: CanBuildFrom[CC[A], A, To]): To = {
+    val b = cbf(in)
+    var rem = in: IndexedSeq[A]
+    while (rem.nonEmpty) {
+      val idx = random.nextInt(rem.size)
+      val e = rem(idx)
+      rem = rem.patch(idx, Nil, 1)
+      b += e
+    }
+    b.result()
+  }
+
+  /* Runs the selection stage of the algorithm, using `all` inputs which
+   * are chromosomes paired with their fitness values.
+   */
+  private def select(all: Array[Individual]): Set[Individual] = {
+    import config.breeding.selectionFrac
+    val pop   = all.length
+    val n     = (pop * selectionFrac + 0.5).toInt
+
+    @tailrec def loop(rem: Int, in: Set[Individual], out: Set[Individual]): Set[Individual] =
+      if (rem == 0) out else {
+        val sum     = in.iterator.map(_.fitness).sum
+        val rem1    = rem - 1
+        if (sum == 0.0) {
+          val chosen = in.head
+          loop(rem1, in - chosen, out + chosen)
+        } else {
+          val inIdx       = in.zipWithIndex[Individual, Array[(Individual, Int)]](breakOut)
+          val norm        = inIdx.map {
+            case (indiv, j) => (j, indiv.fitness / sum)
+          }
+          val sorted      = norm.sortBy(_._2)
+          val acc         = sorted.scanLeft(0.0) { case (a, (_, f)) => a + f } .tail
+          val roulette    = random.nextDouble()
+          val idxS        = acc.indexWhere(_ > roulette)
+          val idx         = if (idxS >= 0) sorted(idxS)._1 else in.size - 1
+          val (chosen, _) = inIdx(idx)
+          loop(rem1, in - chosen, out + chosen)
+        }
+      }
+
+    val sel = loop(n, all.toSet.filterNot { indiv => indiv.fitness.isInfinity|| indiv.fitness.isNaN }, Set.empty)
+    // val remove  = all -- sel
+    // remove.foreach(prev.remove)
+    sel
+  }
+
+  /* Selects the best matching chromosomes. */
+  private def elitism(all: Array[Individual]): Vec[Individual] = {
+    import config.breeding.numElitism
+    if (numElitism == 0) Vector.empty else {
+      // ensure that elite choices are distinct (don't want to accumulate five identical chromosomes over time)!
+      val eliteCandidates = all.sortBy(-_.fitness)
+      val res = Vector.newBuilder[Individual]
+      res.sizeHint(numElitism)
+      val it = eliteCandidates.iterator
+      var sz = 0
+      var fl = Double.NaN
+      while (sz < numElitism && it.hasNext) {
+        val indiv = it.next()
+        val f     = indiv.fitness
+        if (f != fl) {
+          res += indiv
+          sz  += 1
+          fl   = f
+        }
+      }
+      res.result()
+    }
   }
 
   private def calcInputSpec(): Future[(File, AudioFileSpec)] = {
@@ -206,8 +342,8 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   private def evaluateFut(graph: SynthGraph, inputSpec: AudioFileSpec,
                           inputExtr: File, numVertices: Int): Future[Float] = {
-    import config.penalty._
     import config.generation._
+    import config.penalty._
     val audioF  = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
     val bnc0    = bounce(graph, audioF = audioF, inputSpec = inputSpec)
     val simFut  = eval1(wait = Some(bnc0), bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr)
