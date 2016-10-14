@@ -12,7 +12,7 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 // ---- main dependencies ----
 
 lazy val soundProcessesVersion  = "3.8.0"
-lazy val fscapeVersion          = "2.2.1"
+// lazy val fscapeVersion          = "2.2.1"
 
 // ---- test dependencies ----
 
@@ -20,7 +20,7 @@ lazy val melliteVersion         = "2.6.0"   // GPL!
 
 libraryDependencies ++= Seq(
   "de.sciss" %% "soundprocesses-core" % soundProcessesVersion,
-  "de.sciss" %% "fscape"              % fscapeVersion,
+  // "de.sciss" %% "fscape"              % fscapeVersion,
   "de.sciss" %% "mellite"             % melliteVersion  % "test"
 )
 
