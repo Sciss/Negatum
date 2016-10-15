@@ -74,7 +74,7 @@ object NegatumViewImpl {
           val ok = cursor.step { implicit tx =>
             renderRef.get(tx.peer).isEmpty && {
               val obj       = negatumH()
-              val cGen      = Negatum.Generation(population = 10)
+              val cGen      = Negatum.Generation(population = 8, minNumVertices = 8, maxNumVertices = 8)
               val cBreed    = Negatum.Breeding(numElitism = 1, numGolem = 1)
               val cEval     = Negatum.Evaluation()
               val cPenalty  = Negatum.Penalty()

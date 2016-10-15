@@ -14,8 +14,6 @@
 package de.sciss.negatum
 package impl
 
-import java.util.concurrent.TimeUnit
-
 import de.sciss.file._
 import de.sciss.lucre.synth.InMemory
 import de.sciss.negatum.Negatum.Config
@@ -26,8 +24,7 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, WorkspaceHandle}
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
 object Evaluation {
   private[this] val inMemory = InMemory()
@@ -39,18 +36,18 @@ object Evaluation {
     import config.penalty._
     val audioF  = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
     val bnc0    = Evaluation.bounce(graph, audioF = audioF, inputSpec = inputSpec)
-    Await.result(bnc0, Duration(20, TimeUnit.SECONDS))
-    val simFut  = Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
-      numMFCC = numMFCC, normalizeMFCC = normalizeMFCC, maxBoost = maxBoost, temporalWeight = temporalWeight)
-
     import scala.concurrent.ExecutionContext.Implicits.global
+    val simFut  = bnc0.flatMap { _ =>
+      Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
+        numMFCC = numMFCC, normalizeMFCC = normalizeMFCC, maxBoost = maxBoost, temporalWeight = temporalWeight)
+    }
     val res = simFut.map { sim0 =>
       import numbers.Implicits._
       val pen = vertexPenalty
       //      if (sim0 > 0.46) {
       //        println(s"DEBUG $audioF")
       //      }
-      val sim = if (pen <= 0) sim0 else
+      val sim = if (pen <= 0 || minNumVertices == maxNumVertices) sim0 else
         sim0 - numVertices.clip(minNumVertices, maxNumVertices).linlin(minNumVertices, maxNumVertices, 0, pen)
       sim.toFloat // new Evaluated(cH, sim)
     }

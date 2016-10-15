@@ -30,7 +30,7 @@ object Selection {
     val n     = (pop * selectionFrac + 0.5).toInt
 
     @tailrec def loop(rem: Int, in: Set[Individual], out: Set[Individual]): Set[Individual] =
-      if (rem == 0) out else {
+      if (rem == 0 || in.isEmpty) out else {
         val sum     = in.iterator.map(_.fitness).sum
         val rem1    = rem - 1
         if (sum == 0.0) {

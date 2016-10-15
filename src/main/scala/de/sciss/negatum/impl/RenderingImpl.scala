@@ -48,7 +48,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
   private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
   private[this] val _disposed     = Ref(false)
 
-  private[this] implicit val random = new Random()  // XXX TODO --- make seed customisable
+  private[this] implicit val random = new Random(0L)  // XXX TODO --- make seed customisable
 
   protected def body(): Vec[Individual] = blocking {
     import config._

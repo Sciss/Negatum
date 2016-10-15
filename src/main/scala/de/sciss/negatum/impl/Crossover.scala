@@ -27,6 +27,8 @@ object Crossover {
   /** Produces a sequence of `n` items by crossing each two parents from the input `sel` selection. */
   def apply(config: Config, sq: IndexedSeq[Individual], n: Int)(implicit random: Random): Vec[Individual] = {
     var res = Vector.empty[Individual]
+    if (sq.isEmpty) return res
+
     while (res.size < n) {
       val idx0      = res.size << 1
       val chosen1   = sq( idx0      % sq.size)

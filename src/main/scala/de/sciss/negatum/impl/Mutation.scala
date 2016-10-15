@@ -20,11 +20,13 @@ import de.sciss.synth.SynthGraph
 
 import scala.annotation.switch
 import scala.util.Random
+import scala.util.control.NonFatal
 
 object Mutation {
   /* Produces a sequence of `n` items by mutating the input `sel` selection. */
   def apply(config: Config, sq: Vec[Individual], n: Int)(implicit random: Random): Vec[Individual] = {
     var res = Vector.empty[Individual]
+    if (sq.isEmpty) return res
 
     while (res.size < n) {
       val chosen = sq(res.size % sq.size)
@@ -42,7 +44,17 @@ object Mutation {
   private def tryMutate(config: Config, chosen: SynthGraph)(implicit random: Random): SynthGraph = {
     import config.breeding.{mutMax, mutMin}
 
-    val chosenT       = MkTopology(chosen)
+    val chosenT = MkTopology(chosen)
+
+    // XXX TODO TEST
+    try {
+      MkSynthGraph(chosenT)
+    } catch {
+      case NonFatal(ex) =>
+        println("AQUI")
+        MkTopology(chosen)
+    }
+
     val mutationIter  = rrand(mutMin, mutMax)
     require(mutationIter > 0)
     val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
@@ -56,6 +68,9 @@ object Mutation {
         case 5 => ??? // splitVertex (pred)
         case 6 => ??? // mergeVertex (pred)
       }
+
+      // XXX TODO TEST
+      if (next ne chosenT) MkSynthGraph(next)
 
       //      if (next ne pred) {
       //        validate1(next)
