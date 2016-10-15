@@ -46,14 +46,14 @@ object Mutation {
 
     val chosenT = MkTopology(chosen)
 
-    // XXX TODO TEST
-    try {
-      MkSynthGraph(chosenT)
-    } catch {
-      case NonFatal(ex) =>
-        println("AQUI")
-        MkTopology(chosen)
-    }
+    // TEST
+//    try {
+//      MkSynthGraph(chosenT)
+//    } catch {
+//      case NonFatal(ex) =>
+//        println("AQUI")
+//        MkTopology(chosen)
+//    }
 
     val mutationIter  = rrand(mutMin, mutMax)
     require(mutationIter > 0)
@@ -69,8 +69,8 @@ object Mutation {
         case 6 => ??? // mergeVertex (pred)
       }
 
-      // XXX TODO TEST
-      if (next ne chosenT) MkSynthGraph(next)
+      // TEST
+//      if (next ne chosenT) MkSynthGraph(next)
 
       //      if (next ne pred) {
       //        validate1(next)

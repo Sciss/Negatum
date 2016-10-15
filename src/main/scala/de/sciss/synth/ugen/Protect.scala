@@ -1,5 +1,5 @@
 /*
- *  ProtectRange.scala
+ *  Protect.scala
  *  (Negatum)
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
@@ -16,7 +16,7 @@ package ugen
 
 import de.sciss.negatum.impl.{MkSynthGraph, ParamRanges, graphElemName}
 
-final case class ProtectRange(in: GE, lo: Double, hi: Double, dynamic: Boolean) extends GE.Lazy {
+final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) extends GE.Lazy {
   def rate: MaybeRate = in.rate
 
   protected def makeUGens: UGenInLike = {

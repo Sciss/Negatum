@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.stm.Sys
 import de.sciss.negatum.impl.ParamRanges.Dynamic
-import de.sciss.synth.ugen.{Constant, ProtectRange}
+import de.sciss.synth.ugen.{Constant, Protect}
 import de.sciss.synth.{GE, SynthGraph, UGenSource, UGenSpec, UndefinedRate, ugen}
 
 import scala.annotation.tailrec
@@ -110,7 +110,7 @@ object MkSynthGraph {
                         val inGE2: GE = if (loOk && hiOk && (!pSpec.dynamic || isDynamic(inGE0)))
                             inGE0
                           else
-                            ProtectRange(inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
+                            Protect(inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
 
                         inGE2
                       }
