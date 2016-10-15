@@ -120,7 +120,7 @@ object MkSynthGraph {
                   val inGE = inGEOpt.getOrElse {
                     val xOpt = arg.defaults.get(UndefinedRate)
                     val x    = xOpt.getOrElse {
-                      val inc = findIncompleteUGenInputs(c, u)
+                      val inc = Chromosome.findIncompleteUGenInputs(c, u)
                       println("INCOMPLETE:")
                       inc.foreach(println)
                       println(c)

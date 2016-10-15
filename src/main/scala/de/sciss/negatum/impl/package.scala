@@ -41,21 +41,4 @@ package object impl {
     }
     f.toIndexedSeq
   }
-
-  def geArgs(spec: UGenSpec): Vec[UGenSpec.Argument] =
-    spec.args.filter { arg =>
-      arg.tpe match {
-        case UGenSpec.ArgumentType.Int => false
-        case UGenSpec.ArgumentType.GE(UGenSpec.SignalShape.DoneAction, _) => false
-        case _ => true
-      }
-    }
-
-  def findIncompleteUGenInputs(t1: SynthGraphT, v: Vertex.UGen): Vec[String] = {
-    val spec      = v.info
-    val edgeSet   = t1.edgeMap.getOrElse(v, Set.empty)
-    val argsFree  = geArgs(spec).filter { arg => !edgeSet.exists(_.inlet == arg.name) }
-    val inc       = argsFree.filterNot(_.defaults.contains(UndefinedRate))
-    inc.map(_.name)
-  }
 }

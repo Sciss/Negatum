@@ -15,7 +15,6 @@ package de.sciss.negatum
 package impl
 
 import scala.collection.generic.CanBuildFrom
-import scala.collection.immutable.{Seq => ISeq}
 import scala.language.higherKinds
 import scala.util.Random
 
@@ -32,6 +31,18 @@ object Util {
     b.result()
   }
 
+  def roulette[A](in: Vec[(A, Int)])(implicit random: Random): A = {
+    val sum         = in.map(_._2).sum
+    val norm        = in.zipWithIndex.map { case ((c, f), j) => (j, f / sum) }
+    val sorted      = norm.sortBy(_._2)
+    val accum       = sorted.scanLeft(0.0) { case (a, (_, f)) => a + f } .tail
+    val roul        = random.nextDouble() // * max
+    val idxS        = accum.indexWhere(_ > roul)
+    val idx         = if (idxS >= 0) sorted(idxS)._1 else in.size - 1
+    val (chosen, _) = in(idx)
+    chosen
+  }
+
   def rrand(lo: Int, hi: Int)(implicit random: Random): Int = lo + random.nextInt(hi - lo + 1)
 
   def exprand(lo: Double, hi: Double)(implicit random: Random): Double =
@@ -39,5 +50,5 @@ object Util {
 
   def coin(p: Double = 0.5)(implicit random: Random): Boolean = random.nextDouble() < p
 
-  def choose[A](xs: ISeq[A])(implicit random: Random): A = xs.toIndexedSeq(random.nextInt(xs.size))
+  def choose[A](xs: Iterable[A])(implicit random: Random): A = xs.toIndexedSeq(random.nextInt(xs.size))
 }
