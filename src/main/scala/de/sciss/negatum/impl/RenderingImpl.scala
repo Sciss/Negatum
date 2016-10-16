@@ -104,7 +104,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
       val el    = Selection.elitism(config, pop)
       val _sel0 = Selection(config, pop)
-      val sel   = scramble(_sel0.toIndexedSeq)
+      val sel   = scramble(_sel0)
 
       import config.breed._
 

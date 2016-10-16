@@ -80,8 +80,9 @@ object Mutation {
           case ex: MkSynthGraph.Incomplete =>
             println(s"AQUI - tpe = $tpe")
             println("----before----")
-            println(pred)
+            println(TopologyDOT(pred))
             println("----after----")
+            println(TopologyDOT(next))
             println(ex)
             random.setSeed(TEST)
             val again: SynthGraphT = (tpe: @switch) match {
@@ -160,7 +161,7 @@ object Mutation {
     val idx     = random.nextInt(numVertices)
     val vOld    = vertices(idx)
     val outlet  = Chromosome.getArgUsages(top, vOld)
-    val inlets  = top.edgeMap.getOrElse(vOld, Set.empty)
+    val inlets  = Chromosome.sortedEdges (top, vOld)
     val top1    = (top  /: outlet)(_ removeEdge _)
     val top2    = (top1 /: inlets)(_ removeEdge _)
     val top3    = top2.removeVertex(vOld)
@@ -213,7 +214,7 @@ object Mutation {
 
     if (candidates.isEmpty) top else {
       val v     = choose(candidates)
-      val edges = top.edgeMap.getOrElse(v, Set.empty)
+      val edges = Chromosome.sortedEdges(top, v)
       val top1  = if (edges.isEmpty) top else top.removeEdge(choose(edges))
       val top2  = Chromosome.completeUGenInputs(config, top1, v)
       if (top2 == top) top else {
@@ -233,9 +234,9 @@ object Mutation {
 
     if (candidates.isEmpty) top else {
       val v     = Util.choose(candidates)
-      val edges = top.edgeMap.getOrElse(v, Set.empty)
+      val edges = Chromosome.sortedEdges(top, v)
       val e1    = Util.choose(edges)
-      val e2    = Util.choose(edges - e1)
+      val e2    = Util.choose(edges.filterNot(_ == e1))
       val top1  = top .removeEdge(e1)
       val top2  = top1.removeEdge(e2)
       val e1New = e1.copy(targetVertex = e2.targetVertex)
@@ -256,24 +257,24 @@ object Mutation {
     val numVertices = verticesIn.size
     if (numVertices >= config.gen.maxVertices) return top
 
-    val weighted  = verticesIn.flatMap { v =>
-      val set = top.edges.filter(_.targetVertex == v)
-      val sz  = set.size
-      if (sz > 2) Some(set -> sz) else None
+    val weighted: Vec[(List[Edge], Int)] = verticesIn.flatMap { v =>
+      val list  = Chromosome.getArgUsages(top, v)
+      val sz    = list.size
+      if (sz > 2) Some(list -> sz) else None
     }
     if (weighted.isEmpty) top else {
-      val edges = roulette(weighted)
-      val edgesS: Vec[Edge] = scramble(edges.toVector)
-      val (_, edgesMove) = edgesS.splitAt(edgesS.size/2)
-      val vertexOld = edges.head.targetVertex
-      val vertexNew = vertexOld.copy()
-      val top1 = (top /: edgesMove)(_ removeEdge _)
-      val top2 = top1.addVertex(vertexNew)
-      val top3 = (top2 /: edgesMove) { (t, eOld) =>
+      val edges : List[Edge]  = roulette(weighted)
+      val edgesS: List[Edge]  = scramble(edges)
+      val (_, edgesMove)      = edgesS.splitAt(edgesS.size/2)
+      val vertexOld           = edges.head.targetVertex
+      val vertexNew           = vertexOld.copy()
+      val top1                = (top /: edgesMove)(_ removeEdge _)
+      val top2                = top1.addVertex(vertexNew)
+      val top3                = (top2 /: edgesMove) { (t, eOld) =>
         val eNew = eOld.copy(targetVertex = vertexNew)
         t.addEdge(eNew).get._1
       }
-      val succ = (top3 /: top.edgeMap.getOrElse(vertexOld, Set.empty)) { (t, eOld) =>
+      val succ = (top3 /: Chromosome.sortedEdges(top, vertexOld)) { (t, eOld) =>
         val eNew = eOld.copy(sourceVertex = vertexNew)
         t.addEdge(eNew).get._1
       }
@@ -305,7 +306,7 @@ object Mutation {
     }
     if (it.isEmpty) top else {
       val (v1, v2)  = it.next()
-      val edgesOld  = top.edges.filter(_.targetVertex == v2)
+      val edgesOld  = Chromosome.getArgUsages(top, v2)
       val top1      = (top  /: edgesOld)(_ removeEdge _)
       val succ      = (top1 /: edgesOld) { (t, eOld) =>
         val eNew = eOld.copy(targetVertex = v1)

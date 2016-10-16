@@ -67,17 +67,23 @@ object Crossover {
 
     val (head1, tail1)  = v1.splitAt(pos1)
     val (head2, tail2)  = v2.splitAt(pos2)
-    val edgesHead1      = top1.edges.filter(e => head1.contains(e.sourceVertex) && head1.contains(e.targetVertex))
-    val edgesTail1      = top1.edges.filter(e => tail1.contains(e.sourceVertex) && tail1.contains(e.targetVertex))
-    val edgesHead2      = top2.edges.filter(e => head2.contains(e.sourceVertex) && head2.contains(e.targetVertex))
-    val edgesTail2      = top2.edges.filter(e => tail2.contains(e.sourceVertex) && tail2.contains(e.targetVertex))
+    val edgesHead1s     = top1.edges.filter(e => head1.contains(e.sourceVertex) && head1.contains(e.targetVertex))
+    val edgesHead1      = Chromosome.sortedEdges(top1, edgesHead1s)
+    val edgesTail1s     = top1.edges.filter(e => tail1.contains(e.sourceVertex) && tail1.contains(e.targetVertex))
+    val edgesTail1      = Chromosome.sortedEdges(top1, edgesTail1s)
+    val edgesHead2s     = top2.edges.filter(e => head2.contains(e.sourceVertex) && head2.contains(e.targetVertex))
+    val edgesHead2      = Chromosome.sortedEdges(top2, edgesHead2s)
+    val edgesTail2s     = top2.edges.filter(e => tail2.contains(e.sourceVertex) && tail2.contains(e.targetVertex))
+    val edgesTail2      = Chromosome.sortedEdges(top2, edgesTail2s)
 
-    val severedHeads1   = top1.edges.collect {
+    val severedHeads1s  = top1.edges.collect {
       case Edge(source: Vertex.UGen, target, _) if head1.contains(source) && tail1.contains(target) => source
     }
-    val severedHeads2   = top2.edges.collect {
+    val severedHeads1   = Chromosome.sortedVertices(top1, severedHeads1s)
+    val severedHeads2s  = top2.edges.collect {
       case Edge(source: Vertex.UGen, target, _) if head2.contains(source) && tail2.contains(target) => source
     }
+    val severedHeads2   = Chromosome.sortedVertices(top2, severedHeads2s)
 
     @tailrec def shrinkTop(top: SynthGraphT, target: Int, iter: Int): SynthGraphT =
       if (top.vertices.size <= target || iter == maxVertices) top else {
@@ -85,7 +91,7 @@ object Crossover {
         shrinkTop(top1, target = target, iter = iter + 1)
       }
 
-    def mkTop(vertices1: Vec[Vertex], edges1: Set[Edge], vertices2: Vec[Vertex], edges2: Set[Edge]): SynthGraphT = {
+    def mkTop(vertices1: Vec[Vertex], edges1: Seq[Edge], vertices2: Vec[Vertex], edges2: Seq[Edge]): SynthGraphT = {
       val t1a = (Topology.empty[Vertex, Edge] /: vertices1)(_ addVertex _)
       val t1b = (t1a /: edges1)(_.addEdge(_).get._1)  // this is now the first half of the original top
 
@@ -115,7 +121,7 @@ object Crossover {
     val topC1a = mkTop(head1, edgesHead1, tail2, edgesTail2)
     val topC2a = mkTop(head2, edgesHead2, tail1, edgesTail1)
 
-    def complete(top: SynthGraphT, inc: Set[Vertex.UGen]): SynthGraphT = {
+    def complete(top: SynthGraphT, inc: Seq[Vertex.UGen]): SynthGraphT = {
       val top1 = if (inc.isEmpty) top else (top /: inc)((res, v) => Chromosome.completeUGenInputs(config, res, v))
       val top2 = shrinkTop(top1, top.vertices.size, 0)
       top2

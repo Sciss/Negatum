@@ -36,6 +36,8 @@ import scala.util.control.NonFatal
   * initializes some type extensions that would be missing otherwise.
   */
 object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Application {
+  def LOG_FRAME: Boolean = false
+
   override lazy val windowHandler: WindowHandler = new WindowHandlerImpl(this, menuFactory) {
     override lazy val usesInternalFrames = {
       false // XXX TODO: eventually a preferences entry
@@ -74,7 +76,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
 
-    LogFrame.instance    // init
+    if (LOG_FRAME) LogFrame.instance    // init
 
     new mellite.gui.MainFrame
   }

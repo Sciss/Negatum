@@ -54,6 +54,30 @@ object Chromosome {
 
   private[this] val CHECK = false
 
+  /** Auxiliary method that returns a deterministically
+    * ordered collection of the edge set.
+    */
+  def sortedEdges(in: SynthGraphT): Vec[Edge] =
+    in.vertices.flatMap(sortedEdges(in, _))
+
+  /** Auxiliary method that returns a deterministically
+    * ordered collection of the edge set.
+    */
+  def sortedEdges(in: SynthGraphT, set: Set[Edge]): List[Edge] =
+    set.toList.sortBy { e => in.vertices.indexOf(e.sourceVertex) -> e.inlet }
+
+  /** Auxiliary method that returns a deterministically
+    * ordered collection of the edge set.
+    */
+  def sortedEdges(in: SynthGraphT, v: Vertex): List[Edge] =
+    in.edgeMap.get(v) match {
+      case Some(set)  => set.toList.sortBy(e => e.inlet)
+      case None       => List.empty
+    }
+
+  def sortedVertices[V <: Vertex](in: SynthGraphT, set: Set[V]): List[V] =
+    set.toList.sortBy(in.vertices.indexOf)
+
   def checkComplete(succ: SynthGraphT, message: => String): Unit =
     if (CHECK) succ.vertices.foreach {
       case v: Vertex.UGen =>
@@ -74,8 +98,8 @@ object Chromosome {
     // A topology's edgeMap uses source-vertices as keys. Therefore, we can see
     // if the an argument is connected by getting the edges for the ugen and finding
     // an edge that uses the inlet name.
-    val edgeSet   = t1.edgeMap.getOrElse(v, Set.empty)
-    val argsFree  = geArgs(spec).filter { arg => !edgeSet.exists(_.inlet == arg.name) }
+    val edgeList  = sortedEdges(t1, v) // .edgeMap.getOrElse(v, Set.empty)
+    val argsFree  = geArgs(spec).filter { arg => !edgeList.exists(_.inlet == arg.name) }
     val (hasDef, hasNoDef)          = argsFree.partition(_.defaults.contains(UndefinedRate))
     val (_ /* useDef */, useNotDef) = hasDef  .partition(_ => coin(probDefault))
     val findDef   = hasNoDef ++ useNotDef
@@ -105,7 +129,6 @@ object Chromosome {
     loopVertex(findDef, t1)
   }
 
-
   def geArgs(spec: UGenSpec): Vec[UGenSpec.Argument] =
     spec.args.filter { arg =>
       arg.tpe match {
@@ -123,6 +146,8 @@ object Chromosome {
     inc.map(_.name)
   }
 
-  def getArgUsages(top: SynthGraphT, arg: Vertex): Set[Edge] =
-    top.edges.filter(_.targetVertex == arg)
+  def getArgUsages(top: SynthGraphT, arg: Vertex): List[Edge] = {
+    val set = top.edges.filter(_.targetVertex == arg)
+    sortedEdges(top, set)
+  }
 }

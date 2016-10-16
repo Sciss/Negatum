@@ -19,9 +19,9 @@ import scala.language.higherKinds
 import scala.util.Random
 
 object Util {
-  def scramble[A, CC[~] <: IndexedSeq[~], To](in: CC[A])(implicit random: Random, cbf: CanBuildFrom[CC[A], A, To]): To = {
+  def scramble[A, CC[~] <: Seq[~], To](in: CC[A])(implicit random: Random, cbf: CanBuildFrom[CC[A], A, To]): To = {
     val b = cbf(in)
-    var rem = in: IndexedSeq[A]
+    var rem = in: Seq[A]
     while (rem.nonEmpty) {
       val idx = random.nextInt(rem.size)
       val e = rem(idx)
@@ -31,7 +31,7 @@ object Util {
     b.result()
   }
 
-  def roulette[A](in: Vec[(A, Int)])(implicit random: Random): A = {
+  def roulette[A](in: Seq[(A, Int)])(implicit random: Random): A = {
     val sum         = in.map(_._2).sum
     val norm        = in.zipWithIndex.map { case ((c, f), j) => (j, f / sum) }
     val sorted      = norm.sortBy(_._2)
@@ -50,5 +50,5 @@ object Util {
 
   def coin(p: Double = 0.5)(implicit random: Random): Boolean = random.nextDouble() < p
 
-  def choose[A](xs: Iterable[A])(implicit random: Random): A = xs.toIndexedSeq(random.nextInt(xs.size))
+  def choose[A](xs: Seq[A])(implicit random: Random): A = xs(random.nextInt(xs.size))
 }
