@@ -15,6 +15,7 @@ package de.sciss.negatum
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.swing.View
 import de.sciss.mellite.gui.ViewHasWorkspace
 import de.sciss.synth.proc.Workspace
 import impl.{NegatumViewImpl => Impl}
@@ -23,7 +24,7 @@ object NegatumView {
   def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                         workspace: Workspace[S]): NegatumView[S] = Impl(n)
 }
-trait NegatumView[S <: Sys[S]] extends ViewHasWorkspace[S] {
+trait NegatumView[S <: Sys[S]] extends ViewHasWorkspace[S] with View.Editable[S] {
   def negatum(implicit tx: S#Tx): Negatum[S]
 
   def rendering(implicit tx: S#Tx): Option[Negatum.Rendering[S]]

@@ -14,8 +14,8 @@
 package de.sciss.negatum
 package impl
 
-import Util._
 import de.sciss.negatum.Negatum.Config
+import de.sciss.negatum.impl.Util._
 import de.sciss.synth.{SynthGraph, UGenSpec, UndefinedRate}
 import de.sciss.topology.Topology
 
@@ -25,8 +25,8 @@ import scala.util.Random
 object Chromosome {
   /* Creates an individual chromosome. */
   def mkGraphT(config: Config)(implicit random: Random): SynthGraphT = {
-    import config.generation._
-    val num = rrand(minNumVertices, maxNumVertices)
+    import config.gen._
+    val num = rrand(minVertices, maxVertices)
     @tailrec def loopGraph(pred: SynthGraphT): SynthGraphT =
       if (pred.vertices.size >= num) pred else loopGraph(Mutation.addVertex(config, pred))
 
@@ -67,18 +67,18 @@ object Chromosome {
     }
 
   def completeUGenInputs(config: Config, t1: SynthGraphT, v: Vertex.UGen)(implicit random: Random): SynthGraphT = {
-    import config.generation.nonDefaultProb
+    import config.gen.probDefault
 
-    val spec    = v.info
+    val spec      = v.info
     // An edge's source is the consuming UGen, i.e. the one whose inlet is occupied!
     // A topology's edgeMap uses source-vertices as keys. Therefore, we can see
     // if the an argument is connected by getting the edges for the ugen and finding
     // an edge that uses the inlet name.
-    val edgeSet = t1.edgeMap.getOrElse(v, Set.empty)
-    val argsFree = geArgs(spec).filter { arg => !edgeSet.exists(_.inlet == arg.name) }
+    val edgeSet   = t1.edgeMap.getOrElse(v, Set.empty)
+    val argsFree  = geArgs(spec).filter { arg => !edgeSet.exists(_.inlet == arg.name) }
     val (hasDef, hasNoDef)          = argsFree.partition(_.defaults.contains(UndefinedRate))
-    val (useNotDef, _ /* useDef */) = hasDef.partition(_ => coin(nonDefaultProb))
-    val findDef = hasNoDef ++ useNotDef
+    val (_ /* useDef */, useNotDef) = hasDef  .partition(_ => coin(probDefault))
+    val findDef   = hasNoDef ++ useNotDef
 
     @tailrec def loopVertex(rem: Vec[UGenSpec.Argument], pred: SynthGraphT): SynthGraphT = rem match {
       case head +: tail =>

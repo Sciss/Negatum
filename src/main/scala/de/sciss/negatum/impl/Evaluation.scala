@@ -31,15 +31,15 @@ object Evaluation {
 
   def apply(config: Config, graph: SynthGraph, inputSpec: AudioFileSpec,
             inputExtr: File, numVertices: Int): Future[Float] = {
-    import config.evaluation._
-    import config.generation._
+    import config.eval._
+    import config.gen._
     import config.penalty._
     val audioF  = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
     val bnc0    = Evaluation.bounce(graph, audioF = audioF, inputSpec = inputSpec)
     import scala.concurrent.ExecutionContext.Implicits.global
     val simFut  = bnc0.flatMap { _ =>
       Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
-        numMFCC = numMFCC, normalizeMFCC = normalizeMFCC, maxBoost = maxBoost, temporalWeight = temporalWeight)
+        numMFCC = numMFCC, normalizeMFCC = normMFCC, maxBoost = maxBoost, temporalWeight = timeWeight)
     }
     val res = simFut.map { sim0 =>
       import numbers.Implicits._
@@ -47,8 +47,8 @@ object Evaluation {
       //      if (sim0 > 0.46) {
       //        println(s"DEBUG $audioF")
       //      }
-      val sim = if (pen <= 0 || minNumVertices == maxNumVertices) sim0 else
-        sim0 - numVertices.clip(minNumVertices, maxNumVertices).linlin(minNumVertices, maxNumVertices, 0, pen)
+      val sim = if (pen <= 0 || minVertices == maxVertices) sim0 else
+        sim0 - numVertices.clip(minVertices, maxVertices).linlin(minVertices, maxVertices, 0, pen)
       sim.toFloat // new Evaluated(cH, sim)
     }
     res.onComplete(_ =>

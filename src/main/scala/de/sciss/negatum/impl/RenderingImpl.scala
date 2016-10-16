@@ -52,7 +52,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   protected def body(): Vec[Individual] = blocking {
     import config._
-    import generation._
+    import gen._
     val pop = new Array[Individual](population)
     var i = 0
     while (i < popIn.size) {
@@ -66,7 +66,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     }
 
     val inputExtr: File = {
-      val fut = Features.extract(template.artifact, config.evaluation.numMFCC)
+      val fut = Features.extract(template.artifact, config.eval.numMFCC)
       Await.result(fut, Duration(30, TimeUnit.SECONDS))._1
     }
 
@@ -106,19 +106,19 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       val _sel0 = Selection(config, pop)
       val sel   = scramble(_sel0.toIndexedSeq)
 
-      import config.breeding._
+      import config.breed._
 
-      val numGolem1 = math.min(numGolem, pop.length - el.size)
+      val numGolem1 = math.min(golem, pop.length - el.size)
       val nGen      = pop.length - el.size - numGolem1
-      val nMut      = (mutProb * nGen + 0.5).toInt
+      val nMut      = (probMut * nGen + 0.5).toInt
       val nCross    = nGen - nMut
 
       val mut       = Mutation (config, sel, nMut)
       val cross     = Crossover(config, sel, nCross)
 
-      val golem     = Vector.fill(numGolem1)(mkIndividual())
+      val golems    = Vector.fill(numGolem1)(mkIndividual())
 
-      // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golem
+      // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golems
       i = 0
       el.foreach { indiv =>
         pop(i) = indiv
@@ -132,7 +132,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
         pop(i) = indiv
         i += 1
       }
-      golem.foreach { indiv =>
+      golems.foreach { indiv =>
         pop(i) = indiv
         i += 1
       }

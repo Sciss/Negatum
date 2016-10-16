@@ -22,14 +22,14 @@
 //
 //final case class Generate(population    : GE = 500 , constProb     : GE = 0.5,
 //                          minNumVertices: GE = 64  , maxNumVertices: GE = 256,
-//                          nonDefaultProb: GE = 0.95, allowedUGens: String = "default")
+//                          defaultProb   : GE = 0.05, allowedUGens: String = "default")
 //  extends Lazy.Expander[Outlet[SynthGraph]] {
 //
 //  type U = Outlet[SynthGraph]
 //
 //  protected def makeUGens(implicit b: UGenGraph.Builder): U =
 //    unwrap(Vector(population.expand, constProb.expand, minNumVertices.expand, maxNumVertices.expand,
-//      nonDefaultProb.expand))
+//      defaultProb.expand))
 //
 //  private def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): U = {
 //    val sq = Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i))))

@@ -100,6 +100,9 @@ object Vertex {
     def instantiate(ins: Vec[(AnyRef, Class[_])]): GE
 
     def asCompileString(ins: Vec[String]): String
+
+    def isUGen      = true
+    def isConstant  = false
   }
   //  class UGen(val info: UGenSpec) extends Vertex {
   //    override def toString = s"${info.name}@${hashCode().toHexString}"
@@ -112,6 +115,9 @@ object Vertex {
     override def toString = s"$f@${hashCode().toHexString}"
     def copy(): Constant = new Constant(f)
 
+    def isUGen      = false
+    def isConstant  = true
+
     def boxName = f.toString
   }
 }
@@ -120,4 +126,7 @@ sealed trait Vertex {
   def copy(): Vertex
 
   def boxName: String
+
+  def isConstant: Boolean
+  def isUGen    : Boolean
 }

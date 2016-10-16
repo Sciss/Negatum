@@ -48,7 +48,7 @@ object Crossover {
 
   def step(config: Config, top1: SynthGraphT, top2: SynthGraphT)
           (implicit random: Random): (SynthGraphT, SynthGraphT) = {
-    import config.generation.maxNumVertices
+    import config.gen.maxVertices
     val v1      = top1.vertices
     val v2      = top2.vertices
 
@@ -80,7 +80,7 @@ object Crossover {
     }
 
     @tailrec def shrinkTop(top: SynthGraphT, target: Int, iter: Int): SynthGraphT =
-      if (top.vertices.size <= target || iter == maxNumVertices) top else {
+      if (top.vertices.size <= target || iter == maxVertices) top else {
         val (top1, _) = Mutation.removeVertex1(config, top)
         shrinkTop(top1, target = target, iter = iter + 1)
       }

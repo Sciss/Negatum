@@ -25,9 +25,9 @@ object Selection {
    * are chromosomes paired with their fitness values.
    */
   def apply(config: Config, all: IndexedSeq[Individual])(implicit random: Random): Set[Individual] = {
-    import config.breeding.selectionFrac
+    import config.breed.selectFrac
     val pop   = all.size
-    val n     = (pop * selectionFrac + 0.5).toInt
+    val n     = (pop * selectFrac + 0.5).toInt
 
     @tailrec def loop(rem: Int, in: Set[Individual], out: Set[Individual]): Set[Individual] =
       if (rem == 0 || in.isEmpty) out else {
@@ -59,7 +59,7 @@ object Selection {
 
   /* Selects the best matching chromosomes. */
   def elitism(config: Config, all: IndexedSeq[Individual]): Vec[Individual] = {
-    import config.breeding.numElitism
+    import config.breed.{elitism => numElitism}
     if (numElitism == 0) Vector.empty else {
       // ensure that elite choices are distinct (don't want to accumulate five identical chromosomes over time)!
       val eliteCandidates = all.sortBy(-_.fitness)

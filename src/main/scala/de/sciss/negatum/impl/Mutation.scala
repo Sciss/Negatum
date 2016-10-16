@@ -19,9 +19,12 @@ import de.sciss.negatum.impl.Util._
 import de.sciss.synth.SynthGraph
 
 import scala.annotation.switch
+import scala.util.control.NonFatal
 import scala.util.Random
 
 object Mutation {
+  private[this] final val DEBUG = true
+
   /* Produces a sequence of `n` items by mutating the input `sel` selection. */
   def apply(config: Config, sq: Vec[Individual], n: Int)(implicit random: Random): Vec[Individual] = {
     var res = Vector.empty[Individual]
@@ -41,23 +44,25 @@ object Mutation {
   }
 
   private def tryMutate(config: Config, chosen: SynthGraph)(implicit random: Random): SynthGraph = {
-    import config.breeding.{mutMax, mutMin}
+    import config.breed.{maxMut, minMut}
 
     val chosenT = MkTopology(chosen)
 
-    // TEST
-//    try {
-//      MkSynthGraph(chosenT)
-//    } catch {
-//      case NonFatal(ex) =>
-//        println("AQUI")
+    if (DEBUG) try {
+      MkSynthGraph(chosenT)
+    } catch {
+      case ex: MkSynthGraph.Incomplete =>
+        println("AQUI")
+        println(ex)
 //        MkTopology(chosen)
-//    }
+    }
 
-    val mutationIter  = rrand(mutMin, mutMax)
+    val mutationIter  = rrand(minMut, maxMut)
     require(mutationIter > 0)
     val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
       val tpe = random.nextInt(7)
+      val TEST = random.nextLong()
+      random.setSeed(TEST)
       val next: SynthGraphT = (tpe: @switch) match {
         case 0 => addVertex   (config, pred)
         case 1 => removeVertex(config, pred)
@@ -68,8 +73,28 @@ object Mutation {
         case 6 => mergeVertex (config, pred)
       }
 
-      // TEST
-//      if (next ne chosenT) MkSynthGraph(next)
+      if (DEBUG && (next ne pred))
+        try {
+          MkSynthGraph(next)
+        } catch {
+          case ex: MkSynthGraph.Incomplete =>
+            println(s"AQUI - tpe = $tpe")
+            println("----before----")
+            println(pred)
+            println("----after----")
+            println(ex)
+            random.setSeed(TEST)
+            val again: SynthGraphT = (tpe: @switch) match {
+              case 0 => addVertex   (config, pred)
+              case 1 => removeVertex(config, pred)
+              case 2 => changeVertex(config, pred)
+              case 3 => changeEdge  (config, pred)
+              case 4 => swapEdge    (config, pred)
+              case 5 => splitVertex (config, pred)
+              case 6 => mergeVertex (config, pred)
+            }
+//            MkTopology(pred)
+        }
 
       //      if (next ne pred) {
       //        validate1(next)
@@ -84,8 +109,8 @@ object Mutation {
   // ---- mutations ----
 
   def addVertex(config: Config, pred: SynthGraphT)(implicit random: Random): SynthGraphT = {
-    import config.generation.constProb
-    val next: SynthGraphT = if (coin(constProb)) {
+    import config.gen.probConst
+    val next: SynthGraphT = if (coin(probConst)) {
       val v = Chromosome.mkConstant()
       pred.addVertex(v)
 
@@ -98,10 +123,10 @@ object Mutation {
   }
 
   def removeVertex(config: Config, c: SynthGraphT)(implicit random: Random): SynthGraphT = {
-    import config.generation.minNumVertices
+    import config.gen.minVertices
     val vertices    = c.vertices
     val numVertices = vertices.size
-    if (numVertices <= minNumVertices) c else {
+    if (numVertices <= minVertices) c else {
       val (res, _) = removeVertex1(config, c)
       Chromosome.checkComplete(res, s"removeVertex($c)")
       //      stats(1) += 1
@@ -130,6 +155,7 @@ object Mutation {
   private def changeVertex(config: Config, top: SynthGraphT)(implicit random: Random): SynthGraphT = {
     val vertices    = top.vertices
     val numVertices = vertices.size
+    if (numVertices == 0) return top
 
     val idx     = random.nextInt(numVertices)
     val vOld    = vertices(idx)
@@ -228,7 +254,7 @@ object Mutation {
   private def splitVertex(config: Config, top: SynthGraphT)(implicit random: Random): SynthGraphT = {
     val verticesIn  = top.vertices
     val numVertices = verticesIn.size
-    if (numVertices >= config.generation.maxNumVertices) return top
+    if (numVertices >= config.gen.maxVertices) return top
 
     val weighted  = verticesIn.flatMap { v =>
       val set = top.edges.filter(_.targetVertex == v)
@@ -262,15 +288,12 @@ object Mutation {
   private def mergeVertex(config: Config, top: SynthGraphT)(implicit random: Random): SynthGraphT = {
     val verticesIn  = top.vertices
     val numVertices = verticesIn.size
-    if (numVertices <= config.generation.minNumVertices) return top
+    if (numVertices <= config.gen.minVertices) return top
 
     val it = scramble(verticesIn).tails.flatMap {
       case head +: tail =>
         val partners = head match {
-          case Vertex.Constant(_) => tail.filter {
-            case Vertex.Constant(_) => true // any two constants will do
-            case _ => false
-          }
+          case Vertex.Constant(_) => tail.filter(_.isConstant)  // any two constants will do
           case Vertex.UGen(info) => tail.filter {
             case Vertex.UGen(i1) => i1.name == info.name
             case _ => false

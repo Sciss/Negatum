@@ -79,45 +79,45 @@ object Negatum extends Obj.Type {
 
   object Generation {
     def apply(
-      population      : Int     = 500,
-      constProb       : Double  = 0.5,
-      minNumVertices  : Int     = 64,
-      maxNumVertices  : Int     = 256,
-      nonDefaultProb  : Double  = 0.95,
-      allowedUGens    : Set[String] = Set.empty
-    ): Generation = new Impl(population = population, constProb = constProb,
-      minNumVertices = minNumVertices, maxNumVertices = maxNumVertices, nonDefaultProb = nonDefaultProb,
+               population      : Int     = 500,
+               probConst       : Double  = 0.5,
+               minVertices     : Int     = 64,
+               maxVertices     : Int     = 256,
+               probDefault     : Double  = 0.05,
+               allowedUGens    : Set[String] = Set.empty
+    ): Generation = new Impl(population = population, probConst = probConst,
+      minVertices = minVertices, maxVertices = maxVertices, probDefault = probDefault,
       allowedUGens = allowedUGens)
 
-    private class Impl(val population: Int, val constProb: Double,  val minNumVertices: Int, val maxNumVertices: Int,
-                       val nonDefaultProb: Double, val allowedUGens: Set[String]) extends Generation
+    private class Impl(val population: Int, val probConst: Double, val minVertices: Int, val maxVertices: Int,
+                       val probDefault: Double, val allowedUGens: Set[String]) extends Generation
   }
   trait Generation {
     def population      : Int
-    def constProb       : Double
-    def minNumVertices  : Int
-    def maxNumVertices  : Int
-    def nonDefaultProb  : Double
+    def probConst       : Double
+    def minVertices     : Int
+    def maxVertices     : Int
+    def probDefault     : Double
     def allowedUGens    : Set[String]
   }
 
   object Evaluation {
     def apply(
-      numMFCC         : Int     = 42,
-      normalizeMFCC   : Boolean = false,
-      maxBoost        : Double  = 10.0,
-      temporalWeight  : Double  = 0.3
-    ): Evaluation = new Impl(numMFCC = numMFCC, normalizeMFCC = normalizeMFCC, maxBoost = maxBoost,
-      temporalWeight = temporalWeight)
+               numMFCC    : Int     = 42,
+               normMFCC   : Boolean = false,
+               maxBoost   : Double  = 10.0,
+               timeWeight : Double  = 0.3
+    ): Evaluation = new Impl(numMFCC = numMFCC, normMFCC = normMFCC, maxBoost = maxBoost,
+      timeWeight = timeWeight)
 
-    private class Impl(val numMFCC: Int, val normalizeMFCC: Boolean, val maxBoost: Double,
-                       val temporalWeight: Double) extends Evaluation
+    private class Impl(val numMFCC: Int, val normMFCC: Boolean, val maxBoost: Double,
+                       val timeWeight: Double) extends Evaluation
   }
   trait Evaluation {
-    def numMFCC         : Int
-    def normalizeMFCC   : Boolean
-    def maxBoost        : Double
-    def temporalWeight  : Double
+    def numMFCC     : Int
+    def normMFCC    : Boolean
+    def maxBoost    : Double
+    def timeWeight  : Double
   }
 
   object Penalty {
@@ -143,25 +143,25 @@ object Negatum extends Obj.Type {
 
   object Breeding {
     def apply(
-      selectionFrac   : Double  = 0.33,
-      numElitism      : Int     = 3,
-      mutMin          : Int     = 2,
-      mutMax          : Int     = 4,
-      mutProb         : Double  = 0.75,
-      numGolem        : Int     = 15
-    ): Breeding = new Impl(selectionFrac = selectionFrac, numElitism = numElitism,
-      mutMin = mutMin, mutMax = mutMax, mutProb = mutProb, numGolem = numGolem)
+               selectFrac  : Double  = 0.33,
+               elitism     : Int     = 3,
+               minMut      : Int     = 2,
+               maxMut      : Int     = 4,
+               probMut     : Double  = 0.75,
+               golem       : Int     = 15
+    ): Breeding = new Impl(selectFrac = selectFrac, elitism = elitism,
+      minMut = minMut, maxMut = maxMut, probMut = probMut, golem = golem)
 
-    private class Impl(val selectionFrac: Double, val numElitism: Int, val mutMin: Int, val mutMax: Int,
-                       val mutProb: Double, val numGolem: Int) extends Breeding
+    private class Impl(val selectFrac: Double, val elitism: Int, val minMut: Int, val maxMut: Int,
+                       val probMut: Double, val golem: Int) extends Breeding
   }
   trait Breeding {
-    def selectionFrac   : Double
-    def numElitism      : Int
-    def mutMin          : Int
-    def mutMax          : Int
-    def mutProb         : Double
-    def numGolem        : Int
+    def selectFrac   : Double
+    def elitism      : Int
+    def minMut       : Int
+    def maxMut       : Int
+    def probMut      : Double
+    def golem        : Int
   }
 
   object Config {
@@ -170,16 +170,18 @@ object Negatum extends Obj.Type {
       evaluation      : Evaluation  = Evaluation(),
       penalty         : Penalty     = Penalty(),
       breeding        : Breeding    = Breeding()
-    ): Config = new Impl(generation = generation, evaluation = evaluation, penalty = penalty, breeding = breeding)
+    ): Config = new Impl(gen = generation, eval = evaluation, penalty = penalty, breed = breeding)
 
-    private class Impl(val generation: Generation, val evaluation: Evaluation,
-                       val penalty: Penalty, val breeding: Breeding) extends Config
+    final val default: Config = apply()
+
+    private class Impl(val gen: Generation, val eval: Evaluation,
+                       val penalty: Penalty, val breed: Breeding) extends Config
   }
   trait Config {
-    val generation      : Generation
-    val evaluation      : Evaluation
-    val penalty         : Penalty
-    val breeding        : Breeding
+    val gen     : Generation
+    val eval    : Evaluation
+    val penalty : Penalty
+    val breed   : Breeding
   }
 
   /** Attribute for evaluated fitness (children of `population`). Type `Double` */
@@ -187,6 +189,53 @@ object Negatum extends Obj.Type {
 
 //  /** Attribute for individual being selected (children of `population`). Type `Boolean` */
 //  final val attrSelected = "selected"
+
+  /** Attribute for generation config defaults. Type `Int` */
+  final val attrGenPopulation     = "gen-population"
+
+  /** Attribute for generation config defaults. Type `Double` */
+  final val attrGenProbConst      = "gen-prob-const"
+
+  /** Attribute for generation config defaults. Type `Int` */
+  final val attrGenMinVertices    = "gen-min-vertices"
+
+  /** Attribute for generation config defaults. Type `Int` */
+  final val attrGenMaxVertices    = "gen-max-vertices"
+
+  /** Attribute for generation config defaults. Type `Double` */
+  final val attrGenProbDefault    = "gen-prob-default"
+
+  //  final val attrGenAllowedUGens  = "gen-allowed-ugens"
+
+  /** Attribute for evaluation config defaults. Type `Int` */
+  final val attrEvalNumMFCC       = "eval-num-mfcc"
+
+  /** Attribute for evaluation config defaults. Type `Boolean` */
+  final val attrEvalNormMFCC      = "eval-norm-mfcc"
+
+  /** Attribute for evaluation config defaults. Type `Double` */
+  final val attrEvalMaxBoost      = "eval-max-boost"
+
+  /** Attribute for evaluation config defaults. Type `Double` */
+  final val attrEvalTimeWeight    = "eval-time-weight"
+
+  /** Attribute for breeding config defaults. Type `Double` */
+  final val attrBreedSelectFrac   = "breed-select-frac"
+
+  /** Attribute for breeding config defaults. Type `Int` */
+  final val attrBreedElitism      = "breed-elitism"
+
+  /** Attribute for breeding config defaults. Type `Int` */
+  final val attrBreedMinMut       = "breed-min-mut"
+
+  /** Attribute for breeding config defaults. Type `Int` */
+  final val attrBreedMaxMut       = "breed-max-mut"
+
+  /** Attribute for breeding config defaults. Type `Double` */
+  final val attrBreedProbMut      = "breed-prob-mut"
+
+  /** Attribute for breeding config defaults. Type `Int` */
+  final val attrBreedGolem        = "breed-golem"
 }
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
   def run(config: Negatum.Config, iter: Int = 1)(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -197,7 +246,7 @@ trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
   /** The folder's children are of type `Proc`.
     *
     * ''NOT:'' Each child's attribute
-    * map contains (after evaluation) the key attrFitness`, and (after selection)
+    * map contains (after evaluation) the key `attrFitness`, and (after selection)
     * the attribute `attrSelected`.
     */
   def population: Folder[S]

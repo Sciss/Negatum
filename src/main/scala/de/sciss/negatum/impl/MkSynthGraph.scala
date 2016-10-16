@@ -22,6 +22,12 @@ import de.sciss.synth.{GE, SynthGraph, UGenSource, UGenSpec, UndefinedRate, ugen
 import scala.annotation.tailrec
 
 object MkSynthGraph {
+  final case class Incomplete(in: SynthGraphT, vertex: Vertex.UGen, arg: String, argList: Seq[String])
+    extends Exception {
+
+    override def toString = s"$productPrefix(\n  in = $in,\n  vertex = $vertex,\n  arg = $arg\n,  argList = $argList\n)"
+  }
+
   def isDynamic(in: GE): Boolean = in match {
     case Constant(_) => false
     case _ =>
@@ -64,8 +70,8 @@ object MkSynthGraph {
     */
   def apply[S <: Sys[S]](c: SynthGraphT, specialOut: Boolean = true,
                          ranges: Boolean = true, mono: Boolean = true, removeNaNs: Boolean = true): SynthGraph = {
-    @tailrec def loop(rem: Vec[Vertex], real: Map[Vertex, GE]): Map[Vertex, GE] = rem match {
-      case init :+ last =>
+    @tailrec def loop(remRev: List[Vertex], real: Map[Vertex, GE]): Map[Vertex, GE] = remRev match {
+      case last :: init =>
         lazy val lastE = c.edgeMap.getOrElse(last, Set.empty) // top.targets(last)
 
         def getReal(name: String): Option[GE] =
@@ -121,10 +127,10 @@ object MkSynthGraph {
                     val xOpt = arg.defaults.get(UndefinedRate)
                     val x    = xOpt.getOrElse {
                       val inc = Chromosome.findIncompleteUGenInputs(c, u)
-                      println("INCOMPLETE:")
-                      inc.foreach(println)
-                      println(c)
-                      sys.error(s"Vertex $spec has no input for inlet $arg")
+//                      println("INCOMPLETE:")
+//                      inc.foreach(println)
+//                      println(c)
+                      throw Incomplete(c, u, arg.name, inc)
                     }
                     x match {
                       case UGenSpec.ArgumentValue.Boolean(v)    => ugen.Constant(if (v) 1 else 0)
@@ -175,9 +181,10 @@ object MkSynthGraph {
       if (specialOut) {
         NegatumIn()
       }
-      val vertices = c.vertices.iterator.toIndexedSeq
-      val map   = loop(vertices, Map.empty)
-      val ugens = vertices.collect {
+      val vertices    = c.vertices
+      val verticesRev = vertices.reverseIterator.toList
+      val map         = loop(verticesRev, Map.empty)
+      val ugens       = vertices.collect {
         case ugen: Vertex.UGen => ugen
       }
       if (ugens.nonEmpty) {
