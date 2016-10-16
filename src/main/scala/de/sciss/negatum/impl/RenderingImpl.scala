@@ -14,7 +14,8 @@
 package de.sciss.negatum
 package impl
 
-import java.util.concurrent.TimeUnit
+import java.io.FileOutputStream
+import java.util.concurrent.{TimeoutException, TimeUnit}
 
 import de.sciss.file._
 import de.sciss.lucre.event.impl.ObservableImpl
@@ -26,8 +27,10 @@ import de.sciss.negatum.Negatum.{Config, Rendering}
 import de.sciss.negatum.impl.Util._
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
+import de.sciss.synth.SynthGraph
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{AudioCue, Folder, Proc, SynthGraphObj, WorkspaceHandle}
+import de.sciss.synth.proc.impl.MkSynthGraphSource
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.stm.Ref
@@ -43,10 +46,13 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     with ObservableImpl[S, Rendering.State]
     with ProcessorImpl[Vec[Individual], Rendering[S]] {
 
-  // private val DEBUG = false
+  private[this] val STORE_BAD_DEFS = true
 
   private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
   private[this] val _disposed     = Ref(false)
+
+  @volatile
+  private[this] var _shouldStop   = false
 
   private[this] implicit val random = new Random(0L)  // XXX TODO --- make seed customisable
 
@@ -70,38 +76,64 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       Await.result(fut, Duration(30, TimeUnit.SECONDS))._1
     }
 
-    val PROG_WEIGHT = 1.0 / (numIter.toLong * (pop.length * 2))
+    val INIT_COUNT  = pop.count(_.fitness.isNaN)
+    val PROG_WEIGHT = 1.0 / (numIter.toLong * pop.length + INIT_COUNT)
 
     var iter = 0
     var PROG_COUNT = 0L
-    while (iter < numIter) {
 
-      def evalPop(): Unit = {
-        var ii = 0
-        while (ii < pop.length) {
-          val indiv = pop(ii)
-          if (indiv.fitness.isNaN) {
-            val numVertices = indiv.graph.sources.size  // XXX TODO -- ok?
-            val fut = Evaluation(config, graph = indiv.graph, inputSpec = template.spec,
-              inputExtr = inputExtr, numVertices = numVertices)
-            // XXX TODO --- Mutagen used four parallel processes; should we do the same?
-            val sim = try {
-              Await.result(fut, Duration(30, TimeUnit.SECONDS))
-            } catch {
-              case NonFatal(_) => 0.0f
-            }
-            indiv.fitness = sim
-            checkAborted()
-            PROG_COUNT += 1
-            progress = PROG_COUNT * PROG_WEIGHT
+    def evalPop(): Unit = {
+      var ii = 0
+      while (ii < pop.length) {
+        val indiv = pop(ii)
+        if (indiv.fitness.isNaN) {
+          val graph       = indiv.graph
+          val numVertices = graph.sources.size  // XXX TODO -- ok?
+          val fut = Evaluation(config, graph = graph, inputSpec = template.spec,
+            inputExtr = inputExtr, numVertices = numVertices)
+          // XXX TODO --- Mutagen used four parallel processes; should we do the same?
+          val sim = try {
+            Await.result(fut, Duration(30, TimeUnit.SECONDS))
+          } catch {
+            case NonFatal(ex) =>
+              val message = if (ex.isInstanceOf[TimeoutException]) {
+                "timeout"
+              } else {
+                s"failed - ${ex.getClass.getSimpleName}${if (ex.getMessage == null) "" else " - " + ex.getMessage}"
+              }
+              Console.err.println(s"Negatum: evaluation $message")
+              if (STORE_BAD_DEFS) {
+                val dir = userHome / "Documents" / "temp" / "negatum_broken"
+                dir.mkdirs()
+                val source = MkSynthGraphSource(graph)
+                val name   = mkGraphName(graph)
+                try {
+                  val fos  = new FileOutputStream(dir / s"$name.scala")
+                  try {
+                    fos.write(source.getBytes("UTF-8"))
+                  } finally {
+                    fos.close()
+                  }
+                } catch {
+                  case NonFatal(ex2) =>
+                    ex2.printStackTrace()
+                }
+              }
+              0.0f
           }
-          ii += 1
+          indiv.fitness = sim
+          checkAborted()
+          PROG_COUNT += 1
+          progress = PROG_COUNT * PROG_WEIGHT
         }
+        ii += 1
       }
+    }
 
-      // evaluate those that haven't been
-      evalPop()
+    // evaluate those that haven't been
+    evalPop()
 
+    while (iter < numIter && !_shouldStop) {
       val el    = Selection.elitism(config, pop)
       val _sel0 = Selection(config, pop)
       val sel   = scramble(_sel0)
@@ -118,7 +150,6 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
       val golems    = Vector.fill(numGolem1)(mkIndividual())
 
-      // genome.chromosomes() = el ++ (mut ++ cross).map(_.apply()) ++ golems
       i = 0
       el.foreach { indiv =>
         pop(i) = indiv
@@ -140,6 +171,9 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       evalPop()
 
       iter += 1
+      PROG_COUNT  = iter.toLong * pop.length + INIT_COUNT
+      progress    = PROG_COUNT * PROG_WEIGHT
+      checkAborted()
     }
 
     pop.toIndexedSeq
@@ -205,6 +239,8 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
       state = Negatum.Rendering.Progress(amt)
     }
 
+  private def mkGraphName(graph: SynthGraph): String = s"negatum-${graph.hashCode().toHexString}"
+
   private def completeWith(t: Try[Vec[Individual]]): Unit = if (!_disposed.single.get)
     cursor.step { implicit tx =>
       import TxnLike.peer
@@ -217,7 +253,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
             val p     = Proc[S]
             import proc.Implicits._
             val attr  = p.attr
-            p.name    = s"negatum-${indiv.graph.hashCode().toHexString}"
+            p.name    = mkGraphName(indiv.graph)
             p.graph() = gObj
             if (!indiv.fitness.isNaN) {
               attr.put(Negatum.attrFitness, DoubleObj.newConst[S](indiv.fitness))
@@ -258,10 +294,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     if (old != value) fire(value)
   }
 
-  def cancel()(implicit tx: S#Tx): Unit =
-    tx.afterCommit(abort())
-
-  def dispose()(implicit tx: S#Tx): Unit = {
-    cancel()
-  }
+  def cancel ()(implicit tx: S#Tx): Unit = tx.afterCommit(abort())
+  def stop   ()(implicit tx: S#Tx): Unit = tx.afterCommit { _shouldStop = true }
+  def dispose()(implicit tx: S#Tx): Unit = cancel()
 }

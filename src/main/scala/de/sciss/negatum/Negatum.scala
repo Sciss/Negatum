@@ -74,7 +74,11 @@ object Negatum extends Obj.Type {
     /** Like `react` but invokes the function immediately with the current state. */
     def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
 
+    /** Cancels the process and does not keep results. */
     def cancel()(implicit tx: S#Tx): Unit
+
+    /** Stops process at the next possible moment, and returns current results. */
+    def stop  ()(implicit tx: S#Tx): Unit
   }
 
   object Generation {

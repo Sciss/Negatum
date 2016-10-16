@@ -18,12 +18,12 @@ import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util._
 import de.sciss.synth.SynthGraph
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 import scala.util.control.NonFatal
 import scala.util.Random
 
 object Mutation {
-  private[this] final val DEBUG = true
+  private[this] final val DEBUG = false
 
   /* Produces a sequence of `n` items by mutating the input `sel` selection. */
   def apply(config: Config, sq: Vec[Individual], n: Int)(implicit random: Random): Vec[Individual] = {
@@ -129,7 +129,7 @@ object Mutation {
     val numVertices = vertices.size
     if (numVertices <= minVertices) c else {
       val (res, _) = removeVertex1(config, c)
-      Chromosome.checkComplete(res, s"removeVertex($c)")
+      // Chromosome.checkComplete(res, s"removeVertex($c)")
       //      stats(1) += 1
       res
     }
@@ -279,7 +279,7 @@ object Mutation {
         t.addEdge(eNew).get._1
       }
       val res = succ // new Chromosome(succ, seed = random.nextLong())
-      Chromosome.checkComplete(succ, s"splitVertex()")
+      // Chromosome.checkComplete(succ, s"splitVertex()")
       // stats(5) += 1
       res
     }
@@ -304,18 +304,40 @@ object Mutation {
 
       case _ => None
     }
-    if (it.isEmpty) top else {
+
+    @tailrec
+    def loop(): SynthGraphT = if (it.isEmpty) top else {
+      // we want to get rid of `v2`, and everywhere it was used,
+      // use `v1` as argument instead.
       val (v1, v2)  = it.next()
-      val edgesOld  = Chromosome.getArgUsages(top, v2)
+      val edgesOld: List[Edge] = Chromosome.getArgUsages(top, v2)  // all edges pointing to the old vertex
       val top1      = (top  /: edgesOld)(_ removeEdge _)
-      val succ      = (top1 /: edgesOld) { (t, eOld) =>
-        val eNew = eOld.copy(targetVertex = v1)
-        if (t.canAddEdge(eNew)) t.addEdge(eNew).get._1 else t
+
+      @tailrec
+      def inner(pred: SynthGraphT, rem: List[Edge]): Option[SynthGraphT] = rem match {
+        case head :: tail =>
+          val eNew = head.copy(targetVertex = v1)
+          if (pred.canAddEdge(eNew)) {
+            val next = pred.addEdge(eNew).get._1
+            inner(pred = next, rem = tail)
+          } else None
+        case _ =>
+          val edgesOld2 = Chromosome.sortedEdges(top, v2)
+          val next0 = (pred /: edgesOld2)(_ removeEdge _)
+          val next  = next0.removeVertex(v2)
+          Some(next)
       }
-      val res = succ // new Chromosome(succ, seed = random.nextLong())
-      Chromosome.checkComplete(succ, s"mergeVertex()")
-//      stats(6) += 1
-      res
+
+      val allReplaced = inner(top1, edgesOld)
+      allReplaced match {
+        case Some(res)  => res
+        case None       => loop() // try again with different pair
+      }
     }
+
+    val res = loop()
+    // Chromosome.checkComplete(res, "mergeVertex()")
+    //      stats(6) += 1
+    res
   }
 }

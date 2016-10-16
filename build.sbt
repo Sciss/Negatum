@@ -11,7 +11,8 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val soundProcessesVersion  = "3.8.0"
+lazy val soundProcessesVersion  = "3.8.1-SNAPSHOT"
+lazy val ugensVersion           = "1.16.1-SNAPSHOT"
 // lazy val fscapeVersion          = "2.2.1"
 lazy val strugatzkiVersion      = "2.13.0"
 lazy val fileCacheVersion       = "0.3.3"
@@ -21,11 +22,12 @@ lazy val fileCacheVersion       = "0.3.3"
 lazy val melliteVersion         = "2.6.1-SNAPSHOT"   // GPL!
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "soundprocesses-core" % soundProcessesVersion,
+  "de.sciss" %% "soundprocesses-core"     % soundProcessesVersion,
+  "de.sciss" %% "scalacolliderugens-core" % ugensVersion,
   // "de.sciss" %% "fscape"              % fscapeVersion,
-  "de.sciss" %% "strugatzki"          % strugatzkiVersion,
-  "de.sciss" %% "filecache-txn"       % fileCacheVersion,
-  "de.sciss" %% "mellite"             % melliteVersion  % "test"
+  "de.sciss" %% "strugatzki"              % strugatzkiVersion,
+  "de.sciss" %% "filecache-txn"           % fileCacheVersion,
+  "de.sciss" %% "mellite"                 % melliteVersion  % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")

@@ -151,7 +151,15 @@ object NegatumViewImpl {
         enabled = false
       }
 
-      val ggCancel = GUI.toolButton(actionCancel, raphael.Shapes.Cross, tooltip = "Abort Rendering")
+      val actionStop: swing.Action = new swing.Action(null) {
+        def apply(): Unit = cursor.step { implicit tx =>
+          renderRef.swap(None)(tx.peer).foreach(_.stop())
+        }
+        enabled = false
+      }
+
+      val ggCancel  = GUI.toolButton(actionCancel, raphael.Shapes.Cross        , tooltip = "Abort Rendering")
+      val ggStop    = GUI.toolButton(actionCancel, raphael.Shapes.TransportStop, tooltip = "Stop Rendering and Update Table")
 
       val mNumIter  = new SpinnerNumberModel(1, 1, 65536, 1)
       val ggNumIter = new Spinner(mNumIter)
@@ -196,6 +204,7 @@ object NegatumViewImpl {
                 renderRef.set(None)(tx.peer)
                 deferTx {
                   actionCancel.enabled  = false
+                  actionStop  .enabled  = false
                   self.enabled          = true
                 }
               }
@@ -218,6 +227,7 @@ object NegatumViewImpl {
           }
           if (ok) {
             actionCancel.enabled = true
+            actionStop  .enabled = true
             self        .enabled = false
           }
         }
@@ -232,7 +242,7 @@ object NegatumViewImpl {
       //              }
       //            }
 
-      val panelControl = new FlowPanel(new Label("Iterations:"), ggNumIter, ggProgress, ggCancel, ggRender)
+      val panelControl = new FlowPanel(new Label("Iterations:"), ggNumIter, ggProgress, ggCancel, ggStop, ggRender)
       component = new BorderPanel {
         add(panelParams , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )

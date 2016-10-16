@@ -14,7 +14,7 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.synth.ugen.{Constant, Mix, NegatumIn, NegatumOut, Protect}
+import de.sciss.synth.ugen.{Constant, Mix, NegatumIn, NegatumOut, Protect, GESeq}
 import de.sciss.synth.{GE, SynthGraph, UndefinedRate}
 import de.sciss.topology.Topology
 
