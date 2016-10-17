@@ -30,23 +30,38 @@ object Mutation {
     var res = Vector.empty[Individual]
     if (sq.isEmpty) return res
 
+    var off   = 0
+    var sq1   = sq
+
     while (res.size < n) {
-      val chosen = sq(res.size % sq.size)
-      val hOpt: Option[Individual] = {
-        val ok = tryMutate(config, chosen.graph)
-        if (ok ne chosen.graph) {
-          Some(new Individual(ok))
-        } else None
+      val chosen  = sq1(off /* res.size % sq.size */)
+      val chosenT = MkTopology(chosen.graph)
+      var attempt = 4
+      while (attempt > 0) {
+        val out = tryMutate(config, chosenT)
+        if (out ne chosenT) {
+          res   :+= new Individual(MkSynthGraph(out))
+          attempt = 0
+        } else {
+          attempt -= 1
+          if (attempt == 0) {
+            Console.err.println(s"Mutation - giving up with individual ${off % sq.size}")
+            val newIndiv = Chromosome.mkIndividual(config)
+            sq1 = sq1.patch(from = off, patch = newIndiv :: Nil, replaced = 1)
+//            if (off == sq.size - 1 && res.isEmpty) {
+//              Console.err.println("Mutation - WTF - could not mutate even one individual.")
+//              return Vector.empty
+//            }
+          }
+        }
       }
-      hOpt.foreach { h => res :+= h }
+      off = (off + 1) % sq.size
     }
     res
   }
 
-  private def tryMutate(config: Config, chosen: SynthGraph)(implicit random: Random): SynthGraph = {
+  private def tryMutate(config: Config, chosenT: SynthGraphT)(implicit random: Random): SynthGraphT = {
     import config.breed.{maxMut, minMut}
-
-    val chosenT = MkTopology(chosen)
 
     if (DEBUG) try {
       MkSynthGraph(chosenT)
@@ -61,8 +76,11 @@ object Mutation {
     require(mutationIter > 0)
     val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
       val tpe = random.nextInt(7)
-      val TEST = random.nextLong()
-      random.setSeed(TEST)
+      val TEST = if (!DEBUG) 0L else {
+        val n = random.nextLong()
+        random.setSeed(n)
+        n
+      }
       val next: SynthGraphT = (tpe: @switch) match {
         case 0 => addVertex   (config, pred)
         case 1 => removeVertex(config, pred)
@@ -94,7 +112,7 @@ object Mutation {
               case 5 => splitVertex (config, pred)
               case 6 => mergeVertex (config, pred)
             }
-//            MkTopology(pred)
+            pred // MkTopology(pred)
         }
 
       //      if (next ne pred) {
@@ -104,7 +122,7 @@ object Mutation {
       next
     }
 
-    if (res ne chosenT) MkSynthGraph(res) else chosen
+    res // if (res ne chosenT) MkSynthGraph(res) else chosen
   }
 
   // ---- mutations ----

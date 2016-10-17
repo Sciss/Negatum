@@ -77,7 +77,7 @@ object Negatum extends Obj.Type {
     /** Cancels the process and does not keep results. */
     def cancel()(implicit tx: S#Tx): Unit
 
-    /** Stops process at the next possible moment, and returns current results. */
+    /** Stops process at the next possible moment, and return current results. */
     def stop  ()(implicit tx: S#Tx): Unit
   }
 
@@ -170,18 +170,20 @@ object Negatum extends Obj.Type {
 
   object Config {
     def apply(
+      seed            : Long        = System.currentTimeMillis(),
       generation      : Generation  = Generation(),
       evaluation      : Evaluation  = Evaluation(),
       penalty         : Penalty     = Penalty(),
       breeding        : Breeding    = Breeding()
-    ): Config = new Impl(gen = generation, eval = evaluation, penalty = penalty, breed = breeding)
+    ): Config = new Impl(seed = seed, gen = generation, eval = evaluation, penalty = penalty, breed = breeding)
 
     final val default: Config = apply()
 
-    private class Impl(val gen: Generation, val eval: Evaluation,
+    private class Impl(val seed: Long, val gen: Generation, val eval: Evaluation,
                        val penalty: Penalty, val breed: Breeding) extends Config
   }
   trait Config {
+    val seed    : Long
     val gen     : Generation
     val eval    : Evaluation
     val penalty : Penalty
@@ -193,6 +195,9 @@ object Negatum extends Obj.Type {
 
 //  /** Attribute for individual being selected (children of `population`). Type `Boolean` */
 //  final val attrSelected = "selected"
+
+  /** Attribute for config defaults. Type `Long` */
+  final val attrSeed              = "seed"
 
   /** Attribute for generation config defaults. Type `Int` */
   final val attrGenPopulation     = "gen-population"
@@ -242,8 +247,9 @@ object Negatum extends Obj.Type {
   final val attrBreedGolem        = "breed-golem"
 }
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
-  def run(config: Negatum.Config, iter: Int = 1)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                  workspace: WorkspaceHandle[S]): Negatum.Rendering[S]
+
+  def run(config: Negatum.Config, iter: Int = 1)
+         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Negatum.Rendering[S]
 
   def template: AudioCue.Obj.Var[S]
 

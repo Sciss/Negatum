@@ -23,6 +23,9 @@ import scala.annotation.tailrec
 import scala.util.Random
 
 object Chromosome {
+  def mkIndividual(config: Config)(implicit random: Random): Individual =
+    new Individual(mkGraph(config))
+
   /* Creates an individual chromosome. */
   def mkGraphT(config: Config)(implicit random: Random): SynthGraphT = {
     import config.gen._

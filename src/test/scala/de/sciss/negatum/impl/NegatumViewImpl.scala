@@ -19,7 +19,7 @@ import javax.swing.SpinnerNumberModel
 import de.sciss.desktop.UndoManager
 import de.sciss.desktop.impl.UndoManagerImpl
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View, deferTx}
@@ -84,13 +84,21 @@ object NegatumViewImpl {
 
       import Negatum._
       import Negatum.Config.default._
+
+      val fSeed = {
+        val name = "Seed"
+        val view = IntSpinnerView.optional(AttrCellView[S, Int, IntObj](attr, attrSeed),
+          name = name, default = None)
+        new Field(name, view)
+      }
+
       val fGenPopulation      = mkIntField    ("Population"             , attrGenPopulation , gen.population)
       val fGenConstProb       = mkDoubleField ("Prob. of Constants"     , attrGenProbConst  , gen.probConst)
       val fGenMinVertices     = mkIntField    ("Min. # of Vertices"     , attrGenMinVertices, gen.minVertices)
       val fGenMaxVertices     = mkIntField    ("Max. # of Vertices"     , attrGenMaxVertices, gen.maxVertices)
       val fGenDefaultProb     = mkDoubleField ("Prob. of Default Values", attrGenProbDefault, gen.probDefault)
       // attrGenAllowedUGens -- TODO
-      val gridGen = Seq(fGenPopulation, fGenConstProb, fGenMinVertices, fGenDefaultProb, fGenMaxVertices)
+      val gridGen = Seq(fGenPopulation, fGenConstProb, fGenMinVertices, fGenDefaultProb, fGenMaxVertices, fSeed)
 
       val fEvalNumMFCC        = mkIntField    ("# of MFCC"              , attrEvalNumMFCC   , eval.numMFCC)
       val fEvalNormMFCC       = mkBooleanField("Normalize MFCC"         , attrEvalNormMFCC  , eval.normMFCC)
@@ -174,6 +182,8 @@ object NegatumViewImpl {
               val attr  = obj.attr
               import Negatum._
               import Negatum.Config.default._
+              val seed      = attr.$[IntObj](attrSeed).map(_.value.toLong).getOrElse(System.currentTimeMillis())
+
               val cGen      = Negatum.Generation(
                 population  = attr.$[IntObj    ](attrGenPopulation  ).map(_.value).getOrElse(gen.population),
                 probConst   = attr.$[DoubleObj ](attrGenProbConst   ).map(_.value).getOrElse(gen.probConst),
@@ -197,7 +207,7 @@ object NegatumViewImpl {
                 timeWeight  = attr.$[DoubleObj ](attrEvalTimeWeight ).map(_.value).getOrElse(eval.timeWeight)
               )
               val cPenalty  = Negatum.Penalty()
-              val config    = Negatum.Config(generation = cGen, breeding = cBreed, evaluation = cEval,
+              val config    = Negatum.Config(seed = seed, generation = cGen, breeding = cBreed, evaluation = cEval,
                 penalty = cPenalty)
 
               def finished()(implicit tx: S#Tx): Unit = {

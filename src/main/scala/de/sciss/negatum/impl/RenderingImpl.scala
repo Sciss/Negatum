@@ -54,7 +54,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
   @volatile
   private[this] var _shouldStop   = false
 
-  private[this] implicit val random = new Random(0L)  // XXX TODO --- make seed customisable
+  private[this] implicit val random = new Random(config.seed)
 
   protected def body(): Vec[Individual] = blocking {
     import config._

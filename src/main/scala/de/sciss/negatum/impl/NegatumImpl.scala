@@ -54,8 +54,8 @@ object NegatumImpl {
 
     // --- rendering ---
 
-    final def run(config: Config, iter: Int)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                             workspace: WorkspaceHandle[S]): Rendering[S] = {
+    final def run(config: Config, iter: Int)
+                 (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S] = {
       val popIn = population.iterator.collect {
         case p: Proc[S] =>
           val gObj      = p.graph()
