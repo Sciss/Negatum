@@ -167,7 +167,7 @@ object NegatumViewImpl {
       }
 
       val ggCancel  = GUI.toolButton(actionCancel, raphael.Shapes.Cross        , tooltip = "Abort Rendering")
-      val ggStop    = GUI.toolButton(actionCancel, raphael.Shapes.TransportStop, tooltip = "Stop Rendering and Update Table")
+      val ggStop    = GUI.toolButton(actionStop  , raphael.Shapes.TransportStop, tooltip = "Stop Rendering and Update Table")
 
       val mNumIter  = new SpinnerNumberModel(1, 1, 65536, 1)
       val ggNumIter = new Spinner(mNumIter)
