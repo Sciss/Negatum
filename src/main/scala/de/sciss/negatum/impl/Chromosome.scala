@@ -79,7 +79,7 @@ object Chromosome {
     }
 
   def sortedVertices[V <: Vertex](in: SynthGraphT, set: Set[V]): List[V] =
-    set.toList.sortBy(in.vertices.indexOf)
+    set.toList.sortBy(v => in.vertices.indexOf(v))
 
   def checkComplete(succ: SynthGraphT, message: => String): Unit =
     if (CHECK) succ.vertices.foreach {
