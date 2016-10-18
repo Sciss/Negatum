@@ -16,29 +16,33 @@ package impl
 
 import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util._
-import de.sciss.synth.SynthGraph
 
 import scala.annotation.{switch, tailrec}
-import scala.util.control.NonFatal
 import scala.util.Random
 
 object Mutation {
   private[this] final val DEBUG = false
 
+  var INTERRUPT = false
+
   /* Produces a sequence of `n` items by mutating the input `sel` selection. */
   def apply(config: Config, sq: Vec[Individual], n: Int)(implicit random: Random): Vec[Individual] = {
-    var res = Vector.empty[Individual]
-    if (sq.isEmpty) return res
+    var res   = Vector.empty[Individual]
+    val sqSz  = sq.size
+    if (sqSz == 0) return res
 
     var off   = 0
     var sq1   = sq
 
-    while (res.size < n) {
+    while (res.size < n && !INTERRUPT) {
       val chosen  = sq1(off /* res.size % sq.size */)
       val chosenT = MkTopology(chosen.graph)
       var attempt = 4
       while (attempt > 0) {
-        val out = tryMutate(config, chosenT)
+        var out = tryMutate(config, chosenT)
+        while (out.vertices.size > config.gen.maxVertices) {
+          out = removeVertex(config, out)
+        }
         if (out ne chosenT) {
           res   :+= new Individual(MkSynthGraph(out))
           attempt = 0
@@ -55,8 +59,13 @@ object Mutation {
           }
         }
       }
-      off = (off + 1) % sq.size
+      off = (off + 1) % sqSz
     }
+
+    if (INTERRUPT) {
+      println(s"Mutation -- interrupted; off was $off")
+    }
+
     res
   }
 
@@ -348,7 +357,7 @@ object Mutation {
 
       val allReplaced = inner(top1, edgesOld)
       allReplaced match {
-        case Some(res)  => res
+        case Some(x)    => x
         case None       => loop() // try again with different pair
       }
     }

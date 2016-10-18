@@ -39,6 +39,10 @@ import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success, Try}
 
+object RenderingImpl {
+  /** DEBUGGING*/
+  var instance: RenderingImpl[_] = null
+}
 final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
                                        popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]], numIter: Int)
                                       (implicit cursor: stm.Cursor[S])
@@ -46,7 +50,9 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     with ObservableImpl[S, Rendering.State]
     with ProcessorImpl[Vec[Individual], Rendering[S]] {
 
-  private[this] val STORE_BAD_DEFS = true
+  RenderingImpl.instance = this
+
+  private[this] val STORE_BAD_DEFS = false
 
   private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
   private[this] val _disposed     = Ref(false)
@@ -56,10 +62,14 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   private[this] implicit val random = new Random(config.seed)
 
+  var DEBUG_ARRAY: Array[Individual] = null
+
   protected def body(): Vec[Individual] = blocking {
     import config._
     import gen._
     val pop = new Array[Individual](population)
+    DEBUG_ARRAY = pop
+
     var i = 0
     while (i < popIn.size) {
       pop(i) = popIn(i)
@@ -241,31 +251,43 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   private def mkGraphName(graph: SynthGraph): String = s"negatum-${graph.hashCode().toHexString}"
 
-  private def completeWith(t: Try[Vec[Individual]]): Unit = if (!_disposed.single.get)
-    cursor.step { implicit tx =>
-      import TxnLike.peer
-      if (!_disposed()) t match {
-        case Success(popOut) =>
-          val folder = populationH()
-          folder.clear()  // XXX TODO --- re-use existing procs?
-          popOut.foreach { indiv =>
-            val gObj  = SynthGraphObj.newConst[S](indiv.graph)
-            val p     = Proc[S]
-            import proc.Implicits._
-            val attr  = p.attr
-            p.name    = mkGraphName(indiv.graph)
-            p.graph() = gObj
-            if (!indiv.fitness.isNaN) {
-              attr.put(Negatum.attrFitness, DoubleObj.newConst[S](indiv.fitness))
-            }
-            // XXX TODO --- should we store fitness or not?
-            folder.addLast(p)
-          }
-          state = Rendering.Success
-        case Failure(ex) =>
-          state = Rendering.Failure(ex)
+  def DEBUG_FILL(): Unit = cursor.step { implicit tx =>
+    fillResult(DEBUG_ARRAY.toVector)
+  }
+
+  private def fillResult(popOut: Vec[Individual])(implicit tx: S#Tx): Unit = {
+    val folder = populationH()
+    folder.clear()  // XXX TODO --- re-use existing procs?
+    popOut.foreach { indiv =>
+      val gObj  = SynthGraphObj.newConst[S](indiv.graph)
+      val p     = Proc[S]
+      import proc.Implicits._
+      val attr  = p.attr
+      p.name    = mkGraphName(indiv.graph)
+      p.graph() = gObj
+      if (!indiv.fitness.isNaN) {
+        attr.put(Negatum.attrFitness, DoubleObj.newConst[S](indiv.fitness))
+      }
+      // XXX TODO --- should we store fitness or not?
+      folder.addLast(p)
+    }
+  }
+
+  private def completeWith(t: Try[Vec[Individual]]): Unit = {
+    DEBUG_ARRAY = null
+    if (!_disposed.single.get) {
+      cursor.step { implicit tx =>
+        import TxnLike.peer
+        if (!_disposed()) t match {
+          case Success(popOut) =>
+            fillResult(popOut)
+            state = Rendering.Success
+          case Failure(ex) =>
+            state = Rendering.Failure(ex)
+        }
       }
     }
+  }
 
   def startTx()(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
     tx.afterCommit {
