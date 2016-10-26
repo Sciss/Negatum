@@ -7,7 +7,7 @@
 
 Negatum is a genetic programming experiment for SoundProcesses.
 It is (C)opyright 2016 by Hanns Holger Rutz. All rights reserved.
-This project is released under the [GNU Lesser General Public License](https://raw.github.com/Sciss/ScalaOSC/master/LICENSE) v2.1+ and comes with absolutely no warranties. 
+This project is released under the [GNU General Public License](https://raw.github.com/Sciss/Negatum/master/LICENSE) v3+ and comes with absolutely no warranties. 
 To contact the author, send an email to `contact at sciss.de`
 
 ## requirements / installation

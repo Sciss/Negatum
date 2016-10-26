@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU Lesser General Public License v2.1+
+ *  This software is published under the GNU General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -24,19 +24,18 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, WorkspaceHandle}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object Evaluation {
   private[this] val inMemory = InMemory()
 
   def apply(config: Config, graph: SynthGraph, inputSpec: AudioFileSpec,
-            inputExtr: File, numVertices: Int): Future[Float] = {
+            inputExtr: File, numVertices: Int)(implicit exec: ExecutionContext): Future[Float] = {
     import config.eval._
     import config.gen._
     import config.penalty._
     val audioF  = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
     val bnc0    = Evaluation.bounce(graph, audioF = audioF, inputSpec = inputSpec)
-    import scala.concurrent.ExecutionContext.Implicits.global
     val simFut  = bnc0.flatMap { _ =>
       Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
         numMFCC = numMFCC, normalizeMFCC = normMFCC, maxBoost = maxBoost, temporalWeight = timeWeight)
@@ -56,14 +55,40 @@ object Evaluation {
     res
   }
 
-  /** Bounces a synth def to an audio file.
+
+  /** Bounces a synth def to an audio file.nce
     *
     * @param graph       the synth graph to play and evaluate
     * @param audioF      the audio output file to bounce to
     * @param inputSpec   the spec of the original target sound
     * @param duration0   the duration to bounce in seconds or `-1` to bounce the duration of the target sound
     */
-  def bounce(graph: SynthGraph, audioF: File, inputSpec: AudioFileSpec, duration0: Double = -1): Processor[Any] = {
+  def bounce(graph: SynthGraph, audioF: File, inputSpec: AudioFileSpec, duration0: Double = -1)
+            (implicit exec: ExecutionContext): Future[Any] = {
+    val duration    = if (duration0 > 0) duration0 else inputSpec.numFrames.toDouble / inputSpec.sampleRate
+    val sampleRate  = inputSpec.sampleRate.toInt
+    bounce1(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
+  }
+
+  def bounce1(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
+             (implicit exec: ExecutionContext): Future[Any] = {
+    def invoke() = bounce2(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
+
+    def recover(f: Future[Any]): Future[Any] =
+      f.recoverWith {
+        case ex: Processor.Aborted => Future.failed(ex)
+        case _ => invoke()
+      }
+
+    // scsynth seems to crash randomly. give it three chances
+    val proc1 = invoke()
+    val proc2 = recover(proc1)
+    val proc3 = recover(proc2)
+    proc3
+  }
+
+  private def bounce2(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
+                     (implicit exec: ExecutionContext): Processor[Any] = {
     type I  = InMemory
     implicit val iCursor = inMemory
 
@@ -80,19 +105,17 @@ object Evaluation {
     val bncCfg              = Bounce.Config[I]
     bncCfg.group            = objH :: Nil
     // val audioF           = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
-    val duration            = if (duration0 > 0) duration0 else inputSpec.numFrames.toDouble / inputSpec.sampleRate
     val sCfg                = bncCfg.server
     sCfg.nrtOutputPath      = audioF.path
     sCfg.inputBusChannels   = 0
     sCfg.outputBusChannels  = 1
     sCfg.wireBuffers        = 1024 // higher than default
     sCfg.blockSize          = 64   // keep it compatible to real-time
-    sCfg.sampleRate         = inputSpec.sampleRate.toInt
+    sCfg.sampleRate         = sampleRate
     // bc.init : (S#Tx, Server) => Unit
     bncCfg.span             = Span(0L, (duration * TimeRef.SampleRate).toLong)
     val bnc0                = Bounce[I, I].apply(bncCfg)
     // tx.afterCommit {
-    import scala.concurrent.ExecutionContext.Implicits.global
     bnc0.start()
     // }
     bnc0

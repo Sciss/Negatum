@@ -4,14 +4,14 @@
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU Lesser General Public License v2.1+
+ *  This software is published under the GNU General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
  */
 
-package de.sciss.negatum
+package de.sciss.negatum.gui
 
 import de.sciss.desktop
 import de.sciss.desktop.OptionPane
@@ -23,6 +23,7 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.{AudioCueObjView, ListObjViewImpl, ObjViewImpl, WindowImpl}
 import de.sciss.mellite.gui.{AttrCellView, ListObjView, ObjView}
+import de.sciss.negatum.Negatum
 import de.sciss.synth.proc.{AudioCue, Workspace}
 
 object NegatumObjView extends ListObjView.Factory {

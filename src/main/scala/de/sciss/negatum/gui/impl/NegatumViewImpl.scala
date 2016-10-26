@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU Lesser General Public License v2.1+
+ *  This software is published under the GNU General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -12,6 +12,7 @@
  */
 
 package de.sciss.negatum
+package gui
 package impl
 
 import javax.swing.SpinnerNumberModel
@@ -19,11 +20,12 @@ import javax.swing.SpinnerNumberModel
 import de.sciss.desktop.UndoManager
 import de.sciss.desktop.impl.UndoManagerImpl
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View, deferTx}
+import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View}
 import de.sciss.lucre.swing.impl.ComponentHolder
+import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.{AttrCellView, GUI}
 import de.sciss.negatum.Negatum.Rendering
 import de.sciss.swingplus.{GroupPanel, Spinner}
@@ -82,8 +84,8 @@ object NegatumViewImpl {
 
       // def mkEmptyField(): Field = new Field("", View.wrap[S](Swing.HGlue))
 
-      import Negatum._
       import Negatum.Config.default._
+      import Negatum._
 
       val fSeed = {
         val name = "Seed"
@@ -180,8 +182,8 @@ object NegatumViewImpl {
             renderRef.get(tx.peer).isEmpty && {
               val obj   = negatumH()
               val attr  = obj.attr
-              import Negatum._
               import Negatum.Config.default._
+              import Negatum._
               val seed      = attr.$[IntObj](attrSeed).map(_.value.toLong).getOrElse(System.currentTimeMillis())
 
               val cGen      = Negatum.Generation(
@@ -242,7 +244,15 @@ object NegatumViewImpl {
           }
         }
       }
-      val ggRender = GUI.toolButton(actionRender, raphael.Shapes.Biohazard)
+      val ggRender  = GUI.toolButton(actionRender, raphael.Shapes.Biohazard)
+
+      val actionAnalyze = new swing.Action("Analyze...") {
+        self =>
+        def apply(): Unit = cursor.step { implicit tx =>
+          FeatureAnalysisFrame(negatum)
+        }
+      }
+      val ggAnalyze = GUI.toolButton(actionAnalyze, raphael.Shapes.View)
 
       //            val ggDebug = Button("Debug") {
       //              renderRef.single.get.foreach { r =>
@@ -252,7 +262,8 @@ object NegatumViewImpl {
       //              }
       //            }
 
-      val panelControl = new FlowPanel(new Label("Iterations:"), ggNumIter, ggProgress, ggCancel, ggStop, ggRender)
+      val panelControl = new FlowPanel(new Label("Iterations:"),
+        ggNumIter, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze)
       component = new BorderPanel {
         add(panelParams , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -12,14 +12,16 @@
  */
 
 package de.sciss.negatum
+package gui
 
 import java.awt.Color
 import java.util.Locale
 import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
 
+import de.sciss.desktop.Menu.Root
+import de.sciss.desktop.WindowHandler
 import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
-import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.mellite
 import de.sciss.mellite.gui.{LogFrame, MenuBar}
 import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
@@ -81,7 +83,29 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     new mellite.gui.MainFrame
   }
 
-  protected def menuFactory: Menu.Root = MenuBar.instance
+//  lazy val menuFactory: Menu.Root = {
+//    val res = MenuBar.instance
+//    val gActions = res.get("actions").get.asInstanceOf[Menu.Group]
+//    gActions.addLine()
+//    gActions.add(Menu.Item("features", Action("Analyze Features...")(analyzeFeatures())))
+//    res
+//  }
+//
+//  def analyzeFeatures(): Unit = {
+//    def invoke[S <: Sys[S]](implicit workspace: Workspace[S]): Unit = {
+//      implicit val cursor: stm.Cursor[S] = workspace.cursor
+//      cursor.step { implicit tx =>
+//        FeatureAnalysisFrame[S]
+//      }
+//    }
+//
+//    documentHandler.activeDocument.foreach { ws =>
+//      val wst = ws.asInstanceOf[Workspace[~] forSome { type ~ <: Sys[~]}]
+//      invoke(wst)
+//    }
+//  }
+
+  protected def menuFactory: Root = MenuBar.instance
 
   override lazy val documentHandler: DocumentHandler = new DocumentHandlerImpl
 

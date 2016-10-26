@@ -1,4 +1,6 @@
-name               := "Negatum"
+lazy val baseName = "Negatum"
+
+name               := baseName
 version            := "0.1.0-SNAPSHOT"
 organization       := "de.sciss"
 scalaVersion       := "2.11.8"
@@ -11,26 +13,37 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
+lazy val melliteVersion         = "2.6.1"
 lazy val soundProcessesVersion  = "3.8.1"
 lazy val ugensVersion           = "1.16.1"
-// lazy val fscapeVersion          = "2.2.1"
+lazy val dspVersion             = "1.2.2"
 lazy val strugatzkiVersion      = "2.13.0"
 lazy val fileCacheVersion       = "0.3.3"
 
-// ---- test dependencies ----
-
-lazy val melliteVersion         = "2.6.1"   // GPL!
-
 libraryDependencies ++= Seq(
+  "de.sciss" %% "mellite"                 % melliteVersion,
   "de.sciss" %% "soundprocesses-core"     % soundProcessesVersion,
   "de.sciss" %% "scalacolliderugens-core" % ugensVersion,
-  // "de.sciss" %% "fscape"              % fscapeVersion,
+  "de.sciss" %% "scissdsp"                % dspVersion,
   "de.sciss" %% "strugatzki"              % strugatzkiVersion,
-  "de.sciss" %% "filecache-txn"           % fileCacheVersion,
-  "de.sciss" %% "mellite"                 % melliteVersion  % "test"
+  "de.sciss" %% "filecache-txn"           % fileCacheVersion
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
+
+// ---- assembly ----
+
+mainClass             in assembly := Some("de.sciss.negatum.gui.NegatumApp")
+target                in assembly := baseDirectory.value
+assemblyJarName       in assembly := s"$baseName.jar"
+assemblyMergeStrategy in assembly := {
+  case PathList("org", "xmlpull", xs @ _*) => MergeStrategy.first
+  case PathList("org", "w3c", "dom", "events", xs @ _*) => MergeStrategy.first // bloody Apache Batik
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}
+
 
 // ---- publishing ----
 
