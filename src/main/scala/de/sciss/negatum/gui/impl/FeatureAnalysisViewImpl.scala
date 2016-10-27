@@ -17,13 +17,14 @@ package impl
 
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
-import javax.swing.JTable
+import javax.swing.{JComponent, JTable}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 
 import de.sciss.audiowidgets.Transport
+import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.DoubleObj
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj}
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
@@ -72,8 +73,16 @@ object FeatureAnalysisViewImpl {
       case p: Proc[S] =>
         val attr = p.attr
         import proc.Implicits._
-        val fitness = attr.$[DoubleObj](Negatum.attrFitness).map(_.value).getOrElse(Double.NaN)
-        val r = new Row(name = p.name, graph = p.graph.value, fitness = fitness, folderIdx = fIdx)
+        val fitness   = attr.$[DoubleObj ](Negatum.attrFitness ).map   (_.value).getOrElse(Double.NaN)
+        val selected  = attr.$[BooleanObj](Negatum.attrSelected).exists(_.value)
+//        attr.changed.react { implicit tx => upd =>
+//          upd.changes.foreach {
+//            case Obj.AttrAdded(Negatum.attrSelected)
+//          }
+//        }
+        
+        val r = new Row(name = p.name, graph = p.graph.value, fitness = fitness, selected = selected, 
+          folderIdx = fIdx)
         Some(r)
       case _ => None
     }
@@ -148,10 +157,15 @@ object FeatureAnalysisViewImpl {
       this
     }
 
-    private class Row(var name: String, var graph: SynthGraph, var fitness: Double, var folderIdx: Int) {
+    private class Row(var name: String, var graph: SynthGraph, var fitness: Double, var selected: Boolean,
+                      var folderIdx: Int /* , observer: Disposable[S#Tx] */)
+      /* extends Disposable[S#Tx] */ {
+      
       var rendered  = Option.empty[Future[AudioCue]]
       var son       = Option.empty[sonogram.Overview]
       var features  = Option.empty[SOMEval.Weight]
+      
+      // def dispose()(implicit tx: S#Tx): Unit = observer.dispose()  
     }
 
     private[this] object mTable extends AbstractTableModel {
@@ -162,9 +176,11 @@ object FeatureAnalysisViewImpl {
         fireTableRowsInserted(idx, idx)
       }
 
-      def remove(idx: Int): Unit = {
+      def remove(idx: Int): Row = {
+        val r = data(idx)
         data = data.patch(idx, Nil, 1)
         fireTableRowsDeleted(idx, idx)
+        r
       }
 
       def update(idx: Int): Unit = {
@@ -180,9 +196,10 @@ object FeatureAnalysisViewImpl {
           case 2 => classOf[java.lang.Double]
           case 3 => classOf[sonogram.Overview]
           case 4 => classOf[SOMEval.Weight]
+          case 5 => classOf[java.lang.Boolean]
         }
 
-      def getColumnCount: Int = 5
+      def getColumnCount: Int = 6
 
       override def getColumnName(colIdx: Int): String =
         (colIdx: @switch) match {
@@ -191,15 +208,17 @@ object FeatureAnalysisViewImpl {
           case 2 => "Fitness"
           case 3 => "Sonogram"
           case 4 => "Features"
+          case 5 => "Sel"
         }
 
       def getValueAt(rowIdx: Int, colIdx: Int): AnyRef =
         (colIdx: @switch) match {
-          case 0 => rowIdx.asInstanceOf[AnyRef]
+          case 0 => rowIdx                .asInstanceOf[AnyRef]
           case 1 => data(rowIdx).name
-          case 2 => data(rowIdx).fitness.asInstanceOf[AnyRef]
+          case 2 => data(rowIdx).fitness  .asInstanceOf[AnyRef]
           case 3 => data(rowIdx).son      .orNull
           case 4 => data(rowIdx).features .orNull
+          case 5 => data(rowIdx).selected .asInstanceOf[AnyRef]
         }
     }
 
@@ -329,6 +348,19 @@ object FeatureAnalysisViewImpl {
       }
     }
 
+//    private[this] object selectedRenderer extends TableCellRenderer {
+//      private[this] val comp = new Label
+//      private[this] val iconClear     = raphael.Icon(extent = 16)(raphael.Shapes.CheckboxUnselected)
+//      private[this] val iconSelected  = raphael.Icon(extent = 16)(raphael.Shapes.CheckboxSelected)
+//
+//      def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean,
+//                                        row: Int, column: Int): java.awt.Component = {
+//        val selected = value == true
+//        comp.icon = if (selected) iconSelected else iconClear
+//        comp.peer
+//      }
+//    }
+
     private def guiInit(data0: Vector[Row]): Unit = {
       mTable.data   = data0
       val ggTable   = new Table {
@@ -342,7 +374,20 @@ object FeatureAnalysisViewImpl {
 //        }
         rowHeight = 64
       }
-//      ggTable.peer.setDefaultRenderer(classOf[sonogram.Overview], overviewRenderer)
+
+      def selectedRow: Option[Row] = ggTable.selection.rows.headOption
+        .map { viewRowIdx =>
+          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
+          mTable.data(rowIdx)
+        }
+
+      def selectedRows: Seq[Row] = ggTable.selection.rows
+        .map { viewRowIdx =>
+          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
+          mTable.data(rowIdx)
+        } (breakOut)
+
+      //      ggTable.peer.setDefaultRenderer(classOf[sonogram.Overview], overviewRenderer)
       val cm = ggTable.peer.getColumnModel
       val col0 = cm.getColumn(0)  // idx
       col0.setPreferredWidth(40)
@@ -363,21 +408,38 @@ object FeatureAnalysisViewImpl {
       val col4 = cm.getColumn(4)  // features
       col4.setPreferredWidth(160)
       col4.setCellRenderer(featuresRenderer)
-      val ggScroll  = new ScrollPane(ggTable)
+      val col5 = cm.getColumn(5)  // selected
+      col5.setPreferredWidth(24)
+      col5.setMinWidth      (24)
+      col5.setMaxWidth      (24)
+//      col5.setCellRenderer(selectedRenderer)
+      val ggScroll = new ScrollPane(ggTable)
       ggScroll.peer.putClientProperty("styleId", "undecorated")
       ggTable.peer.setAutoCreateRowSorter(true)
 
-      def selectedRow: Option[Row] = ggTable.selection.rows.headOption
-        .map { viewRowIdx =>
-          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
-          mTable.data(rowIdx)
+      val actionToggle = Action(null) {
+        val rows = selectedRows
+        if (rows.nonEmpty) {
+          val rowsFound = cursor.step { implicit tx =>
+            val f = negatumH().population
+            val tup = rows.flatMap(r => f.get(r.folderIdx).map(obj => (obj.attr, r)))
+            tup.foreach { case (attr, r) =>
+              val state = !r.selected
+              attr.$[BooleanObj](Negatum.attrSelected) match {
+                case Some(BooleanObj.Var(vr)) => vr() = state
+                case _ => attr.put(Negatum.attrSelected, BooleanObj.newVar(state))
+              }
+            }
+            tup.map(_._2)
+          }
+          val indices = rowsFound.map { r =>
+            r.selected = !r.selected
+            mTable.data.indexOf(r)
+          }
+          mTable.fireTableRowsUpdated(indices.min, indices.max)
         }
-
-      def selectedRows: Seq[Row] = ggTable.selection.rows
-        .map { viewRowIdx =>
-          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
-          mTable.data(rowIdx)
-        } (breakOut)
+      }
+      val ggToggleSel = GUI.toolButton(actionToggle, raphael.Shapes.CheckboxSelected, "Toggle Selection (T)")
 
       def actionStop(): Unit =
         atomic { implicit itx =>
@@ -498,12 +560,21 @@ object FeatureAnalysisViewImpl {
       val ggTransport = Transport.makeButtonStrip(Seq(
         Transport.Stop(actionStop()), Transport.Play(actionPlay())
       ))
+      val ggStop = ggTransport.button(Transport.Stop).get
+      val ggPlay = ggTransport.button(Transport.Play).get
+
+      GUI.addGlobalKey(ggToggleSel, KeyStrokes.plain + 't')
+      ggStop.peer.getActionMap.put("click", Action(null) {
+        val isPlaying = synthRef.single.get.isDefined
+        (if (isPlaying) ggStop else ggPlay).doClick()
+      }.peer)
+      ggStop.peer.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStrokes.plain + ' ', "click")
 
       val ggView        = GUI.toolButton(Action(null)(actionView()), raphael.Shapes.View)
       val ggRender      = GUI.toolButton(Action("Render")(actionRender()), raphael.Shapes.LineChart)
       val ggPrintMinMax = GUI.toolButton(Action("Min/Max")(featuresRenderer.printMinMax()), raphael.Shapes.Printer)
 
-      val pBottom = new FlowPanel(ggTransport, ggView, ggRender, ggPrintMinMax)
+      val pBottom = new FlowPanel(ggTransport, ggView, ggRender, ggPrintMinMax, ggToggleSel)
 
       val pBorder = new BorderPanel {
         add(ggScroll, BorderPanel.Position.Center)

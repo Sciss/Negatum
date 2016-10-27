@@ -19,14 +19,16 @@ lazy val ugensVersion           = "1.16.1"
 lazy val dspVersion             = "1.2.2"
 lazy val strugatzkiVersion      = "2.13.0"
 lazy val fileCacheVersion       = "0.3.3"
+lazy val libSVMVersion          = "3.17"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "mellite"                 % melliteVersion,
-  "de.sciss" %% "soundprocesses-core"     % soundProcessesVersion,
-  "de.sciss" %% "scalacolliderugens-core" % ugensVersion,
-  "de.sciss" %% "scissdsp"                % dspVersion,
-  "de.sciss" %% "strugatzki"              % strugatzkiVersion,
-  "de.sciss" %% "filecache-txn"           % fileCacheVersion
+  "de.sciss"        %% "mellite"                 % melliteVersion,
+  "de.sciss"        %% "soundprocesses-core"     % soundProcessesVersion,
+  "de.sciss"        %% "scalacolliderugens-core" % ugensVersion,
+  "de.sciss"        %% "scissdsp"                % dspVersion,
+  "de.sciss"        %% "strugatzki"              % strugatzkiVersion,
+  "de.sciss"        %% "filecache-txn"           % fileCacheVersion,
+  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
