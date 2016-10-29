@@ -83,3 +83,58 @@ N = 24
     021: -2.52556 to 2.17659
     022: -3.09109 to 2.63277
     023: -2.29279 to 3.45867
+
+-----
+
+Stats from `SVMModel` with five `Negatum` inputs:
+
+    Stats(count = 5000, selected = 718, features = Vector(
+        FeatureStat(min = -2100.0, max = 168.8523, mean = -403.73514, stdDev = 820.6751),
+        FeatureStat(min = -69.15294, max = 70.772865, mean = 11.492724, stdDev = 14.274059),
+        FeatureStat(min = -32.710697, max = 24.044804, mean = 1.1978476, stdDev = 5.5887756),
+        FeatureStat(min = -18.198862, max = 15.219029, mean = 0.5536203, stdDev = 3.2855577),
+        FeatureStat(min = -18.213047, max = 14.381797, mean = -0.1698338, stdDev = 2.7581253),
+        FeatureStat(min = -19.119926, max = 13.080318, mean = -0.085102774, stdDev = 1.8301138),
+        FeatureStat(min = -13.491603, max = 9.521963, mean = 0.18309946, stdDev = 1.4699345),
+        FeatureStat(min = -15.80573, max = 9.381493, mean = 0.26464838, stdDev = 1.2668183),
+        FeatureStat(min = -16.194517, max = 10.72084, mean = 0.19017214, stdDev = 1.4307963),
+        FeatureStat(min = -19.27554, max = 18.000763, mean = 0.1302005, stdDev = 1.33651),
+        FeatureStat(min = -16.984686, max = 10.177072, mean = 0.23049593, stdDev = 1.3521063),
+        FeatureStat(min = -17.896406, max = 18.895895, mean = 0.062568516, stdDev = 1.2678291),
+        FeatureStat(min = -14.327798, max = 12.468441, mean = -0.29976925, stdDev = 1.3421488),
+        FeatureStat(min = -12.352668, max = 16.508831, mean = -0.29279914, stdDev = 1.2540259),
+        FeatureStat(min = -17.197517, max = 17.371817, mean = -0.26833495, stdDev = 1.1626886),
+        FeatureStat(min = -14.360977, max = 10.705073, mean = -0.092168994, stdDev = 0.9160031),
+        FeatureStat(min = -12.839888, max = 12.513559, mean = 0.3150535, stdDev = 1.1467792),
+        FeatureStat(min = -13.196823, max = 15.856758, mean = 0.30601543, stdDev = 1.219728),
+        FeatureStat(min = -28.232311, max = 20.087208, mean = 0.3539639, stdDev = 1.4047512),
+        FeatureStat(min = -17.563812, max = 14.991949, mean = 0.68693733, stdDev = 1.2233407),
+        FeatureStat(min = -13.685874, max = 15.630877, mean = 0.3954383, stdDev = 1.3629053),
+        FeatureStat(min = -14.56554, max = 11.455453, mean = -0.0042005247, stdDev = 1.045771),
+        FeatureStat(min = -14.320575, max = 9.104698, mean = -0.0070255934, stdDev = 0.9795377),
+        FeatureStat(min = -14.97914, max = 11.111179, mean = -0.26415348, stdDev = 0.87640005),
+        FeatureStat(min = 0.0, max = 152.7093, mean = 40.110634, stdDev = 32.587105),
+        FeatureStat(min = -24.834051, max = 40.558475, mean = 0.4830235, stdDev = 4.189342),
+        FeatureStat(min = -23.051191, max = 34.14424, mean = 0.062667556, stdDev = 3.0112855),
+        FeatureStat(min = -19.13235, max = 22.981733, mean = -0.04488449, stdDev = 2.2932062),
+        FeatureStat(min = -17.855436, max = 21.57436, mean = -0.20296003, stdDev = 1.7117472),
+        FeatureStat(min = -14.939464, max = 11.506004, mean = -0.047395173, stdDev = 1.3877587),
+        FeatureStat(min = -11.425896, max = 26.892574, mean = 0.009215536, stdDev = 1.1218978),
+        FeatureStat(min = -8.792543, max = 12.819143, mean = 0.09244049, stdDev = 1.1177369),
+        FeatureStat(min = -8.326212, max = 9.334305, mean = -0.047275282, stdDev = 0.97443545),
+        FeatureStat(min = -8.512089, max = 12.005617, mean = 0.012801439, stdDev = 0.8185477),
+        FeatureStat(min = -10.445701, max = 9.523336, mean = -0.00681578, stdDev = 0.7690897),
+        FeatureStat(min = -9.031621, max = 11.843417, mean = -0.047825925, stdDev = 0.7113579),
+        FeatureStat(min = -7.7427735, max = 15.537683, mean = -0.0010102021, stdDev = 0.7843248),
+        FeatureStat(min = -6.724851, max = 13.835403, mean = -0.0401382, stdDev = 0.7530275),
+        FeatureStat(min = -6.2259083, max = 10.375613, mean = -0.01280965, stdDev = 0.69577193),
+        FeatureStat(min = -6.167659, max = 7.5131226, mean = 0.06032913, stdDev = 0.63808924),
+        FeatureStat(min = -7.9228516, max = 4.7583694, mean = 0.0100564305, stdDev = 0.6430526),
+        FeatureStat(min = -6.847028, max = 3.792239, mean = -0.007556718, stdDev = 0.5798101),
+        FeatureStat(min = -12.243731, max = 5.9094467, mean = 0.021891112, stdDev = 0.5897382),
+        FeatureStat(min = -3.9107902, max = 9.713458, mean = -0.0012207023, stdDev = 0.53457934),
+        FeatureStat(min = -5.8664117, max = 4.96134, mean = 7.625197E-4, stdDev = 0.49750352),
+        FeatureStat(min = -5.83581, max = 6.7571173, mean = -0.0056841257, stdDev = 0.55976784),
+        FeatureStat(min = -4.942356, max = 4.1947913, mean = -0.02173441, stdDev = 0.5061931),
+        FeatureStat(min = -4.8185844, max = 3.2257555, mean = -0.0050932053, stdDev = 0.4960415))
+      )

@@ -27,9 +27,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 object Negatum extends Obj.Type {
   final val typeID = 0x40000
 
-  def apply[S <: Sys[S]](template: AudioCue.Obj[S])(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
+  /** Initializes this type and other related type such as `SVMModel`. */
+  override def init(): Unit = {
+    super.init()
+    SVMModel.init()
+  }
 
-  def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Negatum[S] = Impl.read(in, access)
+  def apply[S <: Sys[S]](template: AudioCue.Obj[S]   )(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
+  def read [S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Negatum[S] = Impl.read(in, access)
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Negatum[S]] = Impl.serializer[S]
 

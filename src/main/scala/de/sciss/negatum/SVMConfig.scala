@@ -109,7 +109,7 @@ object SVMConfig {
 
   private[this] final val COOKIE = 0x73766d70 // "svmp"
 
-  implicit object Serializer extends ImmutableSerializer[SVMConfig] {
+  implicit object serializer extends ImmutableSerializer[SVMConfig] {
     def write(config: SVMConfig, out: DataOutput): Unit = {
       import config._
       out.writeInt(0x73766d70)
