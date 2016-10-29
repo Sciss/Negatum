@@ -15,9 +15,10 @@ package de.sciss.negatum
 package gui
 package impl
 
+import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
-import javax.swing.{JComponent, JTable}
+import javax.swing.{JComponent, JTable, TransferHandler}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 
 import de.sciss.audiowidgets.Transport
@@ -31,7 +32,7 @@ import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.lucre.{expr, stm}
 import de.sciss.mellite.Mellite
-import de.sciss.mellite.gui.{CodeFrame, GUI}
+import de.sciss.mellite.gui.{CodeFrame, DragAndDrop, GUI, ListObjView}
 import de.sciss.negatum.impl.{Evaluation, SOMEval}
 import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.io.AudioFile
@@ -57,11 +58,15 @@ object FeatureAnalysisViewImpl {
                                         val workspace: Workspace[S])
     extends FeatureAnalysisView[S] with ComponentHolder[Component] {
 
+    @volatile
+    private[this] var _disposedGUI = false
+
     def dispose()(implicit tx: S#Tx): Unit = {
       import TxnLike.peer
       synthRef.swap(None).foreach(_.dispose())
       disposables.foreach(_.dispose())
       deferTx {
+        _disposedGUI = true
         sonMgr.dispose()
       }
     }
@@ -227,6 +232,26 @@ object FeatureAnalysisViewImpl {
     val sonConfig   = sonogram.OverviewManager.Config()
     private[this] var sonMgr: sonogram.OverviewManager = _
 
+    private object TH extends TransferHandler {
+      // ---- export ----
+
+      override def getSourceActions(c: JComponent): Int =
+        TransferHandler.COPY | /* TransferHandler.MOVE | */ TransferHandler.LINK // dragging only works when MOVE is included. Why?
+
+      override def createTransferable(c: JComponent): Transferable = {
+        val sel = selectedRows
+        if (sel.size != 1) return null
+        cursor.step { implicit tx =>
+          negatumH().population.get(sel.head.folderIdx).map { obj =>
+            val view = ListObjView(obj)
+            DragAndDrop.Transferable(ListObjView.Flavor) {
+              new ListObjView.Drag[S](workspace, cursor, view)
+            }
+          } .orNull
+        }
+      }
+    }
+
     private[this] object fitnessRenderer extends TableCellRenderer {
       private[this] val comp = new ProgressBar
       comp.max = 90
@@ -361,9 +386,23 @@ object FeatureAnalysisViewImpl {
 //      }
 //    }
 
+    private[this] var ggTable: Table = _
+
+    private def selectedRow: Option[Row] = ggTable.selection.rows.headOption
+      .map { viewRowIdx =>
+        val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
+        mTable.data(rowIdx)
+      }
+
+    private def selectedRows: Seq[Row] = ggTable.selection.rows
+      .map { viewRowIdx =>
+        val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
+        mTable.data(rowIdx)
+      } (breakOut)
+
     private def guiInit(data0: Vector[Row]): Unit = {
       mTable.data   = data0
-      val ggTable   = new Table {
+      ggTable   = new Table {
         override lazy val peer = new JTable // bloody scala.swing kills the cell renderer
 
         model = mTable
@@ -373,19 +412,9 @@ object FeatureAnalysisViewImpl {
 //          case TableRowsSelected(_, range, false) =>
 //        }
         rowHeight = 64
+        peer.setDragEnabled(true)
+        peer.setTransferHandler(TH)
       }
-
-      def selectedRow: Option[Row] = ggTable.selection.rows.headOption
-        .map { viewRowIdx =>
-          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
-          mTable.data(rowIdx)
-        }
-
-      def selectedRows: Seq[Row] = ggTable.selection.rows
-        .map { viewRowIdx =>
-          val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
-          mTable.data(rowIdx)
-        } (breakOut)
 
       //      ggTable.peer.setDefaultRenderer(classOf[sonogram.Overview], overviewRenderer)
       val cm = ggTable.peer.getColumnModel
@@ -495,47 +524,55 @@ object FeatureAnalysisViewImpl {
           }
           val fut1: Future[AudioCue] = fut.flatMap { cue =>
             // println(s"here we are [1]: $audioF - ${audioF.isFile}")
-            val sonJob    = sonogram.OverviewManager.Job(file = audioF)
-            val overview  = sonMgr.acquire(sonJob)
-            overview.onFailure {
-              case ex => println("Sonogram failed:")
-                ex.printStackTrace()
-            }
-            overview.map { _ =>
-              defer {
-                val mIdx = mTable.data.indexOf(r)
-                if (mIdx >= 0) {
-                  val d = mTable.data(mIdx)
-                  d.son = Some(overview)
-                  mTable.update(mIdx)
-                } else {
-                  println("Oops, lost row")
-                }
+            if (_disposedGUI) Future.successful(cue) else {
+              val sonJob    = sonogram.OverviewManager.Job(file = audioF)
+              val overview  = sonMgr.acquire(sonJob)
+              overview.onFailure {
+                case ex => println("Sonogram failed:")
+                  ex.printStackTrace()
               }
-              cue
+              overview.map { _ =>
+                defer {
+                  if (!_disposedGUI) {
+                    val mIdx = mTable.data.indexOf(r)
+                    if (mIdx >= 0) {
+                      val d = mTable.data(mIdx)
+                      d.son = Some(overview)
+                      mTable.update(mIdx)
+                    } else {
+                      println("Oops, lost row")
+                    }
+                  }
+                }
+                cue
+              }
             }
           }
 
           val fut2: Future[AudioCue] = fut1.flatMap { cue =>
-            val futFeat = Future(blocking(SOMEval(audioF)))
-            futFeat.onFailure {
-              case ex => println("Features failed:")
-                ex.printStackTrace()
-            }
-            futFeat.map { vecOpt =>
-              defer {
-                if (vecOpt.isEmpty) {
-                  println("Error: could not calculate features!")
-                } else {
-                  val mIdx = mTable.data.indexOf(r)
-                  if (mIdx >= 0) {
-                    val d = mTable.data(mIdx)
-                    d.features = vecOpt
-                    mTable.update(mIdx)
+            if (_disposedGUI) Future.successful(cue) else {
+              val futFeat = Future(blocking(SOMEval(audioF)))
+              futFeat.onFailure {
+                case ex => println("Features failed:")
+                  ex.printStackTrace()
+              }
+              futFeat.map { vecOpt =>
+                defer {
+                  if (!_disposedGUI) {
+                    if (vecOpt.isEmpty) {
+                      println("Error: could not calculate features!")
+                    } else {
+                      val mIdx = mTable.data.indexOf(r)
+                      if (mIdx >= 0) {
+                        val d = mTable.data(mIdx)
+                        d.features = vecOpt
+                        mTable.update(mIdx)
+                      }
+                    }
                   }
                 }
+                cue
               }
-              cue
             }
           }
 
@@ -544,7 +581,7 @@ object FeatureAnalysisViewImpl {
         }
 
         def loop(rem: List[Seq[Row]]): Unit = rem match {
-          case head :: tail =>
+          case head :: tail if !_disposedGUI =>
             val clumpFut = head.map(mkRowFut)
             Future.sequence(clumpFut).onComplete {
               _ => defer(loop(tail))

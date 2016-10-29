@@ -191,10 +191,13 @@ object Negatum extends Obj.Type {
   }
 
   /** Attribute for evaluated fitness (children of `population`). Type `Double` */
-  final val attrFitness = "fitness"
+  final val attrFitness   = "fitness"
 
   /** Attribute for inclusion in SOM. Type `Boolean` */
-  final val attrSelected = "selected"
+  final val attrSelected  = "selected"
+
+  /** Attribute for SOM evaluation. Type `Vec[Double]` (`DoubleVector`) */
+  final val attrFeatures  = "features"
 
   /** Attribute for config defaults. Type `Long` */
   final val attrSeed              = "seed"

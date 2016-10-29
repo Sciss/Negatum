@@ -19,7 +19,11 @@ lazy val ugensVersion           = "1.16.1"
 lazy val dspVersion             = "1.2.2"
 lazy val strugatzkiVersion      = "2.13.0"
 lazy val fileCacheVersion       = "0.3.3"
-lazy val libSVMVersion          = "3.17"
+lazy val libSVMVersion          = "3.21"
+
+// ---- test dependencies ----
+
+lazy val traceVersion           = "0.1.0"
 
 libraryDependencies ++= Seq(
   "de.sciss"        %% "mellite"                 % melliteVersion,
@@ -28,7 +32,9 @@ libraryDependencies ++= Seq(
   "de.sciss"        %% "scissdsp"                % dspVersion,
   "de.sciss"        %% "strugatzki"              % strugatzkiVersion,
   "de.sciss"        %% "filecache-txn"           % fileCacheVersion,
-  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion
+//  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion,
+  "com.datumbox"    %  "libsvm"                  % libSVMVersion,
+  "at.iem"          %% "scalacollider-trace"     % traceVersion % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
