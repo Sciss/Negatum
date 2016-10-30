@@ -14,7 +14,8 @@
 package de.sciss.negatum
 package gui
 
-import javax.swing.SpinnerNumberModel
+import javax.swing.TransferHandler.TransferSupport
+import javax.swing.{SpinnerNumberModel, TransferHandler}
 
 import de.sciss.desktop
 import de.sciss.icons.raphael
@@ -28,16 +29,17 @@ import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
 import de.sciss.mellite.gui.{AttrCellView, GUI, ListObjView, ObjView, ViewHasWorkspace}
 import de.sciss.negatum.SVMConfig.{Kernel, Type}
 import de.sciss.processor.Processor
-import de.sciss.swingplus.{ComboBox, GroupPanel, Separator, Spinner}
+import de.sciss.swingplus.{ComboBox, GroupPanel, ListView, Separator, Spinner}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Workspace
 
+import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.Ref
 import scala.swing.event.SelectionChanged
-import scala.swing.{Action, BoxPanel, CheckBox, Component, FlowPanel, Label, Orientation, ProgressBar, TextField}
-import scala.util.{Success, Failure}
+import scala.swing.{Action, BorderPanel, BoxPanel, CheckBox, Component, FlowPanel, Label, Orientation, ProgressBar, ScrollPane, TextField}
+import scala.util.{Failure, Success}
 
 object SVMModelObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = SVMModel[~]
@@ -123,8 +125,31 @@ object SVMModelObjView extends ListObjView.Factory {
 
     def close()(implicit tx: S#Tx): Unit = _frame.dispose()
 
+    private final class ListEntry(val name: String, val negatumH: stm.Source[S#Tx, Negatum[S]]) {
+      override def toString = name
+    }
+
     private def guiInit(): Unit = {
       val builder           = SVMConfig()
+
+      val mList             = ListView.Model.empty[ListEntry]
+      val ggList            = new ListView(mList)
+      ggList.peer.setTransferHandler(new TransferHandler {
+        override def canImport(support: TransferSupport): Boolean =
+          support.isDataFlavorSupported(ListObjView.Flavor)
+
+        override def importData(support: TransferSupport): Boolean = {
+          val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
+          drag.workspace == workspace && drag.view.isInstanceOf[NegatumObjView[_]] && {
+            val view = drag.view.asInstanceOf[NegatumObjView[S]]
+            mList += new ListEntry(view.name, view.objH)
+            true
+          }
+        }
+      })
+      val scrollList        = new ScrollPane(ggList)
+      scrollList.minSize    = scrollList.preferredSize
+      scrollList.maxSize    = scrollList.preferredSize
 
       val mTypeParamC       = new SpinnerNumberModel(1.0, 0.0, 1000, 1.0)
       val ggTypeParamC      = new Spinner(mTypeParamC)
@@ -185,10 +210,10 @@ object SVMModelObjView extends ListObjView.Factory {
         ggKernelParamCoef0  .enabled = hasCoef0
       }
 
-      updateKernelParam(builder.tpe.id)
+      updateKernelParam(builder.kernel.id)
 
       val ggKernel      = new ComboBox(Seq("Linear", "Polynomial", "Radial Basis Function", "Sigmoid")) {
-        selection.index = builder.tpe.id
+        selection.index = builder.kernel.id
         listenTo(selection)
         reactions += {
           case SelectionChanged(_) => updateKernelParam(selection.index)
@@ -206,14 +231,17 @@ object SVMModelObjView extends ListObjView.Factory {
       ggEpsilon.tooltip = "Epsilon (accuracy or radius)"
 
       val ggShrinking   = new CheckBox
+      ggShrinking.selected = builder.shrinking
       val lbShrinking   = new Label("Shrinking:")
       ggShrinking.tooltip = "Whether to train a SVC or SVR model for probability estimates"
 
       val ggProbability = new CheckBox
+      ggProbability.selected = builder.probability
       val lbProbability = new Label("Probability:")
       ggProbability.tooltip = "Whether to use the shrinking heuristics"
 
       val ggNormalize   = new CheckBox
+      ggNormalize.selected = builder.normalize
       val lbNormalize   = new Label("Normalize:")
       ggNormalize.tooltip = "Whether to normalize the components of the feature vector"
 
@@ -290,10 +318,10 @@ object SVMModelObjView extends ListObjView.Factory {
       lazy val actionCreate: Action = Action("Create") {
         updateConfig()
         val numCoeff = mNumFeatures.getNumber.intValue >> 1
-        val procOpt = impl.cursor.step { implicit tx =>
+        val procOpt = if (mList.isEmpty) None else impl.cursor.step { implicit tx =>
           implicit val itx = tx.peer
           if (processor().nonEmpty) None else {
-            val n: List[Negatum[S]] = ???
+            val n: List[Negatum[S]] = mList.map(_.negatumH())(breakOut)
             val p = SVMModel.train(n, builder, numCoeff = numCoeff)
             val _procOpt = Some(p)
             processor() = _procOpt
@@ -333,10 +361,14 @@ object SVMModelObjView extends ListObjView.Factory {
       val ggCreate        = GUI.toolButton(actionCreate, raphael.Shapes.Check)
       val pBottom         = new FlowPanel(ggCancel, ggProgress, ggCreate)
 
-      component = new BoxPanel(Orientation.Vertical) {
-        contents += new FlowPanel(lbName, ggName)
-        contents += pGroup
-        contents += pBottom
+      component = new BorderPanel {
+        add(new FlowPanel(lbName, ggName), BorderPanel.Position.North)
+        add(pGroup, BorderPanel.Position.Center)
+        add(new BoxPanel(Orientation.Vertical) {
+          contents += new Label("Drop Negatum instances:")
+          contents += scrollList
+        }, BorderPanel.Position.East)
+        add(pBottom, BorderPanel.Position.South)
       }
     }
 
@@ -347,5 +379,6 @@ object SVMModelObjView extends ListObjView.Factory {
   }
 }
 trait SVMModelObjView[S <: stm.Sys[S]] extends ObjView[S] {
+  override def objH: stm.Source[S#Tx , SVMModel[S]]
   override def obj(implicit tx: S#Tx): SVMModel[S]
 }

@@ -107,5 +107,6 @@ object NegatumObjView extends ListObjView.Factory {
   }
 }
 trait NegatumObjView[S <: stm.Sys[S]] extends ObjView[S] {
+  override def objH: stm.Source[S#Tx , Negatum[S]]
   override def obj(implicit tx: S#Tx): Negatum[S]
 }
