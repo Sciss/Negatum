@@ -77,27 +77,47 @@ object SVMConfig {
     object CSVC {
       final val id = 0
     }
-    case class CSVC(c: Float, weights: ISeq[Weight] = Nil) extends Type { def id: Int = CSVC.id }
+    case class CSVC(c: Float, weights: ISeq[Weight] = Nil) extends Type {
+      def id: Int = CSVC.id
+
+      override def toString = s"$productPrefix(c = $c, weights = $weights)"
+    }
 
     object NuSVC {
       final val id = 1
     }
-    case class NuSVC(nu: Float) extends Type { def id: Int = NuSVC.id }
+    case class NuSVC(nu: Float) extends Type {
+      def id: Int = NuSVC.id
+
+      override def toString = s"$productPrefix(nu = $nu)"
+    }
 
     object OneClass {
       final val id = 2
     }
-    case class OneClass(nu: Float) extends Type { def id: Int = OneClass.id }
+    case class OneClass(nu: Float) extends Type {
+      def id: Int = OneClass.id
+
+      override def toString = s"$productPrefix(nu = $nu)"
+    }
 
     object EpsilonSVR {
       final val id = 3
     }
-    case class EpsilonSVR(c: Float, p: Float) extends Type { def id: Int = EpsilonSVR.id }
+    case class EpsilonSVR(c: Float, p: Float) extends Type {
+      def id: Int = EpsilonSVR.id
+
+      override def toString = s"$productPrefix(c = $c, p = $p)"
+    }
 
     object NuSVR {
       final val id = 4
     }
-    case class NuSVR(c: Float, nu: Float) extends Type { def id: Int = NuSVR.id }
+    case class NuSVR(c: Float, nu: Float) extends Type {
+      def id: Int = NuSVR.id
+
+      override def toString = s"$productPrefix(c = $c, nu = $nu)"
+    }
   }
   sealed trait Type { def id: Int }
 
@@ -107,18 +127,30 @@ object SVMConfig {
     object Poly {
       final val id = 1
     }
-    case class Poly(degree: Int, gamma: Float, coef0: Float) extends Kernel { def id: Int = Poly.id }
+    case class Poly(degree: Int, gamma: Float, coef0: Float) extends Kernel {
+      def id: Int = Poly.id
+
+      override def toString = s"$productPrefix(degree = $degree, gamma = $gamma, coef0 = $coef0)"
+    }
 
     /** Aka RBF */
     object Radial {
       final val id = 2
     }
-    case class Radial(gamma: Float) extends Kernel { def id: Int = Radial.id }
+    case class Radial(gamma: Float) extends Kernel {
+      def id: Int = Radial.id
+
+      override def toString = s"$productPrefix(gamma = $gamma)"
+    }
 
     object Sigmoid {
       final val id = 3
     }
-    case class Sigmoid(gamma: Float, coef0: Float) extends Kernel { def id: Int = Sigmoid.id }
+    case class Sigmoid(gamma: Float, coef0: Float) extends Kernel {
+      def id: Int = Sigmoid.id
+
+      override def toString = s"$productPrefix(gamma = $gamma, coef0 = $coef0)"
+    }
 
     case object Precomputed extends Kernel { final val id = 4 }
   }
@@ -244,6 +276,16 @@ object SVMConfig {
      probability: Boolean,
      normalize  : Boolean
    ) extends SVMConfig {
+
+    override def toString = s"""SVMConfig(
+      |    tpe         = $tpe,
+      |    kernel      = $kernel,
+      |    cacheSize   = $cacheSize,
+      |    epsilon     = $epsilon,
+      |    shrinking   = $shrinking,
+      |    probability = $probability,
+      |    normalize   = $normalize
+      |  )""".stripMargin
 
     def toLibSVM: svm_parameter = {
       val res         = new svm_parameter

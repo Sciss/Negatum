@@ -62,7 +62,7 @@ object SVMModelImpl {
 
   private final class LabelledFeatures(val vec: Array[Double], val label: Boolean)
 
-  private final class TrainImpl[S <: Sys[S]](config: SVMConfig, numCoeff: Int,
+  private final class TrainImpl[S <: Sys[S]](config0: SVMConfig, numCoeff: Int,
                                              negatumH: List[stm.Source[S#Tx, Negatum[S]]])
                                             (implicit cursor: stm.Cursor[S])
     extends ProcessorImpl[Trained[S], Processor[Trained[S]]]
@@ -170,19 +170,19 @@ object SVMModelImpl {
 
       // ---- model ----
 
-      val config1   = config.tpe match {
+      val config   = config0.tpe match {
         case tpe @ Type.CSVC(_, Nil) =>
           val w0      = Weight(label = 0, value = statSel.toFloat / statCount)
           val w1      = Weight(label = 1, value = (statCount - statSel).toFloat / statCount)
           val weights = List(w0, w1)
           val tpe1    = tpe.copy(weights = weights)
           val res     = SVMConfig()
-          res.read(config)
+          res.read(config0)
           res.tpe     = tpe1
           res.build
-        case _ => config
+        case _ => config0
       }
-      val svmParam  = config1.toLibSVM
+      val svmParam  = config.toLibSVM
       val svmProb   = new svm_problem
       svmProb.l     = labelled.length
       svmProb.y     = labelled.map { l => if (l.label) 1.0 else 0.0 }

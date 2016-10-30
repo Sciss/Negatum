@@ -15,18 +15,21 @@ package de.sciss.negatum
 package gui
 package impl
 
+import javax.swing.TransferHandler
+import javax.swing.TransferHandler.TransferSupport
+
 import de.sciss.desktop.impl.UndoManagerImpl
 import de.sciss.icons.raphael
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.mellite.gui.GUI
+import de.sciss.mellite.gui.{GUI, ListObjView}
 import de.sciss.negatum.SVMModel.Rendering
 import de.sciss.synth.proc.Workspace
 
 import scala.concurrent.stm.Ref
-import scala.swing.{BorderPanel, Component, FlowPanel, Label, ProgressBar}
+import scala.swing.{Action, Alignment, BorderPanel, Component, FlowPanel, Label, ProgressBar, Swing}
 
 object SVMModelViewImpl {
   def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -55,8 +58,6 @@ object SVMModelViewImpl {
       val ggProgress: ProgressBar = new ProgressBar
       ggProgress.max = 160
 
-      val lbSelected = new Label
-
       val actionCancel: swing.Action = new swing.Action(null) {
         def apply(): Unit = cursor.step { implicit tx =>
           renderRef.swap(None)(tx.peer).foreach(_.cancel())
@@ -66,7 +67,28 @@ object SVMModelViewImpl {
 
       val ggCancel  = GUI.toolButton(actionCancel, raphael.Shapes.Cross, tooltip = "Abort Rendering")
 
-      def runPrediction(): Unit = {
+      val ggDrop = new Label("Drop Negatum here", raphael.Icon()(raphael.Shapes.Biohazard), Alignment.Leading)
+
+      ggDrop.peer.setTransferHandler(new TransferHandler {
+        override def canImport(support: TransferSupport): Boolean = {
+          val res = support.isDataFlavorSupported(ListObjView.Flavor) && renderRef.single.get.isEmpty
+          if (res) support.setDropAction(TransferHandler.LINK)
+          res
+        }
+
+        override def importData(support: TransferSupport): Boolean = {
+          val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
+          renderRef.single.get.isEmpty && drag.workspace == workspace && drag.view.isInstanceOf[NegatumObjView[_]] && {
+            val view = drag.view.asInstanceOf[NegatumObjView[S]]
+            ggDrop.text = view.name
+            runPrediction(view.objH)
+            // mList += new ListEntry(view.name, view.objH)
+            true
+          }
+        }
+      })
+
+      def runPrediction(nH: stm.Source[S#Tx, Negatum[S]]): Unit = {
         val ok = cursor.step { implicit tx =>
           renderRef.get(tx.peer).isEmpty && {
             val obj = modelH()
@@ -74,12 +96,12 @@ object SVMModelViewImpl {
             def finished(num: Int)(implicit tx: S#Tx): Unit = {
               renderRef.set(None)(tx.peer)
               deferTx {
-                lbSelected.text       = if (num < 0) "" else s"Selected $num objects."
+                ggDrop.text           = if (num < 0) "" else s"Selected $num objects."
                 actionCancel.enabled  = false
               }
             }
 
-            val n: Negatum[S] = ???
+            val n: Negatum[S] = nH()
             val rendering = obj.predict(n)
             /* val obs = */ rendering.reactNow { implicit tx => {
               case SVMModel.Rendering.Success(num) => finished(num)
@@ -101,9 +123,26 @@ object SVMModelViewImpl {
         }
       }
 
-      val panelDrop: Component = ???
+      val actionPrintConfig = Action("Print Config") {
+        val config = cursor.step { implicit tx =>
+          modelH().config
+        }
+        println(config)
+      }
+      val ggPrintConfig = GUI.toolButton(actionPrintConfig, raphael.Shapes.Printer)
 
-      val panelControl = new FlowPanel(ggProgress, ggCancel)
+      val actionPrintStats = Action("Print Stats") {
+        val stats = cursor.step { implicit tx =>
+          modelH().stats
+        }
+        println(stats)
+      }
+      val ggPrintStats = GUI.toolButton(actionPrintStats, raphael.Shapes.Printer)
+
+      val panelDrop = new FlowPanel(ggDrop)
+      panelDrop.border = Swing.EmptyBorder(16)
+
+      val panelControl = new FlowPanel(ggProgress, ggCancel, ggPrintConfig, ggPrintStats)
       component = new BorderPanel {
         add(panelDrop   , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )

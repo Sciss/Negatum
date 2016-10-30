@@ -135,8 +135,11 @@ object SVMModelObjView extends ListObjView.Factory {
       val mList             = ListView.Model.empty[ListEntry]
       val ggList            = new ListView(mList)
       ggList.peer.setTransferHandler(new TransferHandler {
-        override def canImport(support: TransferSupport): Boolean =
-          support.isDataFlavorSupported(ListObjView.Flavor)
+        override def canImport(support: TransferSupport): Boolean = {
+          val res = support.isDataFlavorSupported(ListObjView.Flavor)
+          if (res) support.setDropAction(TransferHandler.LINK)
+          res
+        }
 
         override def importData(support: TransferSupport): Boolean = {
           val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
