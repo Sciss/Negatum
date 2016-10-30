@@ -7,6 +7,7 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{Folder, Workspace}
+import SVMModel.Rendering
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -47,31 +48,35 @@ object SelectionTest extends App {
       negOut.name = "Out"
       workspace.root.addLast(negOut)
 
-      model.predict(negOut)
+      val rendering = model.predict(negOut)
+      rendering.reactNow { implicit tx => {
+        case Rendering.Success(selected) =>
+          tx.afterCommit(sys.exit())
+
+        case Rendering.Failure(ex) =>
+          tx.afterCommit {
+            println("Prediction failed!")
+            ex.printStackTrace()
+            cursor.step { implicit tx =>
+              workspace.dispose()
+            }
+            sys.exit(1)
+          }
+
+        case Rendering.Progress(amt) =>
+          println(f"progress = $amt%1.1f%%")
+      }}
     }
 
     import ExecutionContext.Implicits.global
-    println("_" * 33)
-    prediction.monitor(printResult = true)
+//    println("_" * 33)
+//    prediction.monitor(printResult = true)
 
     // idiotic way to keep the program from exiting immediately
     val sync = new AnyRef
     new Thread {
       override def run(): Unit = sync.synchronized(sync.wait())
       start()
-    }
-
-    prediction.onComplete {
-      case Success(modelH) =>
-        sys.exit()
-
-      case Failure(ex) =>
-        println("Prediction failed!")
-        ex.printStackTrace()
-        cursor.step { implicit tx =>
-          workspace.dispose()
-        }
-        sys.exit(1)
     }
   }
 }

@@ -17,11 +17,14 @@ package impl
 import java.util.concurrent.TimeUnit
 
 import de.sciss.lucre.event.impl.ConstObjImpl
+import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.expr.{BooleanObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
 import de.sciss.negatum.SVMConfig.{Type, Weight}
+import de.sciss.negatum.SVMModel.Rendering
+import de.sciss.negatum.SVMModel.Rendering.State
 import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -32,8 +35,10 @@ import libsvm.{svm, svm_model, svm_node, svm_problem}
 import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+import scala.concurrent.duration.Duration
+import scala.concurrent.stm.Ref
+import scala.util.{Failure, Success, Try}
 
 object SVMModelImpl {
   def train[S <: Sys[S]](n: ISeq[Negatum[S]], config: SVMConfig, numCoeff: Int)
@@ -380,9 +385,68 @@ object SVMModelImpl {
   private final class PredictImpl[S <: Sys[S]](m: SVMModel[S],
                                                negatumH: stm.Source[S#Tx, Negatum[S]], numCoeff: Int)
                                               (implicit cursor: stm.Cursor[S])
-    extends ProcessorImpl[Int, Processor[Int]] with Processor[Int] {
+    extends ProcessorImpl[Int, Processor[Int]]
+      with Processor[Int]
+      with SVMModel.Rendering[S]
+      with ObservableImpl[S, SVMModel.Rendering.State] {
 
     override def toString = s"SVMModel.predict@${hashCode.toHexString}"
+
+    private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
+    private[this] val _disposed     = Ref(false)
+
+    def reactNow(fun: (S#Tx) => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+      val res = react(fun)
+      fun(tx)(state)
+      res
+    }
+
+    private def completeWith(t: Try[Int]): Unit = {
+      if (!_disposed.single.get) {
+        cursor.step { implicit tx =>
+          import TxnLike.peer
+          if (!_disposed()) t match {
+            case Success(selected) =>
+              state = Rendering.Success(selected)
+            case Failure(ex) =>
+              state = Rendering.Failure(ex)
+          }
+        }
+      }
+    }
+
+    private def progressTx(amt: Double): Unit = if (!_disposed.single.get)
+      cursor.step { implicit tx =>
+        state = Rendering.Progress(amt)
+      }
+
+    def startTx()(implicit tx: S#Tx /* , workspace: WorkspaceHandle[S] */): Unit = {
+      tx.afterCommit {
+        addListener {
+          case Processor.Progress(_, d)   => progressTx(d)
+          case Processor.Result(_, value) => completeWith(value)
+        }
+        // NB: bad design in `ProcessorImpl`; because we're in the sub-class,
+        // we have implicit execution context in scope, but that's the one
+        // we want to _set_ here.
+        start()(ExecutionContext.Implicits.global)
+      }
+    }
+
+    def state(implicit tx: S#Tx): State = {
+      import TxnLike.peer
+      _state()
+    }
+
+    protected def state_=(value: Rendering.State)(implicit tx: S#Tx): Unit = {
+      import TxnLike.peer
+      val old = _state.swap(value)
+      if (old != value) fire(value)
+    }
+
+    def cancel ()(implicit tx: S#Tx): Unit = tx.afterCommit(abort())
+//    def stop   ()(implicit tx: S#Tx): Unit = tx.afterCommit { _shouldStop = true }
+    def dispose()(implicit tx: S#Tx): Unit = cancel()
 
     protected def body(): Int = blocking {
       val procFeatFut = SoundProcesses.atomic[S, Processor[Unit]] { implicit tx =>
@@ -468,12 +532,9 @@ object SVMModelImpl {
       svm.svm_predict(peer, nodes)
     }
 
-    def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int] = {
+    def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S] = {
       val res = new PredictImpl(this, tx.newHandle(n), numCoeff = numCoeff)
-      tx.afterCommit {
-        import ExecutionContext.Implicits.global
-        res.start()
-      }
+      res.startTx()
       res
     }
 

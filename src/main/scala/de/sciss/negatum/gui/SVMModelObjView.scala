@@ -94,7 +94,7 @@ object SVMModelObjView extends ListObjView.Factory {
 
     def factory = SVMModelObjView
 
-    def isViewable = false // true
+    def isViewable = true
 
     def openView(parent: Option[Window[S]])
                 (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
@@ -147,9 +147,10 @@ object SVMModelObjView extends ListObjView.Factory {
           }
         }
       })
-      val scrollList        = new ScrollPane(ggList)
-      scrollList.minSize    = scrollList.preferredSize
-      scrollList.maxSize    = scrollList.preferredSize
+
+      val scrollList          = new ScrollPane(ggList)
+      scrollList.minimumSize  = scrollList.preferredSize
+      scrollList.maximumSize  = scrollList.preferredSize
 
       val mTypeParamC       = new SpinnerNumberModel(1.0, 0.0, 1000, 1.0)
       val ggTypeParamC      = new Spinner(mTypeParamC)
