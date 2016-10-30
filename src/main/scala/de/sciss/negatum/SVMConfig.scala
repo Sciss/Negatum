@@ -43,16 +43,16 @@ object SVMConfig {
 
   final class Builder extends Like {
     var tpe         : Type    = Type.CSVC(c = 1.0f, weights = Nil)
-    var kernel      : Kernel  = Kernel.RBF(gamma = 0.0f)
+    var kernel      : Kernel  = Kernel.Radial(gamma = 0.0f)
     var cacheSize   : Float   = 32f
-    var epsilon     : Float   = 1e-3f  
+    var epsilon     : Float   = 1e-3f
     var shrinking   : Boolean = true
     var probability : Boolean = false
-  
+
     def build: SVMConfig = Impl(tpe = tpe, kernel = kernel, cacheSize = cacheSize,
       epsilon = epsilon, shrinking = shrinking, probability = probability)
   }
-  
+
   implicit def build(b: Builder): SVMConfig = b.build
 
   final case class Weight(label: Int, value: Float)
@@ -61,7 +61,7 @@ object SVMConfig {
     object CSVC {
       final val id = 0
     }
-    case class CSVC(c: Float, weights: ISeq[Weight]) extends Type { def id: Int = CSVC.id }
+    case class CSVC(c: Float, weights: ISeq[Weight] = Nil) extends Type { def id: Int = CSVC.id }
 
     object NuSVC {
       final val id = 1
@@ -93,10 +93,11 @@ object SVMConfig {
     }
     case class Poly(degree: Int, gamma: Float, coef0: Float) extends Kernel { def id: Int = Poly.id }
 
-    object RBF {
+    /** Aka RBF */
+    object Radial {
       final val id = 2
     }
-    case class RBF(gamma: Float) extends Kernel { def id: Int = RBF.id }
+    case class Radial(gamma: Float) extends Kernel { def id: Int = Radial.id }
 
     object Sigmoid {
       final val id = 3
@@ -141,7 +142,7 @@ object SVMConfig {
           out.writeShort(deg)
           out.writeFloat(gamma)
           out.writeFloat(coef0)
-        case Kernel.RBF(gamma) =>
+        case Kernel.Radial(gamma) =>
           out.writeFloat(gamma)
         case Kernel.Sigmoid(gamma, coef0) =>
           out.writeFloat(gamma)
@@ -193,9 +194,9 @@ object SVMConfig {
           val gamma = in.readFloat()
           val coef0 = in.readFloat()
           Kernel.Poly(deg, gamma, coef0)
-        case Kernel.RBF.id =>
+        case Kernel.Radial.id =>
           val gamma = in.readFloat()
-          Kernel.RBF(gamma)
+          Kernel.Radial(gamma)
         case Kernel.Sigmoid.id =>
           val gamma = in.readFloat()
           val coef0 = in.readFloat()
@@ -235,7 +236,7 @@ object SVMConfig {
           res.degree  = degree
           res.gamma   = gamma
           res.coef0   = coef0
-        case Kernel.RBF(gamma) =>
+        case Kernel.Radial(gamma) =>
           res.gamma   = gamma
         case Kernel.Sigmoid(gamma, coef0) =>
           res.gamma   = gamma

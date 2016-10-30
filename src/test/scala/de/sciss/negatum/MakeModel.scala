@@ -5,6 +5,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
+import de.sciss.negatum.SVMConfig.{Kernel, Type, Weight}
 import de.sciss.synth.proc.{Folder, Workspace}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -34,7 +35,28 @@ object MakeModel extends App {
 
       println(s"Analyzing ${neg.size} results...")
 
+      /*
+        Remember: weighting -- C(+) / C(-) = n(-) / n(+)
+
+        So with n(-) = 5000 - 718 and n(+) = 718,
+
+        C(+) / C(-) = (5000 - 718) / 718 = 5000/718 - 1
+        C(+) = C(-) * (5000/718 - 1)
+
+        say
+
+        w(+) = 5.9637, w(-) = 1.0
+
+        e.g. make w(+) + w(-) == 1.0
+
+        w(+) = (5000/718 - 1) / (5000/718) -> w(+) = 0.8564, w(-) = 0.1436
+
+
+       */
       val conf = SVMConfig()
+      conf.tpe = Type.CSVC(50,
+        List(Weight(label = 0, value = 718/5000.0f), Weight(label = 1, value = (5000 - 718)/5000.0f)))
+      conf.kernel = Kernel.Radial(0.5f)
       SVMModel.train(n = neg, config = conf, numCoeff = 24)
     }
 

@@ -331,12 +331,100 @@ object SVMModelImpl {
     writeIntArray   (m.nSV        , out)
   }
 
+  private def mkNodes(in: IndexedSeq[Double]): Array[svm_node] = {
+    val nodes = new Array[svm_node](in.length)
+    var idx   = 0
+    while (idx < in.length) {
+      val n       = new svm_node
+      n.index     = idx + 1
+      val value   = in(idx)
+      n.value     = value
+      nodes(idx)  = n
+      idx        += 1
+    }
+    nodes
+  }
+
+  private final class Run(val vec: Vec[Double], val folderIdx: Int) {
+    var label = false
+  }
+
+  private final class PredictImpl[S <: Sys[S]](m: SVMModel[S],
+                                               negatumH: stm.Source[S#Tx, Negatum[S]], numCoeff: Int,
+                                               normalize: Boolean)
+                                              (implicit cursor: stm.Cursor[S])
+    extends ProcessorImpl[Int, Processor[Int]] with Processor[Int] {
+
+    override def toString = s"SVMModel.predict@${hashCode.toHexString}"
+
+    protected def body(): Int = blocking {
+      val procFeatFut = SoundProcesses.atomic[S, Processor[Unit]] { implicit tx =>
+        SVMFeatures(negatumH(), numCoeff = numCoeff, overwrite = false)
+      }
+      val procFeat = Await.result(procFeatFut, Duration(10, TimeUnit.SECONDS))
+      await(procFeat, offset = 0.0, weight = 0.8)
+
+      val vecSize = numCoeff * 2
+      val featFut = SoundProcesses.atomic[S, Array[Run]] { implicit tx =>
+        val f = negatumH().population
+        f.iterator.zipWithIndex.flatMap { case (obj, fIdx) =>
+          obj.attr.$[DoubleVector](Negatum.attrFeatures).map(_.value).filter(_.size == vecSize)
+            .map { vec => new Run(vec, folderIdx = fIdx) }
+        } .toArray
+      }
+
+      val runs = Await.result(featFut, Duration.Inf)
+      var i = 0
+      while (i < runs.length) {
+        val f     = runs(i)
+        val label = m.predictOne(f.vec, normalize = normalize)
+        f.label   = label > 0.5
+        i += 1
+      }
+
+      progress = 0.9
+      checkAborted()
+
+      val futAssign = SoundProcesses.atomic[S, Unit] { implicit tx =>
+        val folder  = negatumH().population
+        val fIter   = folder.iterator.zipWithIndex
+        val rIter   = runs.iterator
+
+        while (rIter.hasNext && fIter.hasNext) {
+          val r     = rIter.next()
+          var done  = false
+          while (!done && fIter.hasNext) {
+            fIter.next() match {
+              case (obj, r.folderIdx) =>
+                obj.attr.$[BooleanObj](Negatum.attrSelected) match {
+                  case Some(BooleanObj.Var(vr)) => vr() = r.label
+                  case _ => obj.attr.put(Negatum.attrSelected, BooleanObj.newConst[S](r.label))
+                }
+                done = true
+
+              case _ =>
+            }
+          }
+        }
+      }
+      val assnTimeOut = math.max(30.0, runs.length * 0.05)
+      Await.result(futAssign, Duration(assnTimeOut, TimeUnit.SECONDS))
+
+      progress = 1.0
+      runs.count(_.label)
+    }
+  }
+
   private final class Impl[S <: Sys[S]](val id: S#ID, val config: SVMConfig, peer: svm_model, val stats: Stats)
     extends SVMModel[S] with ConstObjImpl[S, Any] {
 
     override def toString = s"SVMModel$id"
 
     def tpe: Obj.Type = SVMModel
+
+    private[this] lazy val numFeatures = stats.features.size
+
+    def numCoeff: Int = numFeatures >> 1
 
     protected def writeData(out: DataOutput): Unit = {
       out.writeByte(SER_VERSION)
@@ -345,9 +433,20 @@ object SVMModelImpl {
       Stats.serializer    .write(stats , out)
     }
 
-    def predict(vec: Vec[Double], normalize: Boolean = false): Double = {
-      val x: Array[svm_node] = ???
-      svm.svm_predict(peer, x)
+    def predictOne(vec: Vec[Double], normalize: Boolean = false): Double = {
+      require(vec.size == numFeatures,
+        s"predict - given vector has size ${vec.size}, but model has size $numFeatures")
+      val nodes = mkNodes(vec)
+      svm.svm_predict(peer, nodes)
+    }
+
+    def predict(n: Negatum[S], normalize: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int] = {
+      val res = new PredictImpl(this, tx.newHandle(n), numCoeff = numCoeff, normalize = normalize)
+      tx.afterCommit {
+        import ExecutionContext.Implicits.global
+        res.start()
+      }
+      res
     }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
