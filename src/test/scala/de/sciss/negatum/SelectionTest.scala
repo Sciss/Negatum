@@ -11,6 +11,10 @@ import de.sciss.synth.proc.{Folder, Workspace}
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
+/** Uses the first `Negatum` and first `SVMModel` found in the session
+  * to re-evaluate the selection in the `Negatum`, adding it as a copy
+  * to the session.
+  */
 object SelectionTest extends App {
   val sessionF = userHome / "mellite" / "sessions" / "Negatum-forModelBuilding.mllt"
 

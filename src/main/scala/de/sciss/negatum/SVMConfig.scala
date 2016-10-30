@@ -37,6 +37,11 @@ object SVMConfig {
 
     /** To do probability estimation. */
     def probability: Boolean
+
+    /** Whether features will be normalized based on
+      * their statistics (mean and variance).
+      */
+    def normalize: Boolean
   }
 
   def apply(): Builder = new Builder
@@ -48,9 +53,20 @@ object SVMConfig {
     var epsilon     : Float   = 1e-3f
     var shrinking   : Boolean = true
     var probability : Boolean = false
+    var normalize   : Boolean = true
 
     def build: SVMConfig = Impl(tpe = tpe, kernel = kernel, cacheSize = cacheSize,
-      epsilon = epsilon, shrinking = shrinking, probability = probability)
+      epsilon = epsilon, shrinking = shrinking, probability = probability, normalize = normalize)
+
+    def read(that: SVMConfig): Unit = {
+      this.tpe          = that.tpe
+      this.kernel       = that.kernel
+      this.cacheSize    = that.cacheSize
+      this.epsilon      = that.epsilon
+      this.shrinking    = that.shrinking
+      this.probability  = that.probability
+      this.normalize    = that.normalize
+    }
   }
 
   implicit def build(b: Builder): SVMConfig = b.build
@@ -153,6 +169,7 @@ object SVMConfig {
       out.writeFloat(epsilon)
       out.writeBoolean(shrinking)
       out.writeBoolean(probability)
+      out.writeBoolean(normalize)
     }
 
     def read(in: DataInput): SVMConfig = {
@@ -209,9 +226,10 @@ object SVMConfig {
       val epsilon     = in.readFloat()
       val shrinking   = in.readBoolean()
       val probability = in.readBoolean()
+      val normalize   = in.readBoolean()
 
       Impl(tpe = tpe, kernel = kernel, cacheSize = cacheSize,
-        epsilon = epsilon, shrinking = shrinking, probability = probability)
+        epsilon = epsilon, shrinking = shrinking, probability = probability, normalize = normalize)
     }
   }
 
@@ -223,7 +241,8 @@ object SVMConfig {
      cacheSize  : Float,
      epsilon    : Float,
      shrinking  : Boolean,
-     probability: Boolean
+     probability: Boolean,
+     normalize  : Boolean
    ) extends SVMConfig {
 
     def toLibSVM: svm_parameter = {

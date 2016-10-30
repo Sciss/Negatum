@@ -19,7 +19,6 @@ import de.sciss.negatum.SVMModel.Stats
 import de.sciss.negatum.impl.{SVMModelImpl => Impl}
 import de.sciss.processor.Processor
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
-import de.sciss.synth.proc.Folder
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
@@ -98,11 +97,11 @@ trait SVMModel[S <: Sys[S]] extends Obj[S] {
 
   def stats: Stats
 
-  def predictOne(vec: Vec[Double], normalize: Boolean = false): Double
+  def predictOne(vec: Vec[Double]): Double
 
   /** Predicts the selection of all individuals in a folder. Results are stored with the
     * `Negatum.attrSelected` key in the individuals' attribute maps.
     * The processor returns the number of selected individuals.
     */
-  def predict(n: Negatum[S], normalize: Boolean = false)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int]
+  def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int]
 }

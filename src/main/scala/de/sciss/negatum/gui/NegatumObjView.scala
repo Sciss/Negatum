@@ -37,7 +37,10 @@ object NegatumObjView extends ListObjView.Factory {
 
   private[this] lazy val _init: Unit = ListObjView.addFactory(this)
 
-  def init(): Unit = _init
+  def init(): Unit = {
+    _init
+    SVMModelObjView.init()
+  }
 
   def mkListView[S <: Sys[S]](obj: Negatum[S])(implicit tx: S#Tx): NegatumObjView[S] with ListObjView[S] =
     new Impl(tx.newHandle(obj)).initAttrs(obj)

@@ -5,7 +5,8 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
-import de.sciss.negatum.SVMConfig.{Kernel, Type, Weight}
+import de.sciss.negatum.SVMConfig.{Kernel, Type}
+import de.sciss.synth.proc
 import de.sciss.synth.proc.{Folder, Workspace}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -54,8 +55,9 @@ object MakeModel extends App {
 
        */
       val conf = SVMConfig()
-      conf.tpe = Type.CSVC(50,
-        List(Weight(label = 0, value = 718/5000.0f), Weight(label = 1, value = (5000 - 718)/5000.0f)))
+      conf.tpe = Type.CSVC(50, Nil)
+      // note: `train` will automatically set the weights if using `CSVC`!
+      // List(Weight(label = 0, value = 718/5000.0f), Weight(label = 1, value = (5000 - 718)/5000.0f)))
       conf.kernel = Kernel.Radial(0.5f)
       SVMModel.train(n = neg, config = conf, numCoeff = 24)
     }
@@ -75,6 +77,8 @@ object MakeModel extends App {
       case Success(modelH) =>
         val stats = cursor.step { implicit tx =>
           val model = modelH()
+          import proc.Implicits._
+          model.name = "svm-model"
           workspace.root.addLast(model)
           val res = model.stats
           workspace.dispose()

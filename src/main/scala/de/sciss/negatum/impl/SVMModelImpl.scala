@@ -21,6 +21,7 @@ import de.sciss.lucre.expr.{BooleanObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.negatum.SVMConfig.{Type, Weight}
 import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -37,7 +38,8 @@ import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 object SVMModelImpl {
   def train[S <: Sys[S]](n: ISeq[Negatum[S]], config: SVMConfig, numCoeff: Int)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Trained[S]] = {
-    val res = new TrainImpl[S](config, numCoeff = numCoeff, negatumH = n.map(tx.newHandle(_))(breakOut))
+    val res = new TrainImpl[S](config, numCoeff = numCoeff,
+      negatumH = n.map(tx.newHandle(_))(breakOut))
     tx.afterCommit {
       import ExecutionContext.Implicits.global
       res.start()
@@ -110,6 +112,8 @@ object SVMModelImpl {
       progress = 0.85
       checkAborted()
 
+      // ---- stats ----
+
       var statSel   = 0
       val statCount = labelled.length
       val statMin   = Array.fill[Float](vecSize)(Float.MaxValue)
@@ -117,36 +121,19 @@ object SVMModelImpl {
       val statMean  = Array.fill[Float](vecSize)(0f)
       val statStdDev= Array.fill[Float](vecSize)(0f)
 
-      val svmParam  = config.toLibSVM
-      val svmProb   = new svm_problem
-      svmProb.l     = labelled.length
-      svmProb.y     = labelled.map(l => if (l.label) 1.0 else 0.0)
-      svmProb.x     = labelled.map { l =>
+      labelled.foreach { l =>
         var idx   = 0
         val arr   = l.vec
         if (l.label) statSel += 1
-        val nodes = new Array[svm_node](arr.length)
         while (idx < arr.length) {
-          val n       = new svm_node
-          n.index     = idx + 1
           val value   = arr(idx)
-          n.value     = value
-          nodes(idx)  = n
-
           val valueF  = value.toFloat
           if (valueF < statMin(idx)) statMin(idx) = valueF
           if (valueF > statMax(idx)) statMax(idx) = valueF
           statMean(idx) += valueF
-
           idx        += 1
         }
-        nodes
-      } (breakOut)
-
-      val svmModel  = svm.svm_train(svmProb, svmParam)
-
-      progress = 0.95
-      checkAborted()
+      }
 
       var j = 0
       if (statCount > 0) while (j < vecSize) {
@@ -175,6 +162,46 @@ object SVMModelImpl {
         FeatureStat(min = statMin(idx), max = statMax(idx), mean = statMean(idx), stdDev = statStdDev(idx))
       }
       val stats = Stats(count = statCount, selected = statSel, features = statFeat)
+
+      // ---- model ----
+
+      val config1   = config.tpe match {
+        case tpe @ Type.CSVC(_, Nil) =>
+          val w0      = Weight(label = 0, value = statSel.toFloat / statCount)
+          val w1      = Weight(label = 1, value = (statCount - statSel).toFloat / statCount)
+          val weights = List(w0, w1)
+          val tpe1    = tpe.copy(weights = weights)
+          val res     = SVMConfig()
+          res.read(config)
+          res.tpe     = tpe1
+          res.build
+        case _ => config
+      }
+      val svmParam  = config1.toLibSVM
+      val svmProb   = new svm_problem
+      svmProb.l     = labelled.length
+      svmProb.y     = labelled.map { l => if (l.label) 1.0 else 0.0 }
+      val normalize = config.normalize
+      svmProb.x     = labelled.map { l =>
+        var idx   = 0
+        val arr   = l.vec
+        val nodes = new Array[svm_node](arr.length)
+        while (idx < arr.length) {
+          val n       = new svm_node
+          n.index     = idx + 1
+          val value   = arr(idx)
+          val valueN  = if (normalize) (value - statMean(idx)) / statStdDev(idx) else value
+          n.value     = valueN
+          nodes(idx)  = n
+          idx        += 1
+        }
+        nodes
+      } (breakOut)
+
+      val svmModel  = svm.svm_train(svmProb, svmParam)
+
+      progress = 0.95
+      checkAborted()
 
       val futRes = SoundProcesses.atomic[S, Trained[S]] { implicit tx =>
         val id    = tx.newID()
@@ -331,14 +358,15 @@ object SVMModelImpl {
     writeIntArray   (m.nSV        , out)
   }
 
-  private def mkNodes(in: IndexedSeq[Double]): Array[svm_node] = {
+  private def mkNodes(in: IndexedSeq[Double], stats: Stats, normalize: Boolean): Array[svm_node] = {
     val nodes = new Array[svm_node](in.length)
     var idx   = 0
     while (idx < in.length) {
       val n       = new svm_node
       n.index     = idx + 1
       val value   = in(idx)
-      n.value     = value
+      val valueN  = if (normalize) (value - stats.features(idx).mean) / stats.features(idx).stdDev else value
+      n.value     = valueN
       nodes(idx)  = n
       idx        += 1
     }
@@ -350,8 +378,7 @@ object SVMModelImpl {
   }
 
   private final class PredictImpl[S <: Sys[S]](m: SVMModel[S],
-                                               negatumH: stm.Source[S#Tx, Negatum[S]], numCoeff: Int,
-                                               normalize: Boolean)
+                                               negatumH: stm.Source[S#Tx, Negatum[S]], numCoeff: Int)
                                               (implicit cursor: stm.Cursor[S])
     extends ProcessorImpl[Int, Processor[Int]] with Processor[Int] {
 
@@ -377,7 +404,7 @@ object SVMModelImpl {
       var i = 0
       while (i < runs.length) {
         val f     = runs(i)
-        val label = m.predictOne(f.vec, normalize = normalize)
+        val label = m.predictOne(f.vec)
         f.label   = label > 0.5
         i += 1
       }
@@ -415,7 +442,8 @@ object SVMModelImpl {
     }
   }
 
-  private final class Impl[S <: Sys[S]](val id: S#ID, val config: SVMConfig, peer: svm_model, val stats: Stats)
+  private final class Impl[S <: Sys[S]](val id: S#ID, val config: SVMConfig, peer: svm_model,
+                                        val stats: Stats)
     extends SVMModel[S] with ConstObjImpl[S, Any] {
 
     override def toString = s"SVMModel$id"
@@ -433,15 +461,15 @@ object SVMModelImpl {
       Stats.serializer    .write(stats , out)
     }
 
-    def predictOne(vec: Vec[Double], normalize: Boolean = false): Double = {
+    def predictOne(vec: Vec[Double]): Double = {
       require(vec.size == numFeatures,
         s"predict - given vector has size ${vec.size}, but model has size $numFeatures")
-      val nodes = mkNodes(vec)
+      val nodes = mkNodes(vec, stats, normalize = config.normalize)
       svm.svm_predict(peer, nodes)
     }
 
-    def predict(n: Negatum[S], normalize: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int] = {
-      val res = new PredictImpl(this, tx.newHandle(n), numCoeff = numCoeff, normalize = normalize)
+    def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Int] = {
+      val res = new PredictImpl(this, tx.newHandle(n), numCoeff = numCoeff)
       tx.afterCommit {
         import ExecutionContext.Implicits.global
         res.start()
