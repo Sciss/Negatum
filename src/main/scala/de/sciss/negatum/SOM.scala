@@ -22,6 +22,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 object SOM extends Obj.Type {
   final val typeID = 0x40002
 
+  def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = Impl(config)
+
   object Config {
     implicit object serializer extends ImmutableSerializer[Config] {
       private[this] final val SER_VERSION = 1
@@ -29,30 +31,36 @@ object SOM extends Obj.Type {
       def write(c: Config, out: DataOutput): Unit = {
         import c._
         out.writeByte(SER_VERSION)
+        out.writeInt(features)
+        out.writeInt(dimensions)
         out.writeInt(extent)
         out.writeInt(gridStep)
         out.writeInt(maxNodes)
+        out.writeLong(seed)
       }
 
       def read(in: DataInput): Config = {
         val ver = in.readByte()
         if (ver != SER_VERSION) sys.error(s"Unexpected serialization version ($ver) - expected ${SER_VERSION}")
-        val extent    = in.readInt()
-        val gridStep  = in.readInt()
-        val maxNodes  = in.readInt()
-        Config(extent = extent, gridStep = gridStep, maxNodes = maxNodes)
+        val features    = in.readInt()
+        val dimensions  = in.readInt()
+        val extent      = in.readInt()
+        val gridStep    = in.readInt()
+        val maxNodes    = in.readInt()
+        val seed        = in.readLong()
+        Config(features = features, extent = extent, gridStep = gridStep, maxNodes = maxNodes, seed = seed)
       }
     }
   }
-  final case class Config(extent: Int = 256, gridStep: Int = 1, maxNodes: Int = 16384)
-
-  def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = Impl(config)
+  final case class Config(features: Int, dimensions: Int = 2,
+                          extent: Int = 256, gridStep: Int = 1, maxNodes: Int = 16384,
+                          seed: Long = System.currentTimeMillis())
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
     Impl.readIdentifiedObj(in, access)
 }
 trait SOM[S <: Sys[S]] extends Obj[S] {
-  // def config: SVMConfig
+  def config: SOM.Config
 
   def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit
 }
