@@ -369,20 +369,29 @@ object SOMImpl {
     arr
   }
 
-  private def bmu(lattice: Array[Float], iw: Array[Float]): Int = {
-    var i = 0
+  private def bmu(lat: Array[Float], iw: Array[Float]): Int = {
     var bestDist  = Double.MaxValue
     val features  = iw.length
     var bestNode  = -1
-    while (i < lattice.length) {
+    val sz        = lat.length
+    var i         = 0
+    while (i < sz) {
       var dist = 0.0
       var j = 0
       val i0 = i
       while (j < features) {
-        val d = iw(j) - lattice(i)
+        val d = iw(j) - lat(i)
         dist += d * d
-        j += 1
-        i += 1
+        // abort early if we will not be able to improve `bestDist`
+        // XXX TODO --- currently I/O dominates, so we cannot assess whether this
+        // improves the situation or not
+        if (dist > bestDist) {
+          j = features
+          i = i0 + features
+        } else {
+          j += 1
+          i += 1
+        }
       }
       if (dist < bestDist) {
         bestDist = dist
@@ -519,7 +528,7 @@ object SOMImpl {
       while (i < dirty.length) {
         if (dirty(i)) {
           val value     = list.get(i).get
-          val newIndex  = bmu(lattice = lat.data, iw = value.features)
+          val newIndex  = bmu(lat = lat.data, iw = value.features)
           if (newIndex != i) {
             list.remove(i)
             val point     = spaceHelper.toPoint(i, config)

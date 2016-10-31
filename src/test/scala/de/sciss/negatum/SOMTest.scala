@@ -1,5 +1,7 @@
 package de.sciss.negatum
 
+import de.sciss.file._
+
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
@@ -10,12 +12,16 @@ object SOMTest extends App {
   Negatum.init()
 
   type S = Durable
+  val dir = File.createTemp("sleepycat_", "db")
+  dir.delete()
+//  val factory = BerkeleyDB.tmp()
+  val factory = BerkeleyDB.factory(dir)
   implicit val cursor = Durable(BerkeleyDB.tmp())
 
   val r  = new util.Random(1L)
   val t1 = System.currentTimeMillis()
   val somH = cursor.root { implicit tx =>
-    SOM(SOM.Config(features = 48, dimensions = 2, seed = 0L, numIterations = 200))
+    SOM(SOM.Config(features = 48, dimensions = 2, seed = 0L, numIterations = 200, extent = 128))
   }
   val t2 = System.currentTimeMillis()
   cursor.step { implicit tx =>
@@ -44,4 +50,14 @@ object SOMTest extends App {
   println(s"Stats: $stats")
 
   cursor.close()
+
+  def deleteRecursively(f: File): Unit =
+    if (f.isFile) f.delete() else if (f.isDirectory) f.children.foreach(deleteRecursively)
+
+  println("Trying to remove temporary db directory:")
+  println(dir)
+  deleteRecursively(dir)
+  if (dir.exists) println("(failed)")
+  // val dbSize = dir.children.map(f => if (f.isFile) f.length else 0L).sum
+  // println(dbSize)
 }
