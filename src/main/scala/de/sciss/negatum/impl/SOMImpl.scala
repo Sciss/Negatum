@@ -493,7 +493,7 @@ object SOMImpl {
     bmuNodeIdx
   }
 
-  private[this] final val DEBUG = true
+  private[this] final val DEBUG = false
   private def log(what: => String): Unit = if (DEBUG) println(what)
 
   private final class Run(val features: Array[Float], val folderIdx: Int) {
@@ -559,6 +559,7 @@ object SOMImpl {
       progress = 0.5
       checkAborted()
 
+//      val t1 = System.currentTimeMillis()
       val futAdd = SoundProcesses.atomic[S, Unit] { implicit tx =>
         // XXX TODO -- does this ensure arrays are flushed?
         val dirty   = _dirty
@@ -591,6 +592,8 @@ object SOMImpl {
 
       val addTimeOut = math.max(30.0, 0.1 * runs.length)
       Await.result(futAdd, Duration(addTimeOut, TimeUnit.SECONDS))
+//      val t2 = System.currentTimeMillis()
+//      println(s"UPDATE TOOK ${t2 - t1}ms")
 
       progress = 1.0
       runs.length
