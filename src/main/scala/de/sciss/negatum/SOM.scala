@@ -73,6 +73,8 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit
 
-  //  /** Current iteration, i.e. how many elements have been added. */
+  def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]]
+
+    //  /** Current iteration, i.e. how many elements have been added. */
   //  def iteration(implicit tx: S#Tx): Int
 }

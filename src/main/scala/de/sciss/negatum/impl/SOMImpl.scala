@@ -17,7 +17,7 @@ package impl
 import de.sciss.lucre.data.{SkipList, SkipOctree}
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
 import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
-import de.sciss.lucre.geom.{IntCube, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
+import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, LongDistanceMeasure2D, Space}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
@@ -113,8 +113,10 @@ object SOMImpl {
     }
   }
 
-  private object PointIndexConversion {
-    implicit object TwoDim extends PointIndexConversion[IntSpace.TwoDim] {
+  private object SpaceHelper {
+    implicit object TwoDim extends SpaceHelper[IntSpace.TwoDim] {
+      def space = IntSpace.TwoDim
+
       def toPoint(index: Int, config: Config): IntPoint2D = {
         val ext         = config.extent
         val grid        = config.gridStep
@@ -125,10 +127,19 @@ object SOMImpl {
         IntPoint2D(x = x, y = y)
       }
 
+      def toPoint(comp: Seq[Int]): IntPoint2D = {
+        val Seq(x, y) = comp
+        IntPoint2D(x = x, y = y)
+      }
+
+      def metric: DistanceMeasure[_, IntSpace.TwoDim] = IntDistanceMeasure2D.euclideanSq
+
       // def toIndex(p: IntPoint2D, config: Config): Int = ...
     }
 
-    implicit object ThreeDim extends PointIndexConversion[IntSpace.ThreeDim] {
+    implicit object ThreeDim extends SpaceHelper[IntSpace.ThreeDim] {
+      def space = IntSpace.ThreeDim
+
       def toPoint(index: Int, config: Config): IntPoint3D = {
         val ext         = config.extent
         val grid        = config.gridStep
@@ -142,11 +153,21 @@ object SOMImpl {
         IntPoint3D(x = x, y = y, z = z)
       }
 
+      def toPoint(comp: Seq[Int]): IntPoint3D = {
+        val Seq(x, y, z) = comp
+        IntPoint3D(x = x, y = y, z = z)
+      }
+
+      def metric: DistanceMeasure[_, IntSpace.ThreeDim] = IntDistanceMeasure3D.euclideanSq
+
       // def toIndex(p: IntPoint3D, config: Config): Int = ...
     }
   }
-  private trait PointIndexConversion[D <: Space[D]] {
+  private trait SpaceHelper[D <: Space[D]] {
+    implicit def space: D
     def toPoint(index: Int, config: Config): D#Point
+    def toPoint(comp: Seq[Int]): D#Point
+    def metric: DistanceMeasure[_, D]
     // def toIndex(p: D#Point, config: Config): Int
   }
 
@@ -389,7 +410,7 @@ object SOMImpl {
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
                                                        lattice: S#Var[Lattice],
                                                        list: ListImpl[S], map: TreeImpl[S, D])
-                                                      (implicit space: D, pointIndex: PointIndexConversion[D])
+                                                      (implicit spaceHelper: SpaceHelper[D])
     extends SOM[S] {
 
     def tpe: Obj.Type = SOM
@@ -404,7 +425,7 @@ object SOMImpl {
       cleanUp(latOut, dirty)
 
       val newValue  = new Value(features = keyArr, obj = obj)
-      val newPoint  = pointIndex.toPoint(newIndex, config)
+      val newPoint  = spaceHelper.toPoint(newIndex, config)
       val newNode   = Node(newPoint, obj)
       val newInList = list.add(newIndex -> newValue).isEmpty
       val newInMap  = map .add(newNode)
@@ -419,7 +440,7 @@ object SOMImpl {
           val valueOpt  = list.remove(i)
           assert(valueOpt.isDefined)
           val value     = valueOpt.get
-          val point     = pointIndex.toPoint(i, config)
+          val point     = spaceHelper.toPoint(i, config)
           val nodeOpt   = map.removeAt(point)
           assert(nodeOpt.isDefined)
           removed     ::= value
@@ -429,7 +450,7 @@ object SOMImpl {
       if (removed.nonEmpty) {
         removed.foreach { value =>
           val newIndex  = bmu(lattice = lattice.data, iw = value.features)
-          val newPoint  = pointIndex.toPoint(newIndex, config)
+          val newPoint  = spaceHelper.toPoint(newIndex, config)
           val newNode   = Node(newPoint, value.obj)
           val newInList = list.add(newIndex -> value).isEmpty
           val newInMap  = map .add(newNode)
@@ -439,6 +460,11 @@ object SOMImpl {
     }
 
 //    def iteration(implicit tx: S#Tx): Int = iter()
+
+    def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]] = {
+      val p = spaceHelper.toPoint(point)
+      map.nearestNeighborOption(p, spaceHelper.metric).map(_.value)
+    }
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
 
@@ -464,7 +490,8 @@ object SOMImpl {
       val idOut       = txOut.newID()
       val latticeOut  = txOut.newVar(idOut, lattice())
       val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
-      val mapOut      = SkipOctree  .empty[Out, D, Node[Out, D]](map.hyperCube)
+      import spaceHelper.space
+      val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
       val out         = new Impl(id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
       context.defer(this, out) {
         copyList(list, listOut, out)
