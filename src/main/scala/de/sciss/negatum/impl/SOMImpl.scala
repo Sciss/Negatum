@@ -87,7 +87,25 @@ object SOMImpl {
 
   private final class Index[S <: Sys[S]](val index: Int, val value: Value[S])
 
-  private final class Lattice(val iter: Int, val data: Array[Float])
+  private final class Lattice(var iter: Int, val data: Array[Float], val occupied: Array[Int]) {
+    def copy(): Lattice = new Lattice(iter = iter, data = data.clone(), occupied = occupied.clone())
+
+    def isOccupied(index: Int): Boolean = {
+      val occIdx  = index >>> 5
+      val bit     = index & 0x1F
+      val mask    = 1 << bit
+      (occupied(occIdx) & mask) == mask
+    }
+
+    def setOccupied(index: Int, state: Boolean): Unit = {
+      val occIdx  = index >>> 5
+      val bit     = index & 0x1F
+      val mask    = 1 << bit
+      val valOld  = occupied(occIdx)
+      val valNew  = if (state) valOld | mask else valOld & ~mask
+      occupied(occIdx) = valNew
+    }
+  }
 
   private implicit object LatticeSer extends ImmutableSerializer[Lattice] {
     def read(in: DataInput): Lattice = {
@@ -99,7 +117,28 @@ object SOMImpl {
         arr(i) = in.readFloat()
         i += 1
       }
-      new Lattice(iter, arr)
+      val occSz = (sz + 31) >>> 5
+      i         = 0
+      val occ   = new Array[Int](occSz)
+      while (i < occSz) {
+        occ(i) = in.readInt()
+        i += 1
+      }
+//      val occ   = new Array[Boolean](sz)
+//      i = 0
+//      while (i < sz) {
+//        var j = in.readInt()
+//        val k = i + 32
+//        val m = if (k <= sz) k else sz
+//        var n = 0
+//        while (i < m) {
+//          occ(i) = (j & 1) == 1
+//          j >>= 1
+//          i  += 1
+//          n  += 1
+//        }
+//      }
+      new Lattice(iter, arr, occ)
     }
 
     def write(lattice: Lattice, out: DataOutput): Unit = {
@@ -110,6 +149,13 @@ object SOMImpl {
       var i = 0
       while (i < sz) {
         out.writeFloat(arr(i))
+        i += 1
+      }
+      val occSz = (sz + 31) >>> 5
+      i         = 0
+      val occ   = lattice.occupied
+      while (i < occSz) {
+        out.writeInt(occ(i))
         i += 1
       }
     }
@@ -199,7 +245,9 @@ object SOMImpl {
       }
     }
     val id          = tx.newID()
-    val lattice     = tx.newVar[Lattice](id, new Lattice(iter = 0, data = lattice0))
+    val occSz       = (latSz + 31) >>> 5
+    val occupied0   = new Array[Int](occSz) // all zero which is non-occupied
+    val lattice     = tx.newVar[Lattice](id, new Lattice(iter = 0, data = lattice0, occupied = occupied0))
     val list        = SkipList.Map.empty[S, Int, Value[S]]()
 
     if (dim == 2) {
@@ -402,7 +450,7 @@ object SOMImpl {
           k += 1
           i += 1
         }
-        dirty(j) = true
+        if (lattice.isOccupied(j)) dirty(j) = true
       }
       j += 1
     }
@@ -422,18 +470,20 @@ object SOMImpl {
     def tpe: Obj.Type = SOM
 
     def add(key: Vec[Double], obj: Obj[S])(implicit tx: S#Tx): Unit = {
-      val latIn     = lattice()
-      val dirty     = new Array[Boolean](latIn.data.length / config.features)
+      val lat       = lattice().copy()  // for InMemory, we might get into trouble if we don't isolate the arrays
+      val dirty     = new Array[Boolean](lat.data.length / config.features)
       val keyArr    = toArray(key)
-      val newIndex  = nextLattice(lattice = latIn, dirty = dirty, config = config, keyArr = keyArr)
-      val latOut    = new Lattice(iter = latIn.iter + 1, data = latIn.data)
-      lattice()     = latOut
+      val newIndex  = nextLattice(lattice = lat, dirty = dirty, config = config, keyArr = keyArr)
 
       val newValue  = new Value(features = keyArr, obj = obj)
       val newPoint  = spaceHelper.toPoint(newIndex, config)
       log(f"-- will add    $obj%3s at index $newIndex%4d / $newPoint")
 
-      cleanUp(latOut, dirty)
+      cleanUp(lat, dirty)
+
+      lat.iter     += 1
+      lat.setOccupied(newIndex, state = true)
+      lattice()     = lat
 
 //      if (latOut.iter == 37) {
 //        println("AQUI")
@@ -453,21 +503,21 @@ object SOMImpl {
 //      }
     }
 
-    private def cleanUp(lattice: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
+    private def cleanUp(lat: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
       var i = 0
       var removed = List.empty[Index[S]]
       while (i < dirty.length) {
         if (dirty(i)) {
-          list.get(i).foreach { value =>
-            val newIndex  = bmu(lattice = lattice.data, iw = value.features)
-            if (newIndex != i) {
-              list.remove(i)
-              val point     = spaceHelper.toPoint(i, config)
-              val nodeOpt   = map.removeAt(point)
-              assert(nodeOpt.isDefined)
-              removed     ::= new Index(newIndex, value)
-              log(f"clean - remove ${value.obj}%3s at index $i%4d / $point")
-            }
+          val value     = list.get(i).get
+          val newIndex  = bmu(lattice = lat.data, iw = value.features)
+          if (newIndex != i) {
+            list.remove(i)
+            val point     = spaceHelper.toPoint(i, config)
+            val nodeOpt   = map.removeAt(point)
+            assert(nodeOpt.isDefined)
+            removed     ::= new Index(newIndex, value)
+            lat.setOccupied(i, state = false)
+            log(f"clean - remove ${value.obj}%3s at index $i%4d / $point")
           }
         }
         i += 1
@@ -482,6 +532,7 @@ object SOMImpl {
           /* val newInList = */ list.add(newIndex -> value) // .forall(_ != value)
           /* val newInMap = */ map .add(newNode)
           // assert(map.isDefinedAt(newPoint))
+          lat.setOccupied(newIndex, state = true)
 
           log(f"clean - add    $obj%3s at index $newIndex%4d / $newPoint")
 
