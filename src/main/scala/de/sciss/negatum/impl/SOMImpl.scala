@@ -222,13 +222,23 @@ object SOMImpl {
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = {
     import config.{extent, gridStep, seed}
 
-    val random = new util.Random(seed)
+    val random      = new util.Random(seed)
     val dim         = config.dimensions
     val feat        = config.features
     require (dim > 0 && extent > 1 && gridStep > 0 && gridStep <= extent)
-    require (extent < (0x40000000 >> (dim - 1)), "Integer overflow")
+    if (extent >= 0x40000000) sys.error("Integer overflow")
     val numLatSide  = (extent << 1) / gridStep
-    val numLattice  = numLatSide << (dim - 1)
+    val numLattice  = {
+      var res = 1
+      var i = 0
+      while (i < dim) {
+        val m = res * numLatSide
+        if (m < res) sys.error("Integer overflow")
+        res = m
+        i += 1
+      }
+      res
+    }
     // lattice is a flat array of a virtual size `numLattice`
     // where the neighbouring elements are the feature vector.
     // we don't need to store the "coordinate" in the lattice,
@@ -458,7 +468,7 @@ object SOMImpl {
     bmuNodeIdx
   }
 
-  private[this] final val DEBUG = false
+  private[this] final val DEBUG = true
   private def log(what: => String): Unit = if (DEBUG) println(what)
 
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
@@ -477,7 +487,7 @@ object SOMImpl {
 
       val newValue  = new Value(features = keyArr, obj = obj)
       val newPoint  = spaceHelper.toPoint(newIndex, config)
-      log(f"-- will add    $obj%3s at index $newIndex%4d / $newPoint")
+      log(f"-- will add    $obj%3s at index $newIndex%6d / $newPoint")
 
       cleanUp(lat, dirty)
 
@@ -517,7 +527,7 @@ object SOMImpl {
             assert(nodeOpt.isDefined)
             removed     ::= new Index(newIndex, value)
             lat.setOccupied(i, state = false)
-            log(f"clean - remove ${value.obj}%3s at index $i%4d / $point")
+            log(f"clean - remove ${value.obj}%3s at index $i%6d / $point")
           }
         }
         i += 1
@@ -534,7 +544,7 @@ object SOMImpl {
           // assert(map.isDefinedAt(newPoint))
           lat.setOccupied(newIndex, state = true)
 
-          log(f"clean - add    $obj%3s at index $newIndex%4d / $newPoint")
+          log(f"clean - add    $obj%3s at index $newIndex%6d / $newPoint")
 
           // assert(newInList == newInMap)
 //          if (newInList != newInMap) {
