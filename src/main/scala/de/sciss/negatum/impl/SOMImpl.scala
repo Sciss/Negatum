@@ -335,13 +335,12 @@ object SOMImpl {
   }
 
   private def nextLattice[S <: Sys[S], D <: Space[D]](lattice: Lattice, dirty: Array[Boolean], config: Config,
-                                                      key: Vec[Double]): Unit = {
+                                                      keyArr: Array[Float]): Int = {
     import config.{extent, numIterations}
     import lattice.iter
     val dim           = config.dimensions
     val feat          = config.features
     val latArr        = lattice.data
-    val keyArr        = toArray(key)
     val bmuNodeIdx    = bmu(latArr, keyArr)
     // val radiusSqr     = neighbourhoodRadiusSqr(iter)
     val mapRadius     = extent.toDouble
@@ -383,6 +382,8 @@ object SOMImpl {
       }
       j += 1
     }
+
+    bmuNodeIdx
   }
 
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
@@ -393,16 +394,24 @@ object SOMImpl {
 
     def tpe: Obj.Type = SOM
 
-    def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit = {
-      val latIn   = lattice()
-      val dirty   = new Array[Boolean](latIn.data.length / config.features)
-      nextLattice(lattice = latIn, dirty = dirty, config = config, key = key)
-      val latOut  = new Lattice(iter = latIn.iter + 1, data = latIn.data)
-      lattice()   = latOut
-      cleanUp(dirty)
+    def add(key: Vec[Double], obj: Obj[S])(implicit tx: S#Tx): Unit = {
+      val latIn     = lattice()
+      val dirty     = new Array[Boolean](latIn.data.length / config.features)
+      val keyArr    = toArray(key)
+      val newIndex  = nextLattice(lattice = latIn, dirty = dirty, config = config, keyArr = keyArr)
+      val latOut    = new Lattice(iter = latIn.iter + 1, data = latIn.data)
+      lattice()     = latOut
+      cleanUp(latOut, dirty)
+
+      val newValue  = new Value(features = keyArr, obj = obj)
+      val newPoint  = pointIndex.toPoint(newIndex, config)
+      val newNode   = Node(newPoint, obj)
+      val newInList = list.add(newIndex -> newValue).isEmpty
+      val newInMap  = map .add(newNode)
+      assert(newInList == newInMap)
     }
 
-    private def cleanUp(dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
+    private def cleanUp(lattice: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
       var i = 0
       var removed = List.empty[Value[S]]
       while (i < dirty.length) {
@@ -419,8 +428,12 @@ object SOMImpl {
       }
       if (removed.nonEmpty) {
         removed.foreach { value =>
-
-          ???
+          val newIndex  = bmu(lattice = lattice.data, iw = value.features)
+          val newPoint  = pointIndex.toPoint(newIndex, config)
+          val newNode   = Node(newPoint, value.obj)
+          val newInList = list.add(newIndex -> value).isEmpty
+          val newInMap  = map .add(newNode)
+          assert(newInList == newInMap)
         }
       }
     }
