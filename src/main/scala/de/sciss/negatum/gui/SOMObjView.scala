@@ -147,15 +147,16 @@ object SOMObjView extends ListObjView.Factory {
       val ggGridStep        = new Spinner(mGridStep)
       val lbGridStep        = new Label("Grid Step:")
 
-      val mMaxNodes         = new SpinnerNumberModel(builder.maxNodes, 1, 0x1000000, 1)
-      val ggMaxNodes        = new Spinner(mMaxNodes)
-      val lbMaxNodes        = new Label("Max. # of Nodes:")
+//      val mMaxNodes         = new SpinnerNumberModel(builder.maxNodes, 1, 0x1000000, 1)
+//      val ggMaxNodes        = new Spinner(mMaxNodes)
+//      val lbMaxNodes        = new Label("Max. # of Nodes:")
 
       val mNumIter          = new SpinnerNumberModel(builder.numIterations, 1, 0x1000000, 1)
       val ggNumIter         = new Spinner(mNumIter)
       val lbNumIter         = new Label("Estim. # of Iterations:")
 
-      val mLearningCoef     = new SpinnerNumberModel(builder.learningCoef, 0.0, 0.9999, 0.01)
+      // XXX TODO --- how to determine the bloody preferred size
+      val mLearningCoef     = new SpinnerNumberModel(builder.learningCoef, 0.0001, 1.1111, 0.01)
       val ggLearningCoef    = new Spinner(mLearningCoef)
       val lbLearningCoef    = new Label("Learning Coefficient:")
 
@@ -179,16 +180,15 @@ object SOMObjView extends ListObjView.Factory {
 
       val pGroup = new GroupPanel {
         horizontal = Seq(
-          Par(lbFeatures, lbDimensions, lbExtent, lbGridStep),
-          Par(ggFeatures, ggDimensions, ggExtent, ggGridStep),
-          Par(lbMaxNodes, lbNumIter, lbLearningCoef),
-          Par(ggMaxNodes, ggNumIter, ggLearningCoef)
+          Par(lbFeatures, lbExtent, lbGridStep),
+          Par(ggFeatures, ggExtent, ggGridStep),
+          Par(lbDimensions, lbNumIter, lbLearningCoef),
+          Par(ggDimensions, ggNumIter, ggLearningCoef)
         )
         vertical = Seq(
-          Par(Baseline)(lbFeatures  , ggFeatures  , lbMaxNodes    , ggMaxNodes),
-          Par(Baseline)(lbDimensions, ggDimensions, lbNumIter     , ggNumIter),
-          Par(Baseline)(lbExtent    , ggExtent    , lbLearningCoef, ggLearningCoef),
-          Par(Baseline)(lbGridStep  , ggGridStep)
+          Par(Baseline)(lbFeatures  , ggFeatures  , lbDimensions  , ggDimensions),
+          Par(Baseline)(lbExtent    , ggExtent    , lbNumIter     , ggNumIter),
+          Par(Baseline)(lbGridStep  , ggGridStep  , lbLearningCoef, ggLearningCoef)
         )
       }
 
@@ -210,7 +210,7 @@ object SOMObjView extends ListObjView.Factory {
         dimensions    = mDimensions   .toInt
         extent        = mExtent       .toInt
         gridStep      = mGridStep     .toInt
-        maxNodes      = mMaxNodes     .toInt
+//        maxNodes      = mMaxNodes     .toInt
         numIterations = mNumIter      .toInt
         learningCoef  = mLearningCoef .toDouble
         seed          = mSeed         .toLong
@@ -220,6 +220,9 @@ object SOMObjView extends ListObjView.Factory {
         updateConfig()
         val name = ggName.text
         ok(Config(name, builder))
+        impl.cursor.step { implicit tx =>
+          close()
+        }
       }
 
       val ggCancel        = GUI.toolButton(actionCancel, raphael.Shapes.Cross)

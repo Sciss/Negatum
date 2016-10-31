@@ -32,7 +32,7 @@ object SOM extends Obj.Type {
     def dimensions    : Int
     def extent        : Int
     def gridStep      : Int
-    def maxNodes      : Int
+//    def maxNodes      : Int
     def numIterations : Int
     def learningCoef  : Double
     def seed          : Long
@@ -53,7 +53,7 @@ object SOM extends Obj.Type {
         out.writeInt(dimensions   )
         out.writeInt(extent       )
         out.writeInt(gridStep     )
-        out.writeInt(maxNodes     )
+//        out.writeInt(maxNodes     )
         out.writeInt(numIterations)
         out.writeDouble(learningCoef)
         out.writeLong(seed)
@@ -66,11 +66,13 @@ object SOM extends Obj.Type {
         val dimensions    = in.readInt()
         val extent        = in.readInt()
         val gridStep      = in.readInt()
-        val maxNodes      = in.readInt()
+//        val maxNodes      = in.readInt()
         val numIterations = in.readInt()
         val learningCoef  = in.readDouble()
         val seed          = in.readLong()
-        ConfigImpl(features = features, extent = extent, gridStep = gridStep, maxNodes = maxNodes, seed = seed)
+        ConfigImpl(features = features, extent = extent, gridStep = gridStep,
+//          maxNodes = maxNodes,
+          seed = seed)
       }
     }
   }
@@ -81,7 +83,7 @@ object SOM extends Obj.Type {
                           dimensions    : Int     = 2,
                           extent        : Int     = 256,
                           gridStep      : Int     = 1,
-                          maxNodes      : Int     = 16384,
+//                          maxNodes      : Int     = 16384,
                           numIterations : Int     = 32768,
                           learningCoef  : Double  = 0.072,
                           seed          : Long    = System.currentTimeMillis()
@@ -93,14 +95,15 @@ object SOM extends Obj.Type {
     var dimensions    : Int     = 2
     var extent        : Int     = 256
     var gridStep      : Int     = 1
-    var maxNodes      : Int     = 16384
+//    var maxNodes      : Int     = 16384
     var numIterations : Int     = 32768
     var learningCoef  : Double  = 0.072
     var seed          : Long    = System.currentTimeMillis()
 
     def build: Config = ConfigImpl(
       features = features, dimensions = dimensions, extent = extent, gridStep = gridStep,
-      maxNodes = maxNodes, numIterations = numIterations, learningCoef = learningCoef,
+//      maxNodes = maxNodes,
+      numIterations = numIterations, learningCoef = learningCoef,
       seed = seed
     )
   }
