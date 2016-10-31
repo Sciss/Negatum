@@ -486,9 +486,11 @@ object SOMImpl {
   private final class AddAllImpl[S <: Sys[S], D <: Space[D]](somH: stm.Source[S#Tx, Impl[S, D]],
                                               folderH: stm.Source[S#Tx, Folder[S]], config: Config)
                                               (implicit protected val cursor: stm.Cursor[S])
-    extends RenderingImpl[S, Int] {
+    extends RenderingImpl[S, Int, Int] {
 
     override def toString = s"SOM.addAll@${hashCode.toHexString}"
+
+    protected def fillResult(out: Int)(implicit tx: S#Tx): Int = out
 
     protected def body(): Int = blocking {
       ???

@@ -12,15 +12,17 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.Ref
 import scala.util.{Success, Failure, Try}
 
-trait RenderingImpl[S <: Sys[S], A]
-  extends ProcessorImpl[A, Processor[A]]
-  with Processor[A]
+trait RenderingImpl[S <: Sys[S], A, B]
+  extends ProcessorImpl[B, Processor[B]]
+  with Processor[B]
   with Rendering[S, A]
   with ObservableImpl[S, State[A]] {
 
   // ---- abstract ----
 
   protected def cursor: stm.Cursor[S]
+
+  protected def fillResult(out: B)(implicit tx: S#Tx): A
 
   // ---- impl ----
 
@@ -33,11 +35,16 @@ trait RenderingImpl[S <: Sys[S], A]
     res
   }
 
-  private def completeWith(t: Try[A]): Unit = {
+  protected def completeWith(t: Try[B]): Unit = {
     if (!_disposed.single.get) {
       cursor.step { implicit tx =>
-        if (!_disposed.get(tx.peer))
-          state = Rendering.Completed(t)
+        if (!_disposed.get(tx.peer)) t match {
+          case Success(out) =>
+            val res = fillResult(out)
+            state = Rendering.Completed(Success(res))
+          case Failure(ex) =>
+            state = Rendering.Completed(Failure(ex))  // bad design: Failure is not Try[Nothing]
+        }
       }
     }
   }
