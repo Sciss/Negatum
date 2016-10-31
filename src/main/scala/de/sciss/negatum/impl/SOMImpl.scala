@@ -85,11 +85,13 @@ object SOMImpl {
   }
   private final class Value[S <: Sys[S]](val features: Array[Float], val obj: Obj[S])
 
+  private final class Index[S <: Sys[S]](val index: Int, val value: Value[S])
+
   private final class Lattice(val iter: Int, val data: Array[Float])
 
   private implicit object LatticeSer extends ImmutableSerializer[Lattice] {
     def read(in: DataInput): Lattice = {
-      val iter = in.readInt()
+      val iter  = in.readInt()
       val sz    = in.readInt()
       val arr   = new Array[Float](sz)
       var i     = 0
@@ -453,23 +455,28 @@ object SOMImpl {
 
     private def cleanUp(lattice: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
       var i = 0
-      var removed = List.empty[Value[S]]
+      var removed = List.empty[Index[S]]
       while (i < dirty.length) {
         if (dirty(i)) {
-          list.remove(i).foreach { value =>
-            val point     = spaceHelper.toPoint(i, config)
-            val nodeOpt   = map.removeAt(point)
-            assert(nodeOpt.isDefined)
-            removed     ::= value
-            log(f"clean - remove ${value.obj}%3s at index $i%4d / $point")
+          list.get(i).foreach { value =>
+            val newIndex  = bmu(lattice = lattice.data, iw = value.features)
+            if (newIndex != i) {
+              list.remove(i)
+              val point     = spaceHelper.toPoint(i, config)
+              val nodeOpt   = map.removeAt(point)
+              assert(nodeOpt.isDefined)
+              removed     ::= new Index(newIndex, value)
+              log(f"clean - remove ${value.obj}%3s at index $i%4d / $point")
+            }
           }
         }
         i += 1
       }
       if (removed.nonEmpty) {
-        removed.foreach { value =>
+        removed.foreach { indexed =>
+          val value     = indexed.value
           val obj       = value.obj
-          val newIndex  = bmu(lattice = lattice.data, iw = value.features)
+          val newIndex  = indexed.index
           val newPoint  = spaceHelper.toPoint(newIndex, config)
           val newNode   = Node(newPoint, obj)
           /* val newInList = */ list.add(newIndex -> value) // .forall(_ != value)
