@@ -28,6 +28,7 @@ import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 import de.sciss.synth.proc.{Folder, SoundProcesses}
 
+import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
 import scala.language.existentials
@@ -187,6 +188,8 @@ object SOMImpl {
         IntPoint2D(x = x, y = y)
       }
 
+      def toVector(point: IntPoint2D): Vec[Int] = Vector(point.x, point.y)
+
       def metric: DistanceMeasure[_, IntSpace.TwoDim] = IntDistanceMeasure2D.euclideanSq
 
       // def toIndex(p: IntPoint2D, config: Config): Int = ...
@@ -213,6 +216,8 @@ object SOMImpl {
         IntPoint3D(x = x, y = y, z = z)
       }
 
+      def toVector(point: IntPoint3D): Vec[Int] = Vector(point.x, point.y, point.z)
+
       def metric: DistanceMeasure[_, IntSpace.ThreeDim] = IntDistanceMeasure3D.euclideanSq
 
       // def toIndex(p: IntPoint3D, config: Config): Int = ...
@@ -220,8 +225,9 @@ object SOMImpl {
   }
   private trait SpaceHelper[D <: Space[D]] {
     implicit def space: D
-    def toPoint(index: Int, config: Config): D#Point
-    def toPoint(comp: Seq[Int]): D#Point
+    def toPoint (index: Int, config: Config): D#Point
+    def toPoint (comp: Seq[Int]): D#Point
+    def toVector(point: D#Point): Vec[Int]
     def metric: DistanceMeasure[_, D]
     // def toIndex(p: D#Point, config: Config): Int
   }
@@ -727,6 +733,11 @@ object SOMImpl {
       val p = spaceHelper.toPoint(point)
       map.nearestNeighborOption(p, spaceHelper.metric).map(_.value)
     }
+
+    def iterator(implicit tx: S#Tx): Iterator[(ISeq[Int], Obj[S])] =
+      map.iterator.map { n =>
+        spaceHelper.toVector(n.key) -> n.value
+      }
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
 

@@ -21,7 +21,13 @@ object SOMTest extends App {
   val r  = new util.Random(1L)
   val t1 = System.currentTimeMillis()
   val somH = cursor.root { implicit tx =>
-    SOM(SOM.Config(features = 48, dimensions = 2, seed = 0L, numIterations = 200, extent = 128))
+    val config = SOM.Config()
+    config.features       = 48
+    config.dimensions     = 2
+    config.seed           = 0L
+    config.numIterations  = 200
+    config.extent         = 128
+    SOM(config)
   }
   val t2 = System.currentTimeMillis()
   cursor.step { implicit tx =>

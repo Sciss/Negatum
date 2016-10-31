@@ -40,6 +40,7 @@ object NegatumObjView extends ListObjView.Factory {
   def init(): Unit = {
     _init
     SVMModelObjView.init()
+    SOMObjView     .init()
   }
 
   def mkListView[S <: Sys[S]](obj: Negatum[S])(implicit tx: S#Tx): NegatumObjView[S] with ListObjView[S] =
