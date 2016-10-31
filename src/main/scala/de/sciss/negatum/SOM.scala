@@ -75,6 +75,8 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]]
 
+  def debugStats()(implicit tx: S#Tx): String
+
     //  /** Current iteration, i.e. how many elements have been added. */
   //  def iteration(implicit tx: S#Tx): Int
 }

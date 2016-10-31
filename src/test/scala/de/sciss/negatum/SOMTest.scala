@@ -15,12 +15,12 @@ object SOMTest extends App {
   val r  = new util.Random(1L)
   val t1 = System.currentTimeMillis()
   val somH = cursor.root { implicit tx =>
-    SOM(SOM.Config(features = 48, dimensions = 2, seed = 0L))
+    SOM(SOM.Config(features = 48, dimensions = 2, seed = 0L, numIterations = 200))
   }
   val t2 = System.currentTimeMillis()
   cursor.step { implicit tx =>
     val som = somH()
-    for (i <- 0 until 1000) {
+    for (i <- 0 until 200) {
       val obj = IntObj.newConst[S](i)
       som.add(key = Vector.fill(48)(r.nextDouble()), value = obj)
     }
@@ -36,6 +36,12 @@ object SOMTest extends App {
   println(s"Insertion took ${t3 - t2}ms.")
   println(s"Query     took ${t4 - t3}ms.")
   println(s"\nQuery result: $opt")
+
+  val stats = cursor.step { implicit tx =>
+    val som = somH()
+    som.debugStats()
+  }
+  println(s"Stats: $stats")
 
   cursor.close()
 }

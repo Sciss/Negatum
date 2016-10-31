@@ -547,6 +547,15 @@ object SOMImpl {
       }
     }
 
+    def debugStats()(implicit tx: S#Tx): String = {
+      val lat     = lattice()
+      val latSz   = lat.data.length / config.features
+      val numOcc  = (0 until latSz).count(lat.isOccupied)
+      val s1      = s"list.size = ${list.size}; map.size = ${map.size}; iter = ${lat.iter}"
+      val s2      = f"$s1; lattice size = $latSz; occupied = $numOcc (${numOcc.toDouble/latSz*100}%1.1f%%)"
+      s2
+    }
+
 //    def iteration(implicit tx: S#Tx): Int = iter()
 
     def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]] = {
