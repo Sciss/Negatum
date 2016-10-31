@@ -74,7 +74,7 @@ object SOM extends Obj.Type {
       }
     }
   }
-  trait Config extends ConfigLike
+  sealed trait Config extends ConfigLike
 
   private final case class ConfigImpl(
                           features      : Int,

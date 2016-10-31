@@ -129,128 +129,53 @@ object SOMObjView extends ListObjView.Factory {
     }
 
     private def guiInit(): Unit = {
-      val builder           = SVMConfig()
+      val builder           = SOM.Config()
 
-      val mList             = ListView.Model.empty[ListEntry]
-      val ggList            = new ListView(mList)
-      ggList.peer.setTransferHandler(new TransferHandler {
-        override def canImport(support: TransferSupport): Boolean = {
-          val res = support.isDataFlavorSupported(ListObjView.Flavor)
-          if (res) support.setDropAction(TransferHandler.LINK)
-          res
-        }
+//      def features      : Int
+//      def dimensions    : Int
+//      def extent        : Int
+//      def gridStep      : Int
+//      def maxNodes      : Int
+//      def numIterations : Int
+//      def learningCoef  : Double
+//      def seed          : Long
 
-        override def importData(support: TransferSupport): Boolean = {
-          val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
-          drag.workspace == workspace && drag.view.factory.tpe == Folder && {
-            val objH = drag.view.objH.asInstanceOf[stm.Source[S#Tx, Folder[S]]]
-            mList += new ListEntry(drag.view.name, objH)
-            true
-          }
-        }
-      })
+      val mFeatures         = new SpinnerNumberModel(builder.features, 1, 1024, 1)
+      val ggFeatures        = new Spinner(mFeatures)
+      val lbFeatures        = new Label("# of Features:")
 
-      val scrollList          = new ScrollPane(ggList)
-      scrollList.minimumSize  = scrollList.preferredSize
-      scrollList.maximumSize  = scrollList.preferredSize
+      val mDimensions       = new SpinnerNumberModel(builder.dimensions, 1, 64, 1)
+      val ggDimensions      = new Spinner(mDimensions)
+      val lbDimensions      = new Label("Map Dimension:")
 
-      val mTypeParamC       = new SpinnerNumberModel(1.0, 0.0, 1000, 1.0)
-      val ggTypeParamC      = new Spinner(mTypeParamC)
-      val lbTypeParamC      = new Label("C:")
-      ggTypeParamC.tooltip  = "C (cost) parameter in C-SVC, ε-SVR, ν-SVR"
+      val mExtent           = new SpinnerPowerOfTwoModel(builder.extent, 1, 0x40000000)
+      val ggExtent          = new Spinner(mExtent)
+      val lbExtent          = new Label("Extent:")
+      ggExtent.tooltip      = "Map half side length"
 
-      val mTypeParamNu      = new SpinnerNumberModel(0.5, 0.0, 1000, 0.1)  // XXX TODO --- what should be min/max?
-      val ggTypeParamNu     = new Spinner(mTypeParamNu)
-      val lbTypeParamNu     = new Label("ν:")
-      ggTypeParamNu.tooltip = "ν parameter in ν-SVC, One Class, ν-SVR"
+      val mGridStep         = new SpinnerNumberModel(builder.gridStep, 1, 0x40000000, 1)
+      val ggGridStep        = new Spinner(mGridStep)
+      val lbGridStep        = new Label("Grid Step:")
 
-      val mTypeParamP       = new SpinnerNumberModel(0.1, 0.0, 1000, 0.1)  // XXX TODO --- what should be min/max?
-      val ggTypeParamP      = new Spinner(mTypeParamP)
-      val lbTypeParamP      = new Label("p:")
-      ggTypeParamP.tooltip  = "p or ε parameter in ε-SVR"
+      val mMaxNodes         = new SpinnerNumberModel(builder.maxNodes, 1, 0x1000000, 1)
+      val ggMaxNodes        = new Spinner(mMaxNodes)
+      val lbMaxNodes        = new Label("Max. # of Nodes:")
 
-      def updateTypeParam(id: Int): Unit = {
-        val hasC  = id == Type.CSVC .id || id == Type.EpsilonSVR.id || id == Type.NuSVR.id
-        val hasNu = id == Type.NuSVC.id || id == Type.OneClass  .id || id == Type.NuSVR.id
-        val hasP  = id == Type.EpsilonSVR.id
-        ggTypeParamC .enabled = hasC
-        ggTypeParamNu.enabled = hasNu
-        ggTypeParamP .enabled = hasP
-      }
+      val mNumIter          = new SpinnerNumberModel(builder.numIterations, 1, 0x1000000, 1)
+      val ggNumIter         = new Spinner(mNumIter)
+      val lbNumIter         = new Label("Estim. # of Iterations:")
 
-      updateTypeParam(builder.tpe.id)
+      val mLearningCoef     = new SpinnerNumberModel(builder.learningCoef, 0.0, 1.0, 0.01)
+      val ggLearningCoef    = new Spinner(mLearningCoef)
+      val lbLearningCoef    = new Label("Learning Coefficient:")
 
-      val ggType        = new ComboBox(Seq("C-SVC", "ν-SVC", "One Class", "ε-SVR", "ν-SVR")) {
-        selection.index = builder.tpe.id
-        listenTo(selection)
-        reactions += {
-          case SelectionChanged(_) => updateTypeParam(selection.index)
-        }
-      }
-      val lbType        = new Label("Type:")
-
-      val mKernelParamDegree  = new SpinnerNumberModel(1, 0, 100, 1)
-      val ggKernelParamDegree = new Spinner(mKernelParamDegree)
-      val lbKernelParamDegree = new Label("Degree:")
-      ggKernelParamDegree.tooltip  = "Degree of polynomial kernel"
-
-      val mKernelParamGamma   = new SpinnerNumberModel(0.05, 0.0, 10.11, 0.05)
-      val ggKernelParamGamma  = new Spinner(mKernelParamGamma)
-      val lbKernelParamGamma  = new Label("γ:")
-      ggKernelParamGamma.tooltip  = "γ parameter of polynomial, radial, or sigmoid kernel"
-
-      val mKernelParamCoef0   = new SpinnerNumberModel(0.0, 0.0, 10.11, 0.1)
-      val ggKernelParamCoef0  = new Spinner(mKernelParamCoef0)
-      val lbKernelParamCoef0  = new Label("Coef0:")
-      ggKernelParamCoef0.tooltip  = "coef0 coefficient of polynomial or sigmoid kernel"
-
-      def updateKernelParam(id: Int): Unit = {
-        val hasDegree = id == Kernel.Poly.id
-        val hasGamma  = id == Kernel.Poly.id || id == Kernel.Sigmoid.id || id == Kernel.Radial.id
-        val hasCoef0  = id == Kernel.Poly.id || id == Kernel.Sigmoid.id
-        ggKernelParamDegree .enabled = hasDegree
-        ggKernelParamGamma  .enabled = hasGamma
-        ggKernelParamCoef0  .enabled = hasCoef0
-      }
-
-      updateKernelParam(builder.kernel.id)
-
-      val ggKernel      = new ComboBox(Seq("Linear", "Polynomial", "Radial Basis Function", "Sigmoid")) {
-        selection.index = builder.kernel.id
-        listenTo(selection)
-        reactions += {
-          case SelectionChanged(_) => updateKernelParam(selection.index)
-        }
-      }
-      val lbKernel      = new Label("Kernel:")
-
-      val mCacheSize    = new SpinnerNumberModel(builder.cacheSize, 0.2, 1024, 0.2)
-      val ggCacheSize   = new Spinner(mCacheSize)
-      val lbCacheSize   = new Label("Cache size [MB]:")
-
-      val mEpsilon      = new SpinnerNumberModel(builder.epsilon, 0.0, 1.111, 1.0e-3)
-      val ggEpsilon     = new Spinner(mEpsilon)
-      val lbEpsilon     = new Label("ε:")
-      ggEpsilon.tooltip = "Epsilon (accuracy or radius)"
-
-      val ggShrinking   = new CheckBox
-      ggShrinking.selected = builder.shrinking
-      val lbShrinking   = new Label("Shrinking:")
-      ggShrinking.tooltip = "Whether to train a SVC or SVR model for probability estimates"
-
-      val ggProbability = new CheckBox
-      ggProbability.selected = builder.probability
-      val lbProbability = new Label("Probability:")
-      ggProbability.tooltip = "Whether to use the shrinking heuristics"
-
-      val ggNormalize   = new CheckBox
-      ggNormalize.selected = builder.normalize
-      val lbNormalize   = new Label("Normalize:")
-      ggNormalize.tooltip = "Whether to normalize the components of the feature vector"
-
-      val mNumFeatures  = new SpinnerNumberModel(24 * 2, 2 * 2, 128 * 2, 1 * 2)
-      val ggNumFeatures = new Spinner(mNumFeatures)
-      val lbNumFeatures = new Label("# of Features:")
+      val mSeed             = new SpinnerNumberModel
+      mSeed.setMinimum(Long.MinValue)
+      mSeed.setMinimum(Long.MaxValue)
+      mSeed.setValue(0L)
+      mSeed.setStepSize(1L)
+      val ggSeed            = new Spinner(mSeed)
+      val lbSeed            = new Label("RNG Seed:")
 
       val sep1  = Separator()
       val sep2  = Separator()
@@ -258,25 +183,25 @@ object SOMObjView extends ListObjView.Factory {
       val lbName = new Label("Name:")
       val ggName = new TextField("svm-model", 12)
 
-      val pGroup = new GroupPanel {
-        horizontal = Par(sep1, sep2, Seq(
-          Par(lbType, lbTypeParamNu, lbKernel, lbKernelParamDegree, lbNumFeatures, lbEpsilon, lbCacheSize),
-          Par(ggType, ggTypeParamNu, ggKernel, ggKernelParamDegree, ggNumFeatures, ggEpsilon, ggCacheSize),
-          Par(lbTypeParamC, lbTypeParamP, lbKernelParamGamma, lbKernelParamCoef0, lbNormalize, lbShrinking, lbProbability),
-          Par(ggTypeParamC, ggTypeParamP, ggKernelParamGamma, ggKernelParamCoef0, ggNormalize, ggShrinking, ggProbability)
-        ))
-        vertical = Seq(
-          Par(Baseline)(lbType, ggType, lbTypeParamC, ggTypeParamC),
-          Par(Baseline)(lbTypeParamNu, ggTypeParamNu, lbTypeParamP, ggTypeParamP),
-          sep1,
-          Par(Baseline)(lbKernel, ggKernel, lbKernelParamGamma, ggKernelParamGamma),
-          Par(Baseline)(lbKernelParamDegree, ggKernelParamDegree, lbKernelParamCoef0, ggKernelParamCoef0),
-          sep2,
-          Par(Baseline)(lbNumFeatures, ggNumFeatures, lbNormalize, ggNormalize),
-          Par(Baseline)(lbEpsilon, ggEpsilon, lbShrinking, ggShrinking),
-          Par(Baseline)(lbCacheSize, ggCacheSize, lbProbability, ggProbability)
-        )
-      }
+//      val pGroup = new GroupPanel {
+//        horizontal = Par(sep1, sep2, Seq(
+//          Par(lbType, lbTypeParamNu, lbKernel, lbKernelParamDegree, lbNumFeatures, lbEpsilon, lbCacheSize),
+//          Par(ggType, ggTypeParamNu, ggKernel, ggKernelParamDegree, ggNumFeatures, ggEpsilon, ggCacheSize),
+//          Par(lbTypeParamC, lbTypeParamP, lbKernelParamGamma, lbKernelParamCoef0, lbNormalize, lbShrinking, lbProbability),
+//          Par(ggTypeParamC, ggTypeParamP, ggKernelParamGamma, ggKernelParamCoef0, ggNormalize, ggShrinking, ggProbability)
+//        ))
+//        vertical = Seq(
+//          Par(Baseline)(lbType, ggType, lbTypeParamC, ggTypeParamC),
+//          Par(Baseline)(lbTypeParamNu, ggTypeParamNu, lbTypeParamP, ggTypeParamP),
+//          sep1,
+//          Par(Baseline)(lbKernel, ggKernel, lbKernelParamGamma, ggKernelParamGamma),
+//          Par(Baseline)(lbKernelParamDegree, ggKernelParamDegree, lbKernelParamCoef0, ggKernelParamCoef0),
+//          sep2,
+//          Par(Baseline)(lbNumFeatures, ggNumFeatures, lbNormalize, ggNormalize),
+//          Par(Baseline)(lbEpsilon, ggEpsilon, lbShrinking, ggShrinking),
+//          Par(Baseline)(lbCacheSize, ggCacheSize, lbProbability, ggProbability)
+//        )
+//      }
 
       lazy val actionCancel: Action = Action("Cancel") {
         impl.cursor.step { implicit tx =>
@@ -294,45 +219,42 @@ object SOMObjView extends ListObjView.Factory {
       }
 
       def updateConfig(): Unit = {
-        builder.tpe = ggType.selection.index match {
-          case Type.CSVC      .id => Type.CSVC    (c  = mTypeParamC .toFloat)
-          case Type.NuSVC     .id => Type.NuSVC   (nu = mTypeParamNu.toFloat)
-          case Type.OneClass  .id => Type.OneClass(nu = mTypeParamNu.toFloat)
-          case Type.EpsilonSVR.id => Type.EpsilonSVR(c = mTypeParamC.toFloat, p = mTypeParamP.toFloat)
-          case Type.NuSVR     .id => Type.NuSVR(c = mTypeParamC.toFloat, nu = mTypeParamNu.toFloat)
-        }
-        builder.kernel = ggKernel.selection.index match {
-          case Kernel.Linear  .id => Kernel.Linear
-          case Kernel.Poly    .id => Kernel.Poly(degree = mKernelParamDegree.toInt,
-            gamma = mKernelParamGamma.toFloat, coef0 = mKernelParamCoef0.toFloat)
-          case Kernel.Radial  .id => Kernel.Radial(gamma = mKernelParamGamma.toFloat)
-          case Kernel.Sigmoid .id => Kernel.Sigmoid(gamma = mKernelParamGamma.toFloat,
-            coef0 = mKernelParamCoef0.toFloat)
-        }
-        builder.cacheSize   = mCacheSize.toFloat
-        builder.epsilon     = mEpsilon  .toFloat
-        builder.shrinking   = ggShrinking  .selected
-        builder.probability = ggProbability.selected
-        builder.normalize   = ggNormalize  .selected
+        ???
+//        builder.tpe = ggType.selection.index match {
+//          case Type.CSVC      .id => Type.CSVC    (c  = mTypeParamC .toFloat)
+//          case Type.NuSVC     .id => Type.NuSVC   (nu = mTypeParamNu.toFloat)
+//          case Type.OneClass  .id => Type.OneClass(nu = mTypeParamNu.toFloat)
+//          case Type.EpsilonSVR.id => Type.EpsilonSVR(c = mTypeParamC.toFloat, p = mTypeParamP.toFloat)
+//          case Type.NuSVR     .id => Type.NuSVR(c = mTypeParamC.toFloat, nu = mTypeParamNu.toFloat)
+//        }
+//        builder.kernel = ggKernel.selection.index match {
+//          case Kernel.Linear  .id => Kernel.Linear
+//          case Kernel.Poly    .id => Kernel.Poly(degree = mKernelParamDegree.toInt,
+//            gamma = mKernelParamGamma.toFloat, coef0 = mKernelParamCoef0.toFloat)
+//          case Kernel.Radial  .id => Kernel.Radial(gamma = mKernelParamGamma.toFloat)
+//          case Kernel.Sigmoid .id => Kernel.Sigmoid(gamma = mKernelParamGamma.toFloat,
+//            coef0 = mKernelParamCoef0.toFloat)
+//        }
+//        builder.cacheSize   = mCacheSize.toFloat
+//        builder.epsilon     = mEpsilon  .toFloat
+//        builder.shrinking   = ggShrinking  .selected
+//        builder.probability = ggProbability.selected
+//        builder.normalize   = ggNormalize  .selected
       }
 
       val ggProgress = new ProgressBar
 
-      val actionCreate    = Action("Create") {
+      val actionCreate    = Action("Ok") {
         ???
       }
 
       val ggCancel        = GUI.toolButton(actionCancel, raphael.Shapes.Cross)
       val ggCreate        = GUI.toolButton(actionCreate, raphael.Shapes.Check)
-      val pBottom         = new FlowPanel(ggCancel, ggProgress, ggCreate)
+      val pBottom         = new FlowPanel(ggCancel, ggCreate)
 
       component = new BorderPanel {
         add(new FlowPanel(lbName, ggName), BorderPanel.Position.North)
-        add(pGroup, BorderPanel.Position.Center)
-        add(new BoxPanel(Orientation.Vertical) {
-          contents += new Label("Drop Folder instances:")
-          contents += scrollList
-        }, BorderPanel.Position.East)
+        // add(pGroup, BorderPanel.Position.Center)
         add(pBottom, BorderPanel.Position.South)
       }
     }

@@ -339,6 +339,6 @@ object SVMConfig {
     }
   }
 }
-trait SVMConfig extends SVMConfig.Like {
+sealed trait SVMConfig extends SVMConfig.Like {
   def toLibSVM: svm_parameter
 }
