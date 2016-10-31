@@ -16,13 +16,12 @@ package impl
 
 import de.sciss.lucre.data.SkipOctree
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
-import de.sciss.lucre.event.impl.ConstObjImpl
-import de.sciss.lucre.geom.{IntCube, IntHyperCubeN, IntPoint2D, IntPoint3D, IntPointN, IntSpace, IntSquare, Space}
+import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
+import de.sciss.lucre.geom.{IntCube, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
-import IntSpace.{TwoDim, ThreeDim}
 
 import scala.language.existentials
 
@@ -74,19 +73,29 @@ object SOMImpl {
   }
 
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = {
-    import config.{dimensions => dim, _}
+    import config.{extent, gridStep, seed}
 
     val random = new util.Random(seed)
-
+    val dim         = config.dimensions
+    val feat        = config.features
     require (dim > 0 && extent > 1 && gridStep > 0 && gridStep <= extent)
     require (extent < (0x40000000 >> (dim - 1)), "Integer overflow")
     val numLatSide  = (extent << 1) / gridStep
     val numLattice  = numLatSide << (dim - 1)
-    val lattice0    = new Array[Float](numLattice)
+    // lattice is a flat array of a virtual size `numLattice`
+    // where the neighbouring elements are the feature vector.
+    // we don't need to store the "coordinate" in the lattice,
+    // because we will simply pass the offset around when we need it.
+    val latSz       = numLattice * feat
+    val lattice0    = new Array[Float](latSz)
     var i = 0
-    while (i < numLattice) {
-      lattice0(i) = random.nextFloat()
-      i += 1
+    while (i < latSz) {
+      var j = 0
+      while (j < feat) {
+        lattice0(i) = random.nextFloat()
+        i += 1
+        j += 1
+      }
     }
     val id          = tx.newID()
     val lattice     = tx.newVar[Array[Float]](id, lattice0)
@@ -121,7 +130,7 @@ object SOMImpl {
     val config  = Config.serializer.read(in)
     val lattice = tx.readVar[Array[Float]](id, in)
 
-    import config.{features, dimensions => dim}
+    import config.{dimensions => dim}
     if (dim == 2) {
       val map     = SkipOctree.read[S, TwoDim, Node[S, TwoDim]](in, access)
       new Impl(id, config, lattice = lattice, map = map)
@@ -149,6 +158,94 @@ object SOMImpl {
     }
   }
 
+//  // _not_ sqrt any longer -- since we don't need it to find the NN
+//  private def weightDist(w1: Weight, w2: Weight): Double = {
+//    // def norm(v: Array[Double], min: Array[Double], max: Array[Double]): Vec[Double] =
+//    //  (0 until v.length).map { i => v(i).linlin(min(i), max(i), 0, 1) }
+//
+//    def sqrDifSum /* Sqrt */(a: Array[Double], b: Array[Double]): Double = {
+//      var i = 0
+//      var sum = 0.0
+//      while (i < a.length) {
+//        val d = a(i) - b(i)
+//        sum += d * d
+//        i += 1
+//      }
+//      sum // math.sqrt(sum)
+//    }
+//
+//    val w1sn = w1.spectral // norm(w1.spectral, featSpecMin, featSpecMax)
+//    val w2sn = w2.spectral // norm(w2.spectral, featSpecMin, featSpecMax)
+//    val spectDist = sqrDifSum /* Sqrt */(w1sn, w2sn) // (w1sn zip w2sn).map { tup => (tup._1 - tup._2).squared } .sum.sqrt
+//
+//    val w1tn = w1.temporal // norm(w1.temporal, featTempMin, featTempMax)
+//    val w2tn = w2.temporal // norm(w2.temporal, featTempMin, featTempMax)
+//    val tempDist = sqrDifSum /* Sqrt */(w1tn, w2tn) // (w1tn zip w2tn).map { tup => (tup._1 - tup._2).squared } .sum.sqrt
+//
+//    spectDist + tempDist // / 2
+//  }
+
+  private def toArray(in: Vec[Double]): Array[Float] = {
+    val sz  = in.size
+    val arr = new Array[Float](sz)
+    var i = 0
+    while (i < sz) {
+      arr(i) = in(i).toFloat
+      i += 1
+    }
+    arr
+  }
+
+  private def bmu(lattice: Array[Float], iw: Array[Float]): Int = {
+    var i = 0
+    var bestDist  = Double.MaxValue
+    val features  = iw.length
+    var bestNode  = -1
+    while (i < lattice.length) {
+      var dist = 0.0
+      var j = 0
+      val i0 = i
+      while (j < features) {
+        val d = iw(j) - lattice(i)
+        dist += d * d
+        j += 1
+        i += 1
+      }
+      if (dist < bestDist) {
+        bestDist = dist
+        bestNode = i0
+      }
+    }
+    if (bestNode < 0) throw new IllegalStateException
+    bestNode
+  }
+
+//  private def neighbourhoodRadiusSqr(iter: Double) = mapRadiusSqr * math.exp(-iter / timeConstant2)
+
+//  def bmuNeighboursSqr(radiusSqr: Double, bmu: PlacedWeight, lattice: Lattice): Iterator[Dist] =
+//    lattice.nodes.iterator.map(n => Dist(n, coordDistSqr(n.coord, bmu.coord))).filter(_.radius <= radiusSqr)
+
+  private def nextLattice[S <: Sys[S], D <: Space[D]](latIn: Array[Float], extent: Int, iter: Int,
+                                                      numIterations: Int, key: Vec[Double], value: Obj[S])
+                                                     (implicit space: D): Unit = {
+    val keyArr        = toArray(key)
+    val bmuNode       = bmu(latIn, keyArr)
+    // val radiusSqr     = neighbourhoodRadiusSqr(iter)
+    val mapRadius     = extent.toDouble
+    val mapRadiusSqr  = mapRadius * mapRadius
+    val timeConstant  = numIterations / math.log(mapRadius)
+    val timeConstant2 = timeConstant / 2
+    val radiusSqr     = mapRadiusSqr * math.exp(-iter / timeConstant2)
+    // val inNodeIter    = bmuNeighboursSqr(radiusSqr, bmuNode, lattice)
+    val learningRate  = 0.072 * math.exp(-iter / numIterations) // decays over time
+    ???
+//    val inNodeB       = inNodeIter.toVector
+//    inNodeB.par.foreach { dist =>
+//      val tTheta = thetaSqr(dist.radius, radiusSqr)
+//      adjust(randomInput.weight, dist.node.weight, lRate, tTheta)
+//    }
+  }
+
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
                                                        lattice: S#Var[Array[Float]], map: TreeImpl[S, D])
                                                       (implicit space: D)
@@ -156,7 +253,9 @@ object SOMImpl {
 
     def tpe: Obj.Type = SOM
 
-    def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit = ???
+    def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit = {
+      ???
+    }
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
 
