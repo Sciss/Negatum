@@ -122,8 +122,8 @@ object SOMImpl {
         val grid        = config.gridStep
         val ext2        = ext << 1
         val numLatSide  = ext2 / grid
-        val x           = ((index % numLatSide) * grid) - ext
-        val y           = ((index / numLatSide) * grid) - ext
+        val x           = ((index % numLatSide) * grid) // - ext
+        val y           = ((index / numLatSide) * grid) // - ext
         IntPoint2D(x = x, y = y)
       }
 
@@ -145,11 +145,11 @@ object SOMImpl {
         val grid        = config.gridStep
         val ext2        = ext << 1
         val numLatSide  = ext2 / grid
-        val x           = ((index % numLatSide) * grid) - ext
+        val x           = ((index % numLatSide) * grid) // - ext
         val dec1        = index / numLatSide
-        val y           = ((dec1  % numLatSide) * grid) - ext
+        val y           = ((dec1  % numLatSide) * grid) // - ext
         val dec2        = dec1 / numLatSide
-        val z           = ( dec2                * grid) - ext
+        val z           = ( dec2                * grid) // - ext
         IntPoint3D(x = x, y = y, z = z)
       }
 
@@ -213,7 +213,7 @@ object SOMImpl {
     }
   }
 
-  private final val COOKIE = 0x736f6d00
+  private final val SER_VERSION = 1
 
   def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, SOM[S]] = anySer.asInstanceOf[Ser[S]]
 
@@ -224,8 +224,8 @@ object SOMImpl {
   }
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): SOM[S] = {
-    val cookie = in.readInt()
-    if (cookie != COOKIE) sys.error(s"Unexpected cookie ${cookie.toHexString} -- expected ${COOKIE.toHexString}")
+    val ver     = in.readByte()
+    if (ver != SER_VERSION) sys.error(s"Unexpected version $ver -- expected $SER_VERSION")
     val id      = tx.readID(in, access)
     val config  = Config.serializer.read(in)
     val lattice = tx.readVar[Lattice](id, in)
@@ -348,7 +348,7 @@ object SOMImpl {
     var dec         = index
     var i           = 0
     while (i < dim) {
-      arr(i) = ((dec % numLatSide) * grid) - ext
+      arr(i) = ((dec % numLatSide) * grid) // - ext
       dec   /= numLatSide
       i     += 1
     }
@@ -382,10 +382,11 @@ object SOMImpl {
     while (i < latArr.length) {
       toCoord(index = j, config = config, res = latCoord)
       var dist = 0.0
-      var k = 0
+      var k    = 0
       while (k < dim) {
         val d = bmuCoord(k) - latCoord(k)
         dist += d * d
+        k    += 1
       }
       if (dist > radiusSqr) i += feat else {
         // val tTheta = thetaSqr(dist, radiusSqr)
@@ -429,7 +430,14 @@ object SOMImpl {
       val newNode   = Node(newPoint, obj)
       val newInList = list.add(newIndex -> newValue).isEmpty
       val newInMap  = map .add(newNode)
-      assert(newInList == newInMap)
+
+      // assert(newInList == newInMap)
+      if (newInList != newInMap) {
+        println(s"ERROR: object $obj was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
+        println(s"List keys = ${list.keysIterator.mkString(", ")}")
+        println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
+        assert(false)
+      }
     }
 
     private def cleanUp(lattice: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
@@ -437,24 +445,31 @@ object SOMImpl {
       var removed = List.empty[Value[S]]
       while (i < dirty.length) {
         if (dirty(i)) {
-          val valueOpt  = list.remove(i)
-          assert(valueOpt.isDefined)
-          val value     = valueOpt.get
-          val point     = spaceHelper.toPoint(i, config)
-          val nodeOpt   = map.removeAt(point)
-          assert(nodeOpt.isDefined)
-          removed     ::= value
+          list.remove(i).foreach { value =>
+            val point     = spaceHelper.toPoint(i, config)
+            val nodeOpt   = map.removeAt(point)
+            assert(nodeOpt.isDefined)
+            removed     ::= value
+          }
         }
         i += 1
       }
       if (removed.nonEmpty) {
         removed.foreach { value =>
+          val obj       = value.obj
           val newIndex  = bmu(lattice = lattice.data, iw = value.features)
           val newPoint  = spaceHelper.toPoint(newIndex, config)
-          val newNode   = Node(newPoint, value.obj)
+          val newNode   = Node(newPoint, obj)
           val newInList = list.add(newIndex -> value).isEmpty
           val newInMap  = map .add(newNode)
-          assert(newInList == newInMap)
+
+          // assert(newInList == newInMap)
+          if (newInList != newInMap) {
+            println(s"ERROR: object $obj was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
+            println(s"List keys = ${list.keysIterator.mkString(", ")}")
+            println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
+            assert(false)
+          }
         }
       }
     }
@@ -471,7 +486,8 @@ object SOMImpl {
     final def changed: EventLike[S, Any] = Dummy[S, Any]
 
     def write(out: DataOutput): Unit = {
-      out.writeInt(COOKIE)
+      out.writeInt(tpe.typeID)
+      out.writeByte(SER_VERSION)
       id     .write(out)
       Config.serializer.write(config, out)
       lattice.write(out)
