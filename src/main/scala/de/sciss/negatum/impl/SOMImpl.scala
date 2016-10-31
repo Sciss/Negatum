@@ -14,8 +14,11 @@
 package de.sciss.negatum
 package impl
 
+import java.util.concurrent.TimeUnit
+
 import de.sciss.lucre.data.{SkipList, SkipOctree}
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
+import de.sciss.lucre.expr.DoubleVector
 import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
 import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm
@@ -23,9 +26,10 @@ import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
-import de.sciss.synth.proc.Folder
+import de.sciss.synth.proc.{Folder, SoundProcesses}
 
-import scala.concurrent.blocking
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, blocking}
 import scala.language.existentials
 
 object SOMImpl {
@@ -286,6 +290,15 @@ object SOMImpl {
     def tpe: Obj.Type = SOM
   }
 
+  implicit private def implSerializer[S <: Sys[S], D <: Space[D]]: Serializer[S#Tx, S#Acc, Impl[S, D]] =
+    anyImplSer.asInstanceOf[ImplSer[S, D]]
+
+  private[this] val anyImplSer = new ImplSer[NoSys, TwoDim]
+
+  private class ImplSer[S <: Sys[S], D <: Space[D]] extends ObjSerializer[S, Impl[S, D]] {
+    def tpe: Obj.Type = SOM
+  }
+
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): SOM[S] = {
     val ver     = in.readByte()
     if (ver != SER_VERSION) sys.error(s"Unexpected version $ver -- expected $SER_VERSION")
@@ -483,17 +496,104 @@ object SOMImpl {
   private[this] final val DEBUG = true
   private def log(what: => String): Unit = if (DEBUG) println(what)
 
+  private final class Run(val features: Array[Float], val folderIdx: Int) {
+    @volatile var index = -1
+  }
+
   private final class AddAllImpl[S <: Sys[S], D <: Space[D]](somH: stm.Source[S#Tx, Impl[S, D]],
-                                              folderH: stm.Source[S#Tx, Folder[S]], config: Config)
-                                              (implicit protected val cursor: stm.Cursor[S])
+                                                             lattice: Lattice,
+                                                             folderH: stm.Source[S#Tx, Folder[S]],
+                                                             runs: Array[Run], config: Config)
+                                                            (implicit protected val cursor: stm.Cursor[S])
     extends RenderingImpl[S, Int, Int] {
 
     override def toString = s"SOM.addAll@${hashCode.toHexString}"
 
     protected def fillResult(out: Int)(implicit tx: S#Tx): Int = out
 
+    private[this] val dirty = new Array[Boolean](lattice.data.length / config.features)
+
+    private[this] val sync = new AnyRef
+
+    def _dirty  : Array[Boolean] = sync.synchronized(dirty)
+    def _lattice: Lattice        = sync.synchronized(lattice)
+
     protected def body(): Int = blocking {
-      ???
+      /*
+        (this first bit could go in addAll call directly)
+
+        atomic {
+          collect from folder all instances that have `attrFeatures`.
+          grab lattice
+        }
+
+        - update lattice
+
+        atomic {
+          verify that lattice is still at the known iteration
+          perform cleanUp and insertions
+        }
+
+       */
+
+      val progWeight  = 0.4 / runs.length
+
+      var i = 0
+      while (i < runs.length) {
+        val run       = runs(i)
+        val keyArr    = run.features
+        /* val newIndex = */ nextLattice(lattice = lattice, dirty = dirty, config = config, keyArr = keyArr)
+        // run.index     = newIndex
+        i += 1
+        progress = i * progWeight
+        checkAborted()
+      }
+
+      i = 0
+      while (i < runs.length) {
+        val run       = runs(i)
+        val newIndex  = bmu(lat = lattice.data, iw = run.features)
+        run.index     = newIndex
+        i += 1
+      }
+      progress = 0.5
+      checkAborted()
+
+      val futAdd = SoundProcesses.atomic[S, Unit] { implicit tx =>
+        // XXX TODO -- does this ensure arrays are flushed?
+        val dirty   = _dirty
+        val lattice = _lattice
+        val som     = somH()
+        val folder  = folderH()
+
+        som.cleanUp(lattice, dirty)
+
+        val fIter   = folder.iterator.zipWithIndex
+        val rIter   = runs.iterator
+
+        while (rIter.hasNext && fIter.hasNext) {
+          val run   = rIter.next()
+          var done  = false
+          while (!done && fIter.hasNext) {
+            fIter.next() match {
+              case (obj, run.folderIdx) =>
+                som.addDirect(run.index, run.features, obj)
+                lattice.setOccupied(run.index, state = true)
+                done = true
+              case _ =>
+            }
+          }
+        }
+
+        lattice.iter += 1
+        som.lattice_=(lattice)
+      }
+
+      val addTimeOut = math.max(30.0, 0.1 * runs.length)
+      Await.result(futAdd, Duration(addTimeOut, TimeUnit.SECONDS))
+
+      progress = 1.0
+      runs.length
     }
   }
 
@@ -505,7 +605,19 @@ object SOMImpl {
 
     def tpe: Obj.Type = SOM
 
-    def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = ???
+    def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = {
+      val vecSize = config.features
+      val runs = f.iterator.zipWithIndex.flatMap { case (obj, fIdx) =>
+        obj.attr.$[DoubleVector](Negatum.attrFeatures).map(_.value).filter(_.size == vecSize)
+          .map { vec => new Run(toArray(vec), folderIdx = fIdx) }
+      } .toArray
+
+      val lat = lattice().copy()  // for InMemory, we might get into trouble if we don't isolate the arrays
+      val res = new AddAllImpl(somH = tx.newHandle(this), folderH = tx.newHandle(f),
+        lattice = lat, runs = runs, config = config)
+      res.startTx()
+      res
+    }
 
     def add(key: Vec[Double], obj: Obj[S])(implicit tx: S#Tx): Unit = {
       val lat       = lattice().copy()  // for InMemory, we might get into trouble if we don't isolate the arrays
@@ -541,7 +653,19 @@ object SOMImpl {
 //      }
     }
 
-    private def cleanUp(lat: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
+    private[negatum] def lattice_=(value: Lattice)(implicit tx: S#Tx): Unit =
+      lattice.update(value)
+
+    private[negatum] def addDirect(index: Int, features: Array[Float], obj: Obj[S])(implicit tx: S#Tx): Unit = {
+      val newPoint  = spaceHelper.toPoint(index, config)
+      log(f"-- will add    $obj%3s at index $index%6d / $newPoint")
+      val newNode   = Node(newPoint, obj)
+      val newValue  = new Value(features, obj)
+      /* val newInList = */ list.add(index -> newValue) // .forall(_ != newValue)
+      /* val newInMap  = */ map .add(newNode)
+    }
+
+    private[negatum] def cleanUp(lat: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
       var i = 0
       var removed = List.empty[Index[S]]
       while (i < dirty.length) {
