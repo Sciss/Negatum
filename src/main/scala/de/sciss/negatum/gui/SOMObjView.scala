@@ -43,7 +43,7 @@ import scala.util.{Failure, Success}
 
 object SOMObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = SOM[~]
-  val icon          = ObjViewImpl.raphaelIcon(Shapes.Category)
+  val icon          = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
   val prefix        = "SOM"
   def humanName     = "Self Organizing Map"
   def tpe           = SOM
@@ -57,7 +57,7 @@ object SOMObjView extends ListObjView.Factory {
   def mkListView[S <: Sys[S]](obj: SOM[S])(implicit tx: S#Tx): SOMObjView[S] with ListObjView[S] =
     new Impl(tx.newHandle(obj)).initAttrs(obj)
 
-  final case class Config[S <: stm.Sys[S]](name: String, peer: stm.Source[S#Tx, SOM[S]])
+  final case class Config[S <: stm.Sys[S]](name: String, peer: SOM.Config)
 
   def initMakeDialog[S <: Sys[S]](workspace: Workspace[S], window: Option[desktop.Window])
                                  (ok: Config[S] => Unit)
@@ -74,7 +74,7 @@ object SOMObjView extends ListObjView.Factory {
   }
 
   def makeObj[S <: Sys[S]](config: Config[S])(implicit tx: S#Tx): List[Obj[S]] = {
-    val obj = config.peer()
+    val obj = SOM(config.peer)
     import proc.Implicits._
     if (!config.name.isEmpty) obj.name = config.name
     obj :: Nil
@@ -114,7 +114,6 @@ object SOMObjView extends ListObjView.Factory {
     extends ViewHasWorkspace[S] with ComponentHolder[Component] { impl =>
 
     private[this] var _frame: Window[S] = _
-    private[this] val processor = Ref(Option.empty[Processor[Int]])
 
     def init(frame: Window[S])(implicit tx: S#Tx): this.type = {
       _frame = frame
@@ -130,15 +129,6 @@ object SOMObjView extends ListObjView.Factory {
 
     private def guiInit(): Unit = {
       val builder           = SOM.Config()
-
-//      def features      : Int
-//      def dimensions    : Int
-//      def extent        : Int
-//      def gridStep      : Int
-//      def maxNodes      : Int
-//      def numIterations : Int
-//      def learningCoef  : Double
-//      def seed          : Long
 
       val mFeatures         = new SpinnerNumberModel(builder.features, 1, 1024, 1)
       val ggFeatures        = new Spinner(mFeatures)
@@ -165,7 +155,7 @@ object SOMObjView extends ListObjView.Factory {
       val ggNumIter         = new Spinner(mNumIter)
       val lbNumIter         = new Label("Estim. # of Iterations:")
 
-      val mLearningCoef     = new SpinnerNumberModel(builder.learningCoef, 0.0, 1.0, 0.01)
+      val mLearningCoef     = new SpinnerNumberModel(builder.learningCoef, 0.0, 0.9999, 0.01)
       val ggLearningCoef    = new Spinner(mLearningCoef)
       val lbLearningCoef    = new Label("Learning Coefficient:")
 
@@ -177,75 +167,59 @@ object SOMObjView extends ListObjView.Factory {
       val ggSeed            = new Spinner(mSeed)
       val lbSeed            = new Label("RNG Seed:")
 
-      val sep1  = Separator()
-      val sep2  = Separator()
-
       val lbName = new Label("Name:")
-      val ggName = new TextField("svm-model", 12)
+      val ggName = new TextField("SOM", 12)
 
-//      val pGroup = new GroupPanel {
-//        horizontal = Par(sep1, sep2, Seq(
-//          Par(lbType, lbTypeParamNu, lbKernel, lbKernelParamDegree, lbNumFeatures, lbEpsilon, lbCacheSize),
-//          Par(ggType, ggTypeParamNu, ggKernel, ggKernelParamDegree, ggNumFeatures, ggEpsilon, ggCacheSize),
-//          Par(lbTypeParamC, lbTypeParamP, lbKernelParamGamma, lbKernelParamCoef0, lbNormalize, lbShrinking, lbProbability),
-//          Par(ggTypeParamC, ggTypeParamP, ggKernelParamGamma, ggKernelParamCoef0, ggNormalize, ggShrinking, ggProbability)
-//        ))
-//        vertical = Seq(
-//          Par(Baseline)(lbType, ggType, lbTypeParamC, ggTypeParamC),
-//          Par(Baseline)(lbTypeParamNu, ggTypeParamNu, lbTypeParamP, ggTypeParamP),
-//          sep1,
-//          Par(Baseline)(lbKernel, ggKernel, lbKernelParamGamma, ggKernelParamGamma),
-//          Par(Baseline)(lbKernelParamDegree, ggKernelParamDegree, lbKernelParamCoef0, ggKernelParamCoef0),
-//          sep2,
-//          Par(Baseline)(lbNumFeatures, ggNumFeatures, lbNormalize, ggNormalize),
-//          Par(Baseline)(lbEpsilon, ggEpsilon, lbShrinking, ggShrinking),
-//          Par(Baseline)(lbCacheSize, ggCacheSize, lbProbability, ggProbability)
-//        )
-//      }
+      /*
+            features      max-nodes
+            dimensions    num-iter
+            extent        coef
+            grid-step
+       */
+
+      val pGroup = new GroupPanel {
+        horizontal = Seq(
+          Par(lbFeatures, lbDimensions, lbExtent, lbGridStep),
+          Par(ggFeatures, ggDimensions, ggExtent, ggGridStep),
+          Par(lbMaxNodes, lbNumIter, lbLearningCoef),
+          Par(ggMaxNodes, ggNumIter, ggLearningCoef)
+        )
+        vertical = Seq(
+          Par(Baseline)(lbFeatures  , ggFeatures  , lbMaxNodes    , ggMaxNodes),
+          Par(Baseline)(lbDimensions, ggDimensions, lbNumIter     , ggNumIter),
+          Par(Baseline)(lbExtent    , ggExtent    , lbLearningCoef, ggLearningCoef),
+          Par(Baseline)(lbGridStep  , ggGridStep)
+        )
+      }
 
       lazy val actionCancel: Action = Action("Cancel") {
         impl.cursor.step { implicit tx =>
-          implicit val itx = tx.peer
-          val p = processor.swap(None)
-          // aborted() = true
-          p.foreach(_.abort())
-          if (p.isEmpty) close()
+          close()
         }
       }
 
       implicit class SpinnerValues(m: SpinnerNumberModel) {
-        def toFloat: Float = m.getNumber.floatValue
-        def toInt  : Int   = m.getNumber.intValue
+        def toInt   : Int     = m.getNumber.intValue
+        def toLong  : Long    = m.getNumber.longValue
+        def toDouble: Double  = m.getNumber.doubleValue
       }
 
       def updateConfig(): Unit = {
-        ???
-//        builder.tpe = ggType.selection.index match {
-//          case Type.CSVC      .id => Type.CSVC    (c  = mTypeParamC .toFloat)
-//          case Type.NuSVC     .id => Type.NuSVC   (nu = mTypeParamNu.toFloat)
-//          case Type.OneClass  .id => Type.OneClass(nu = mTypeParamNu.toFloat)
-//          case Type.EpsilonSVR.id => Type.EpsilonSVR(c = mTypeParamC.toFloat, p = mTypeParamP.toFloat)
-//          case Type.NuSVR     .id => Type.NuSVR(c = mTypeParamC.toFloat, nu = mTypeParamNu.toFloat)
-//        }
-//        builder.kernel = ggKernel.selection.index match {
-//          case Kernel.Linear  .id => Kernel.Linear
-//          case Kernel.Poly    .id => Kernel.Poly(degree = mKernelParamDegree.toInt,
-//            gamma = mKernelParamGamma.toFloat, coef0 = mKernelParamCoef0.toFloat)
-//          case Kernel.Radial  .id => Kernel.Radial(gamma = mKernelParamGamma.toFloat)
-//          case Kernel.Sigmoid .id => Kernel.Sigmoid(gamma = mKernelParamGamma.toFloat,
-//            coef0 = mKernelParamCoef0.toFloat)
-//        }
-//        builder.cacheSize   = mCacheSize.toFloat
-//        builder.epsilon     = mEpsilon  .toFloat
-//        builder.shrinking   = ggShrinking  .selected
-//        builder.probability = ggProbability.selected
-//        builder.normalize   = ggNormalize  .selected
+        import builder._
+        features      = mFeatures     .toInt
+        dimensions    = mDimensions   .toInt
+        extent        = mExtent       .toInt
+        gridStep      = mGridStep     .toInt
+        maxNodes      = mMaxNodes     .toInt
+        numIterations = mNumIter      .toInt
+        learningCoef  = mLearningCoef .toDouble
+        seed          = mSeed         .toLong
       }
 
-      val ggProgress = new ProgressBar
-
-      val actionCreate    = Action("Ok") {
-        ???
+      val actionCreate = Action("Ok") {
+        updateConfig()
+        val name = ggName.text
+        ok(Config(name, builder))
       }
 
       val ggCancel        = GUI.toolButton(actionCancel, raphael.Shapes.Cross)
@@ -254,15 +228,12 @@ object SOMObjView extends ListObjView.Factory {
 
       component = new BorderPanel {
         add(new FlowPanel(lbName, ggName), BorderPanel.Position.North)
-        // add(pGroup, BorderPanel.Position.Center)
-        add(pBottom, BorderPanel.Position.South)
+        add(pGroup , BorderPanel.Position.Center)
+        add(pBottom, BorderPanel.Position.South )
       }
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
-      implicit val itx = tx.peer
-      processor.swap(None).foreach(_.abort())
-    }
+    def dispose()(implicit tx: S#Tx): Unit = ()
   }
 }
 trait SOMObjView[S <: stm.Sys[S]] extends ObjView[S] {
