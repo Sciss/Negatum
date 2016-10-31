@@ -15,7 +15,7 @@ package de.sciss.negatum
 
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.negatum.impl.{SOMImpl => Impl}
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -55,6 +55,8 @@ object SOM extends Obj.Type {
   final case class Config(features: Int, dimensions: Int = 2,
                           extent: Int = 256, gridStep: Int = 1, maxNodes: Int = 16384,
                           seed: Long = System.currentTimeMillis())
+
+  implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, SOM[S]] = Impl.serializer[S]
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
     Impl.readIdentifiedObj(in, access)

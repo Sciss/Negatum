@@ -29,8 +29,9 @@ object Negatum extends Obj.Type {
 
   /** Initializes this type and other related type such as `SVMModel`. */
   override def init(): Unit = {
-    super.init()
+    super   .init()
     SVMModel.init()
+    SOM     .init()
   }
 
   def apply[S <: Sys[S]](template: AudioCue.Obj[S]   )(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
