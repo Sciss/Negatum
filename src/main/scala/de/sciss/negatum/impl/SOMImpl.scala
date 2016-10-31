@@ -14,10 +14,10 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.lucre.data.SkipOctree
+import de.sciss.lucre.data.{SkipList, SkipOctree}
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
 import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
-import de.sciss.lucre.geom.{IntCube, IntSpace, IntSquare, Space}
+import de.sciss.lucre.geom.{IntCube, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
@@ -34,12 +34,14 @@ object SOMImpl {
       extends Serializer[S#Tx, S#Acc, Node[S, D]] {
 
       def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Node[S, D] = {
+        // val index = in.readInt()
         val key   = space.pointSerializer.read(in)
         val value = Obj.read(in, access)
-        Node(key = key, value = value)
+        Node(/* index = index, */ key = key, value = value)
       }
 
       def write(p: Node[S, D], out: DataOutput): Unit = {
+        // out.writeInt(p.index)
         space.pointSerializer.write(p.key, out)
         p.value.write(out)
       }
@@ -47,22 +49,61 @@ object SOMImpl {
 
     implicit def view[S <: Sys[S], D <: Space[D]]: (Node[S, D], S#Tx) => D#PointLike = (p, tx) => p.key
   }
-  private final case class Node[S <: Sys[S], D <: Space[D]](key: D#Point, value: Obj[S])
+  private final case class Node [S <: Sys[S], D <: Space[D]](/* index: Int, */ key: D#Point, value: Obj[S])
 
-  private implicit object LatticeSer extends ImmutableSerializer[Array[Float]] {
-    def read(in: DataInput): Array[Float] = {
-      val sz  = in.readInt()
-      val arr = new Array[Float](sz)
-      var i   = 0
+  private object Value {
+    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Value[S]] =
+      anyValSer.asInstanceOf[ValSer[S]]
+
+    private[this] val anyValSer = new ValSer[NoSys]
+
+    private final class ValSer[S <: Sys[S]] extends Serializer[S#Tx, S#Acc, Value[S]] {
+      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Value[S] = {
+        val sz    = in.readInt()
+        val arr   = new Array[Float](sz)
+        var i = 0
+        while (i < sz) {
+          arr(i) = in.readFloat()
+          i += 1
+        }
+        val obj = Obj.read(in, access)
+        new Value(features = arr, obj = obj)
+      }
+
+      def write(v: Value[S], out: DataOutput): Unit = {
+        val arr = v.features
+        val sz  = arr.length
+        out.writeInt(sz)
+        var i = 0
+        while (i < sz) {
+          out.writeFloat(arr(i))
+          i += 1
+        }
+        v.obj.write(out)
+      }
+    }
+  }
+  private final class Value[S <: Sys[S]](val features: Array[Float], val obj: Obj[S])
+
+  private final class Lattice(val iter: Int, val data: Array[Float])
+
+  private implicit object LatticeSer extends ImmutableSerializer[Lattice] {
+    def read(in: DataInput): Lattice = {
+      val iter = in.readInt()
+      val sz    = in.readInt()
+      val arr   = new Array[Float](sz)
+      var i     = 0
       while (i < sz) {
         arr(i) = in.readFloat()
         i += 1
       }
-      arr
+      new Lattice(iter, arr)
     }
 
-    def write(arr: Array[Float], out: DataOutput): Unit = {
-      val sz = arr.length
+    def write(lattice: Lattice, out: DataOutput): Unit = {
+      out.writeInt(lattice.iter)
+      val arr = lattice.data
+      val sz  = arr.length
       out.writeInt(sz)
       var i = 0
       while (i < sz) {
@@ -70,6 +111,43 @@ object SOMImpl {
         i += 1
       }
     }
+  }
+
+  private object PointIndexConversion {
+    implicit object TwoDim extends PointIndexConversion[IntSpace.TwoDim] {
+      def toPoint(index: Int, config: Config): IntPoint2D = {
+        val ext         = config.extent
+        val grid        = config.gridStep
+        val ext2        = ext << 1
+        val numLatSide  = ext2 / grid
+        val x           = ((index % numLatSide) * grid) - ext
+        val y           = ((index / numLatSide) * grid) - ext
+        IntPoint2D(x = x, y = y)
+      }
+
+      // def toIndex(p: IntPoint2D, config: Config): Int = ...
+    }
+
+    implicit object ThreeDim extends PointIndexConversion[IntSpace.ThreeDim] {
+      def toPoint(index: Int, config: Config): IntPoint3D = {
+        val ext         = config.extent
+        val grid        = config.gridStep
+        val ext2        = ext << 1
+        val numLatSide  = ext2 / grid
+        val x           = ((index % numLatSide) * grid) - ext
+        val dec1        = index / numLatSide
+        val y           = ((dec1  % numLatSide) * grid) - ext
+        val dec2        = dec1 / numLatSide
+        val z           = ( dec2                * grid) - ext
+        IntPoint3D(x = x, y = y, z = z)
+      }
+
+      // def toIndex(p: IntPoint3D, config: Config): Int = ...
+    }
+  }
+  private trait PointIndexConversion[D <: Space[D]] {
+    def toPoint(index: Int, config: Config): D#Point
+    // def toIndex(p: D#Point, config: Config): Int
   }
 
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = {
@@ -98,16 +176,17 @@ object SOMImpl {
       }
     }
     val id          = tx.newID()
-    val lattice     = tx.newVar[Array[Float]](id, lattice0)
+    val lattice     = tx.newVar[Lattice](id, new Lattice(iter = 0, data = lattice0))
+    val list        = SkipList.Map.empty[S, Int, Value[S]]()
 
     if (dim == 2) {
-      val quad = IntSquare(extent, extent, extent)
-      val map = SkipOctree.empty[S, TwoDim, Node[S, TwoDim]](quad)
-      new Impl(id, config, lattice = lattice, map = map)
+      val quad  = IntSquare(extent, extent, extent)
+      val map   = SkipOctree.empty[S, TwoDim, Node[S, TwoDim]](quad)
+      new Impl(id, config, lattice = lattice, map = map, list = list)
     } else if (dim == 3) {
-      val cube = IntCube(extent, extent, extent, extent)
-      val map  = SkipOctree.empty[S, ThreeDim, Node[S, ThreeDim]](cube)
-      new Impl(id, config, lattice = lattice, map = map)
+      val cube  = IntCube(extent, extent, extent, extent)
+      val map   = SkipOctree.empty[S, ThreeDim, Node[S, ThreeDim]](cube)
+      new Impl(id, config, lattice = lattice, map = map, list = list)
     } else {
       ???
     }
@@ -117,7 +196,7 @@ object SOMImpl {
 
   def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, SOM[S]] = anySer.asInstanceOf[Ser[S]]
 
-  private val anySer = new Ser[NoSys]
+  private[this] val anySer = new Ser[NoSys]
 
   private class Ser[S <: Sys[S]] extends ObjSerializer[S, SOM[S]] {
     def tpe: Obj.Type = SOM
@@ -128,21 +207,23 @@ object SOMImpl {
     if (cookie != COOKIE) sys.error(s"Unexpected cookie ${cookie.toHexString} -- expected ${COOKIE.toHexString}")
     val id      = tx.readID(in, access)
     val config  = Config.serializer.read(in)
-    val lattice = tx.readVar[Array[Float]](id, in)
+    val lattice = tx.readVar[Lattice](id, in)
+    val list    = SkipList.Map.read[S, Int, Value[S]](in, access)
 
     import config.{dimensions => dim}
     if (dim == 2) {
-      val map     = SkipOctree.read[S, TwoDim, Node[S, TwoDim]](in, access)
-      new Impl(id, config, lattice = lattice, map = map)
+      val map = SkipOctree.read  [S, TwoDim, Node[S, TwoDim]](in, access)
+      new Impl(id, config, lattice = lattice, map = map, list = list)
     } else if (dim == 3) {
-      val map     = SkipOctree.read[S, ThreeDim, Node[S, ThreeDim]](in, access)
-      new Impl(id, config, lattice = lattice, map = map)
+      val map = SkipOctree.read[S, ThreeDim, Node[S, ThreeDim]](in, access)
+      new Impl(id, config, lattice = lattice, map = map, list = list)
     } else {
       ???
     }
   }
 
   private type TreeImpl[S <: Sys[S], D <: Space[D]] = SkipOctree[S, D, Node[S, D]]
+  private type ListImpl[S <: Sys[S]]                = SkipList.Map[S, Int, Value[S]]
 
   private def copyTree[In <: Sys[In], Out <: Sys[Out], D <: Space[D]](
        in: TreeImpl[In, D], out: TreeImpl[Out, D], outImpl: Impl[Out, D])
@@ -150,11 +231,22 @@ object SOMImpl {
 
     in.iterator.foreach { nodeIn =>
       val valueOut = context(nodeIn.value)
-      val nodeOut  = Node(nodeIn.key, valueOut)
+      val nodeOut  = Node(/* index = nodeIn.index, */ key = nodeIn.key, value = valueOut)
       out.add(nodeOut)
-//      xsOut.foreach { entry =>
-//        outImpl.changed += entry
-//      }
+      //      xsOut.foreach { entry =>
+      //        outImpl.changed += entry
+      //      }
+    }
+  }
+
+  private def copyList[In <: Sys[In], Out <: Sys[Out], D <: Space[D]](
+       in: ListImpl[In], out: ListImpl[Out], outImpl: Impl[Out, D])
+      (implicit txIn: In#Tx, txOut: Out#Tx, context: Copy[In, Out]): Unit = {
+
+    in.iterator.foreach { case (index, valueIn) =>
+      val objOut    = context(valueIn.obj)
+      val valueOut  = new Value(features = valueIn.features, obj = objOut)
+      out.add(index -> valueOut)
     }
   }
 
@@ -217,7 +309,7 @@ object SOMImpl {
       }
     }
     if (bestNode < 0) throw new IllegalStateException
-    bestNode
+    bestNode / features
   }
 
 //  private def neighbourhoodRadiusSqr(iter: Double) = mapRadiusSqr * math.exp(-iter / timeConstant2)
@@ -225,37 +317,115 @@ object SOMImpl {
 //  def bmuNeighboursSqr(radiusSqr: Double, bmu: PlacedWeight, lattice: Lattice): Iterator[Dist] =
 //    lattice.nodes.iterator.map(n => Dist(n, coordDistSqr(n.coord, bmu.coord))).filter(_.radius <= radiusSqr)
 
-  private def nextLattice[S <: Sys[S], D <: Space[D]](latIn: Array[Float], extent: Int, iter: Int,
-                                                      numIterations: Int, key: Vec[Double], value: Obj[S])
-                                                     (implicit space: D): Unit = {
+  private def toCoord(index: Int, config: Config, res: Array[Int]): Array[Int] = {
+    val dim         = config.dimensions
+    val ext         = config.extent
+    val grid        = config.gridStep
+    val ext2        = ext << 1
+    val numLatSide  = ext2 / grid
+    val arr         = if (res == null) new Array[Int](dim) else res
+    var dec         = index
+    var i           = 0
+    while (i < dim) {
+      arr(i) = ((dec % numLatSide) * grid) - ext
+      dec   /= numLatSide
+      i     += 1
+    }
+    arr
+  }
+
+  private def nextLattice[S <: Sys[S], D <: Space[D]](lattice: Lattice, dirty: Array[Boolean], config: Config,
+                                                      key: Vec[Double]): Unit = {
+    import config.{extent, numIterations}
+    import lattice.iter
+    val dim           = config.dimensions
+    val feat          = config.features
+    val latArr        = lattice.data
     val keyArr        = toArray(key)
-    val bmuNode       = bmu(latIn, keyArr)
+    val bmuNodeIdx    = bmu(latArr, keyArr)
     // val radiusSqr     = neighbourhoodRadiusSqr(iter)
     val mapRadius     = extent.toDouble
-    val mapRadiusSqr  = mapRadius * mapRadius
+    val mapRadiusSqr  = math.pow(mapRadius, dim)
+    // XXX TODO --- with the successive `log` and `exp`, can we not calculate `radiusSqr` directly without these ops?
     val timeConstant  = numIterations / math.log(mapRadius)
     val timeConstant2 = timeConstant / 2
     val radiusSqr     = mapRadiusSqr * math.exp(-iter / timeConstant2)
+    val radiusSqr2Rec = 1.0 / (radiusSqr * 2)
     // val inNodeIter    = bmuNeighboursSqr(radiusSqr, bmuNode, lattice)
     val learningRate  = 0.072 * math.exp(-iter / numIterations) // decays over time
-    ???
-//    val inNodeB       = inNodeIter.toVector
-//    inNodeB.par.foreach { dist =>
-//      val tTheta = thetaSqr(dist.radius, radiusSqr)
-//      adjust(randomInput.weight, dist.node.weight, lRate, tTheta)
-//    }
+
+    val bmuCoord      = toCoord(bmuNodeIdx, config, null)
+    val latCoord      = new Array[Int](dim)
+
+    var i = 0
+    var j = 0
+    while (i < latArr.length) {
+      toCoord(index = j, config = config, res = latCoord)
+      var dist = 0.0
+      var k = 0
+      while (k < dim) {
+        val d = bmuCoord(k) - latCoord(k)
+        dist += d * d
+      }
+      if (dist > radiusSqr) i += feat else {
+        // val tTheta = thetaSqr(dist, radiusSqr)
+        val tTheta  = math.exp(-dist * radiusSqr2Rec) // learning proportional to distance
+        val lt      = (learningRate * tTheta).toFloat
+        // adjust(randomInput.weight, dist.node.weight, lRate, tTheta)
+        // for each lattice-weight nW and input-weight (keyArr) iW, replace nW by nW + lt * (iW - nW)
+        k = 0
+        while (k < feat) {
+          latArr(i) += lt * (keyArr(k) - latArr(i))
+          k += 1
+          i += 1
+        }
+        dirty(j) = true
+      }
+      j += 1
+    }
   }
 
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
-                                                       lattice: S#Var[Array[Float]], map: TreeImpl[S, D])
-                                                      (implicit space: D)
+                                                       lattice: S#Var[Lattice],
+                                                       list: ListImpl[S], map: TreeImpl[S, D])
+                                                      (implicit space: D, pointIndex: PointIndexConversion[D])
     extends SOM[S] {
 
     def tpe: Obj.Type = SOM
 
     def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit = {
-      ???
+      val latIn   = lattice()
+      val dirty   = new Array[Boolean](latIn.data.length / config.features)
+      nextLattice(lattice = latIn, dirty = dirty, config = config, key = key)
+      val latOut  = new Lattice(iter = latIn.iter + 1, data = latIn.data)
+      lattice()   = latOut
+      cleanUp(dirty)
     }
+
+    private def cleanUp(dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
+      var i = 0
+      var removed = List.empty[Value[S]]
+      while (i < dirty.length) {
+        if (dirty(i)) {
+          val valueOpt  = list.remove(i)
+          assert(valueOpt.isDefined)
+          val value     = valueOpt.get
+          val point     = pointIndex.toPoint(i, config)
+          val nodeOpt   = map.removeAt(point)
+          assert(nodeOpt.isDefined)
+          removed     ::= value
+        }
+        i += 1
+      }
+      if (removed.nonEmpty) {
+        removed.foreach { value =>
+
+          ???
+        }
+      }
+    }
+
+//    def iteration(implicit tx: S#Tx): Int = iter()
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
 
@@ -266,21 +436,27 @@ object SOMImpl {
       id     .write(out)
       Config.serializer.write(config, out)
       lattice.write(out)
+      list   .write(out)
       map    .write(out)
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
       id     .dispose()
       lattice.dispose()
+      list   .dispose()
       map    .dispose()
     }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
       val idOut       = txOut.newID()
       val latticeOut  = txOut.newVar(idOut, lattice())
-      val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
-      val out         = new Impl(id = idOut, config = config, lattice = latticeOut, map = mapOut)
-      context.defer(this, out)(copyTree(map, mapOut, out))
+      val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
+      val mapOut      = SkipOctree  .empty[Out, D, Node[Out, D]](map.hyperCube)
+      val out         = new Impl(id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
+      context.defer(this, out) {
+        copyList(list, listOut, out)
+        copyTree(map , mapOut , out)
+      }
       out
     }
   }

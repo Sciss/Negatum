@@ -31,30 +31,37 @@ object SOM extends Obj.Type {
       def write(c: Config, out: DataOutput): Unit = {
         import c._
         out.writeByte(SER_VERSION)
-        out.writeInt(features)
-        out.writeInt(dimensions)
-        out.writeInt(extent)
-        out.writeInt(gridStep)
-        out.writeInt(maxNodes)
+        out.writeInt(features     )
+        out.writeInt(dimensions   )
+        out.writeInt(extent       )
+        out.writeInt(gridStep     )
+        out.writeInt(maxNodes     )
+        out.writeInt(numIterations)
         out.writeLong(seed)
       }
 
       def read(in: DataInput): Config = {
-        val ver = in.readByte()
+        val ver           = in.readByte()
         if (ver != SER_VERSION) sys.error(s"Unexpected serialization version ($ver) - expected ${SER_VERSION}")
-        val features    = in.readInt()
-        val dimensions  = in.readInt()
-        val extent      = in.readInt()
-        val gridStep    = in.readInt()
-        val maxNodes    = in.readInt()
-        val seed        = in.readLong()
+        val features      = in.readInt()
+        val dimensions    = in.readInt()
+        val extent        = in.readInt()
+        val gridStep      = in.readInt()
+        val maxNodes      = in.readInt()
+        val numIterations = in.readInt()
+        val seed          = in.readLong()
         Config(features = features, extent = extent, gridStep = gridStep, maxNodes = maxNodes, seed = seed)
       }
     }
   }
-  final case class Config(features: Int, dimensions: Int = 2,
-                          extent: Int = 256, gridStep: Int = 1, maxNodes: Int = 16384,
-                          seed: Long = System.currentTimeMillis())
+  final case class Config(features      : Int,
+                          dimensions    : Int = 2,
+                          extent        : Int = 256,
+                          gridStep      : Int = 1,
+                          maxNodes      : Int = 16384,
+                          numIterations : Int = 32768,
+                          seed          : Long = System.currentTimeMillis()
+                         )
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, SOM[S]] = Impl.serializer[S]
 
@@ -65,4 +72,7 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
   def config: SOM.Config
 
   def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit
+
+  //  /** Current iteration, i.e. how many elements have been added. */
+  //  def iteration(implicit tx: S#Tx): Int
 }
