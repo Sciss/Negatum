@@ -408,7 +408,7 @@ object SOMImpl {
     bmuNodeIdx
   }
 
-  private[this] final val DEBUG = true
+  private[this] final val DEBUG = false
   private def log(what: => String): Unit = if (DEBUG) println(what)
 
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
@@ -433,22 +433,22 @@ object SOMImpl {
 
       cleanUp(latOut, dirty)
 
-      if (latOut.iter == 37) {
-        println("AQUI")
-      }
+//      if (latOut.iter == 37) {
+//        println("AQUI")
+//      }
 
       val newNode   = Node(newPoint, obj)
-      val newInList = list.add(newIndex -> newValue).forall(_ != newValue)
-      val newInMap  = map .add(newNode)
-      assert(map.isDefinedAt(newPoint))
+      /* val newInList = */ list.add(newIndex -> newValue) // .forall(_ != newValue)
+      /* val newInMap  = */ map .add(newNode)
+      // assert(map.isDefinedAt(newPoint))
 
       // assert(newInList == newInMap)
-      if (newInList != newInMap) {
-        println(s"ERROR: iter ${latOut.iter} object $obj (index $newIndex / $newPoint) was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
-        println(s"List keys = ${list.keysIterator.mkString(", ")}")
-        println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
-        assert(false)
-      }
+//      if (newInList != newInMap) {
+//        println(s"ERROR: iter ${latOut.iter} object $obj (index $newIndex / $newPoint) was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
+//        println(s"List keys = ${list.keysIterator.mkString(", ")}")
+//        println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
+//        assert(false)
+//      }
     }
 
     private def cleanUp(lattice: Lattice, dirty: Array[Boolean])(implicit tx: S#Tx): Unit = {
@@ -472,19 +472,19 @@ object SOMImpl {
           val newIndex  = bmu(lattice = lattice.data, iw = value.features)
           val newPoint  = spaceHelper.toPoint(newIndex, config)
           val newNode   = Node(newPoint, obj)
-          val newInList = list.add(newIndex -> value).forall(_ != value)
-          val newInMap  = map .add(newNode)
-          assert(map.isDefinedAt(newPoint))
+          /* val newInList = */ list.add(newIndex -> value) // .forall(_ != value)
+          /* val newInMap = */ map .add(newNode)
+          // assert(map.isDefinedAt(newPoint))
 
           log(f"clean - add    $obj%3s at index $newIndex%4d / $newPoint")
 
           // assert(newInList == newInMap)
-          if (newInList != newInMap) {
-            println(s"ERROR: iter ${lattice.iter} object $obj (index $newIndex / $newPoint) was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
-            println(s"List keys = ${list.keysIterator.mkString(", ")}")
-            println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
-            assert(false)
-          }
+//          if (newInList != newInMap) {
+//            println(s"ERROR: iter ${lattice.iter} object $obj (index $newIndex / $newPoint) was ${if (newInList) "new" else "old"} in list, but ${if (newInMap) "new" else "old"} in map.")
+//            println(s"List keys = ${list.keysIterator.mkString(", ")}")
+//            println(s"Map keys = ${map.iterator.map(_.key).mkString(", ")}")
+//            assert(false)
+//          }
         }
       }
     }
