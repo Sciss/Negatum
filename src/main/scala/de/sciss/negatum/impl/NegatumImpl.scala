@@ -67,7 +67,7 @@ object NegatumImpl {
       } .toIndexedSeq
       val templateV   = template.value
       val populationH = tx.newHandle(population)
-      val r = new RenderingImpl[S](config = config, template = templateV, popIn = popIn, numIter = iter,
+      val r = new NegatumRenderingImpl[S](config = config, template = templateV, popIn = popIn, numIter = iter,
         populationH = populationH)
       r.startTx()
       r

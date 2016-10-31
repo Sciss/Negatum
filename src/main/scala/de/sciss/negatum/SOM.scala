@@ -39,6 +39,7 @@ object SOM extends Obj.Type {
         out.writeInt(gridStep     )
         out.writeInt(maxNodes     )
         out.writeInt(numIterations)
+        out.writeDouble(learningCoef)
         out.writeLong(seed)
       }
 
@@ -51,18 +52,20 @@ object SOM extends Obj.Type {
         val gridStep      = in.readInt()
         val maxNodes      = in.readInt()
         val numIterations = in.readInt()
+        val learningCoef  = in.readDouble()
         val seed          = in.readLong()
         Config(features = features, extent = extent, gridStep = gridStep, maxNodes = maxNodes, seed = seed)
       }
     }
   }
   final case class Config(features      : Int,
-                          dimensions    : Int = 2,
-                          extent        : Int = 256,
-                          gridStep      : Int = 1,
-                          maxNodes      : Int = 16384,
-                          numIterations : Int = 32768,
-                          seed          : Long = System.currentTimeMillis()
+                          dimensions    : Int     = 2,
+                          extent        : Int     = 256,
+                          gridStep      : Int     = 1,
+                          maxNodes      : Int     = 16384,
+                          numIterations : Int     = 32768,
+                          learningCoef  : Double  = 0.072,
+                          seed          : Long    = System.currentTimeMillis()
                          )
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, SOM[S]] = Impl.serializer[S]

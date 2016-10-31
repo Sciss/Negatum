@@ -25,6 +25,7 @@ import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 import de.sciss.synth.proc.Folder
 
+import scala.concurrent.blocking
 import scala.language.existentials
 
 object SOMImpl {
@@ -443,7 +444,7 @@ object SOMImpl {
     val radiusSqr     = mapRadiusSqr * math.exp(-iter / timeConstant2)
     val radiusSqr2Rec = 1.0 / (radiusSqr * 2)
     // val inNodeIter    = bmuNeighboursSqr(radiusSqr, bmuNode, lattice)
-    val learningRate  = 0.072 * math.exp(-iter / numIterations) // decays over time
+    val learningRate  = config.learningCoef * math.exp(-iter / numIterations) // decays over time
 
     val bmuCoord      = toCoord(bmuNodeIdx, config, null)
     val latCoord      = new Array[Int](dim)
@@ -481,6 +482,18 @@ object SOMImpl {
 
   private[this] final val DEBUG = true
   private def log(what: => String): Unit = if (DEBUG) println(what)
+
+  private final class AddAllImpl[S <: Sys[S], D <: Space[D]](somH: stm.Source[S#Tx, Impl[S, D]],
+                                              folderH: stm.Source[S#Tx, Folder[S]], config: Config)
+                                              (implicit protected val cursor: stm.Cursor[S])
+    extends RenderingImpl[S, Int] {
+
+    override def toString = s"SOM.addAll@${hashCode.toHexString}"
+
+    protected def body(): Int = blocking {
+      ???
+    }
+  }
 
   private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
                                                        lattice: S#Var[Lattice],
