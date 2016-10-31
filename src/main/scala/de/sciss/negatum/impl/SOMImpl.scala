@@ -17,159 +17,91 @@ package impl
 import de.sciss.lucre.data.SkipOctree
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
 import de.sciss.lucre.event.impl.ConstObjImpl
-import de.sciss.lucre.geom.{IntHyperCubeN, IntPoint2D, IntPoint3D, IntPointN, IntSpace, Space}
+import de.sciss.lucre.geom.{IntCube, IntHyperCubeN, IntPoint2D, IntPoint3D, IntPointN, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
+import IntSpace.{TwoDim, ThreeDim}
 
 import scala.language.existentials
 
 object SOMImpl {
-  //  private object PlacedWeightLike {
-//    implicit def view[S <: Sys[S]]: (PlacedWeightLike, S#Tx) => IntPointN = (p, tx) => p.weight
-//  }
-  private sealed trait PlacedWeightLike {
-    def weight: IntPointN
-  }
-  private object PlacedWeight2D {
-    implicit object serializer extends ImmutableSerializer[PlacedWeight2D] {
-      def write(p: PlacedWeight2D, out: DataOutput): Unit = {
-        IntSpace.NDim  .pointSerializer.write(p.weight, out)
-        IntSpace.TwoDim.pointSerializer.write(p.coord , out)
+  private object Node {
+    implicit def serializer[S <: Sys[S], D <: Space[D]](implicit space: D): Serializer[S#Tx, S#Acc, Node[S, D]] =
+      new Ser[S, D]
+
+    private final class Ser[S <: Sys[S], D <: Space[D]](implicit space: D)
+      extends Serializer[S#Tx, S#Acc, Node[S, D]] {
+
+      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Node[S, D] = {
+        val key   = space.pointSerializer.read(in)
+        val value = Obj.read(in, access)
+        Node(key = key, value = value)
       }
 
-      def read(in: DataInput): PlacedWeight2D = {
-        val weight = IntSpace.NDim  .pointSerializer.read(in)
-        val coord  = IntSpace.TwoDim.pointSerializer.read(in)
-        PlacedWeight2D(weight = weight, coord = coord)
+      def write(p: Node[S, D], out: DataOutput): Unit = {
+        space.pointSerializer.write(p.key, out)
+        p.value.write(out)
+      }
+    }
+
+    implicit def view[S <: Sys[S], D <: Space[D]]: (Node[S, D], S#Tx) => D#PointLike = (p, tx) => p.key
+  }
+  private final case class Node[S <: Sys[S], D <: Space[D]](key: D#Point, value: Obj[S])
+
+  private implicit object LatticeSer extends ImmutableSerializer[Array[Float]] {
+    def read(in: DataInput): Array[Float] = {
+      val sz  = in.readInt()
+      val arr = new Array[Float](sz)
+      var i   = 0
+      while (i < sz) {
+        arr(i) = in.readFloat()
+        i += 1
+      }
+      arr
+    }
+
+    def write(arr: Array[Float], out: DataOutput): Unit = {
+      val sz = arr.length
+      out.writeInt(sz)
+      var i = 0
+      while (i < sz) {
+        out.writeFloat(arr(i))
+        i += 1
       }
     }
   }
-  private final case class PlacedWeight2D(weight: IntPointN, coord: IntPoint2D) extends PlacedWeightLike
-
-  private object PlacedWeight3D {
-    implicit object serializer extends ImmutableSerializer[PlacedWeight3D] {
-      def write(p: PlacedWeight3D, out: DataOutput): Unit = {
-        IntSpace.NDim    .pointSerializer.write(p.weight, out)
-        IntSpace.ThreeDim.pointSerializer.write(p.coord , out)
-      }
-
-      def read(in: DataInput): PlacedWeight3D = {
-        val weight = IntSpace.NDim    .pointSerializer.read(in)
-        val coord  = IntSpace.ThreeDim.pointSerializer.read(in)
-        PlacedWeight3D(weight = weight, coord = coord)
-      }
-    }
-  }
-  private final case class PlacedWeight3D(weight: IntPointN, coord: IntPoint3D) extends PlacedWeightLike
-
-  private object PlacedWeightN {
-    implicit object serializer extends ImmutableSerializer[PlacedWeightN] {
-      def write(p: PlacedWeightN, out: DataOutput): Unit = {
-        val ser = IntSpace.NDim.pointSerializer
-        ser.write(p.weight, out)
-        ser.write(p.coord , out)
-      }
-
-      def read(in: DataInput): PlacedWeightN = {
-        val ser = IntSpace.NDim.pointSerializer
-        val weight = ser.read(in)
-        val coord  = ser.read(in)
-        PlacedWeightN(weight = weight, coord = coord)
-      }
-    }
-  }
-  private final case class PlacedWeightN (weight: IntPointN, coord: IntPointN) extends PlacedWeightLike
-
-  private object PlacedNode2D {
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, PlacedNode2D[S]] = anySer.asInstanceOf[Ser[S]]
-
-    implicit def view[S <: Sys[S]]: (PlacedNode2D[S], S#Tx) => IntPoint2D = (p, tx) => p.coord
-
-    private[this] val anySer = new Ser[NoSys]
-
-    private final class Ser[S <: Sys[S]] extends Serializer[S#Tx, S#Acc, PlacedNode2D[S]] {
-      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): PlacedNode2D[S] = {
-        val coord = IntSpace.TwoDim.pointSerializer.read(in)
-        val obj   = Obj.read(in, access)
-        PlacedNode2D(coord = coord, obj = obj)
-      }
-
-      def write(p: PlacedNode2D[S], out: DataOutput): Unit = {
-        IntSpace.TwoDim.pointSerializer.write(p.coord, out)
-        p.obj.write(out)
-      }
-    }
-  }
-  private final case class PlacedNode2D[S <: Sys[S]](coord: IntPoint2D, obj: Obj[S])
-
-  private object PlacedNode3D {
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, PlacedNode3D[S]] = anySer.asInstanceOf[Ser[S]]
-
-    implicit def view[S <: Sys[S]]: (PlacedNode3D[S], S#Tx) => IntPoint3D = (p, tx) => p.coord
-
-    private[this] val anySer = new Ser[NoSys]
-
-    private final class Ser[S <: Sys[S]] extends Serializer[S#Tx, S#Acc, PlacedNode3D[S]] {
-      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): PlacedNode3D[S] = {
-        val coord = IntSpace.ThreeDim.pointSerializer.read(in)
-        val obj   = Obj.read(in, access)
-        PlacedNode3D(coord = coord, obj = obj)
-      }
-
-      def write(p: PlacedNode3D[S], out: DataOutput): Unit = {
-        IntSpace.ThreeDim.pointSerializer.write(p.coord, out)
-        p.obj.write(out)
-      }
-    }
-  }
-  private final case class PlacedNode3D[S <: Sys[S]](coord: IntPoint3D, obj: Obj[S])
 
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = {
     import config.{dimensions => dim, _}
 
     val random = new util.Random(seed)
 
-    def rndWeight(): IntPointN = {
-      val components = Vector.fill(features)(random.nextInt() & 0x7FFFFFFF)
-      IntPointN(components)
+    require (dim > 0 && extent > 1 && gridStep > 0 && gridStep <= extent)
+    require (extent < (0x40000000 >> (dim - 1)), "Integer overflow")
+    val numLatSide  = (extent << 1) / gridStep
+    val numLattice  = numLatSide << (dim - 1)
+    val lattice0    = new Array[Float](numLattice)
+    var i = 0
+    while (i < numLattice) {
+      lattice0(i) = random.nextFloat()
+      i += 1
     }
+    val id          = tx.newID()
+    val lattice     = tx.newVar[Array[Float]](id, lattice0)
 
-    implicit val space      = IntSpace.NDim(features)
-    val quad                = IntHyperCubeN.apply(Vector.fill(features)(0x40000000), extent = 0x40000000)
-    implicit val pointView  = (p: PlacedWeightLike, tx: S#Tx) => p.weight
-    val lattice             = if (dim == 2) {
-      val res = SkipOctree.empty[S, IntSpace.NDim, PlacedWeight2D](quad)
-      for {
-        x <- 0 until (extent << 1) by gridStep
-        y <- 0 until (extent << 1) by gridStep
-      } {
-        val c = IntPoint2D(x, y)
-        val w = rndWeight()
-        val n = PlacedWeight2D(weight = w, coord = c)
-        res.add(n)
-      }
-      res
+    if (dim == 2) {
+      val quad = IntSquare(extent, extent, extent)
+      val map = SkipOctree.empty[S, TwoDim, Node[S, TwoDim]](quad)
+      new Impl(id, config, lattice = lattice, map = map)
     } else if (dim == 3) {
-      val res = SkipOctree.empty[S, IntSpace.NDim, PlacedWeight3D](quad)
-      for {
-        x <- 0 until (extent << 1) by gridStep
-        y <- 0 until (extent << 1) by gridStep
-        z <- 0 until (extent << 1) by gridStep
-      } {
-        val c = IntPoint3D(x, y, z)
-        val w = rndWeight()
-        val n = PlacedWeight3D(weight = w, coord = c)
-        res.add(n)
-      }
-      res
+      val cube = IntCube(extent, extent, extent, extent)
+      val map  = SkipOctree.empty[S, ThreeDim, Node[S, ThreeDim]](cube)
+      new Impl(id, config, lattice = lattice, map = map)
     } else {
-      val res = SkipOctree.empty[S, IntSpace.NDim, PlacedWeightN](quad)
       ???
-      res
     }
-    new Impl(config, lattice = lattice, map = ???)
   }
 
   private final val COOKIE = 0x736f6d00
@@ -185,30 +117,42 @@ object SOMImpl {
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): SOM[S] = {
     val cookie = in.readInt()
     if (cookie != COOKIE) sys.error(s"Unexpected cookie ${cookie.toHexString} -- expected ${COOKIE.toHexString}")
+    val id      = tx.readID(in, access)
     val config  = Config.serializer.read(in)
+    val lattice = tx.readVar[Array[Float]](id, in)
+
     import config.{features, dimensions => dim}
-    implicit val space      = IntSpace.NDim(features)
-    implicit val pointView  = (p: PlacedWeightLike, tx: S#Tx) => p.weight
     if (dim == 2) {
-      val lattice = SkipOctree.read[S, IntSpace.NDim  , PlacedWeight2D] (in, access)
-      val map     = SkipOctree.read[S, IntSpace.TwoDim, PlacedNode2D[S]](in, access)
-      new Impl(config, lattice = lattice, map = map)
+      val map     = SkipOctree.read[S, TwoDim, Node[S, TwoDim]](in, access)
+      new Impl(id, config, lattice = lattice, map = map)
     } else if (dim == 3) {
-      val lattice = SkipOctree.read[S, IntSpace.NDim    , PlacedWeight3D](in, access)
-      val map     = SkipOctree.read[S, IntSpace.ThreeDim, PlacedNode3D[S]](in, access)
-      new Impl(config, lattice = lattice, map = map)
+      val map     = SkipOctree.read[S, ThreeDim, Node[S, ThreeDim]](in, access)
+      new Impl(id, config, lattice = lattice, map = map)
     } else {
-      val lattice = SkipOctree.read[S, IntSpace.NDim, PlacedWeightN](in, access)
-      new Impl(config, lattice = lattice, map = ???)
+      ???
     }
   }
 
-  private final class Impl[S <: Sys[S], D <: Space[D], W, Z](val config: Config,
-                                           lattice: SkipOctree[S, IntSpace.NDim, W],
-                                           map: SkipOctree[S, D, Z])
-    extends SOM[S] {
+  private type TreeImpl[S <: Sys[S], D <: Space[D]] = SkipOctree[S, D, Node[S, D]]
 
-    def id: S#ID = lattice.id
+  private def copyTree[In <: Sys[In], Out <: Sys[Out], D <: Space[D]](
+       in: TreeImpl[In, D], out: TreeImpl[Out, D], outImpl: Impl[Out, D])
+      (implicit txIn: In#Tx, txOut: Out#Tx, context: Copy[In, Out]): Unit = {
+
+    in.iterator.foreach { nodeIn =>
+      val valueOut = context(nodeIn.value)
+      val nodeOut  = Node(nodeIn.key, valueOut)
+      out.add(nodeOut)
+//      xsOut.foreach { entry =>
+//        outImpl.changed += entry
+//      }
+    }
+  }
+
+  private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
+                                                       lattice: S#Var[Array[Float]], map: TreeImpl[S, D])
+                                                      (implicit space: D)
+    extends SOM[S] {
 
     def tpe: Obj.Type = SOM
 
@@ -220,17 +164,25 @@ object SOMImpl {
 
     def write(out: DataOutput): Unit = {
       out.writeInt(COOKIE)
+      id     .write(out)
       Config.serializer.write(config, out)
       lattice.write(out)
       map    .write(out)
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
+      id     .dispose()
       lattice.dispose()
       map    .dispose()
     }
 
-    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
-      new Impl(config = config, lattice = ???, map = ???)
+    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
+      val idOut       = txOut.newID()
+      val latticeOut  = txOut.newVar(idOut, lattice())
+      val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
+      val out         = new Impl(id = idOut, config = config, lattice = latticeOut, map = mapOut)
+      context.defer(this, out)(copyTree(map, mapOut, out))
+      out
+    }
   }
 }
