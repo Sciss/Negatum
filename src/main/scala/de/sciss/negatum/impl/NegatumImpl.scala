@@ -19,7 +19,7 @@ import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{stm, event => evt}
-import de.sciss.negatum.Negatum.{Config, Rendering}
+import de.sciss.negatum.Negatum.Config
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 import de.sciss.synth.proc.{AudioCue, Folder, Proc, WorkspaceHandle}
 
@@ -55,7 +55,7 @@ object NegatumImpl {
     // --- rendering ---
 
     final def run(config: Config, iter: Int)
-                 (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S] = {
+                 (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S, Unit] = {
       val popIn = population.iterator.collect {
         case p: Proc[S] =>
           val gObj      = p.graph()

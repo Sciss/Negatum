@@ -53,40 +53,6 @@ object Negatum extends Obj.Type {
   final case class TemplateChange  [S <: Sys[S]](peer: model.Change[AudioCue]) extends Change[S]
   final case class PopulationChange[S <: Sys[S]](peer: Folder.Update[S])       extends Change[S]
 
-  object Rendering {
-    sealed trait State {
-      def isComplete: Boolean
-    }
-    case object Success extends State {
-      def isComplete = true
-    }
-    /** Rendering either failed or was aborted.
-      * In the case of abortion, the throwable is
-      * of type `Cancelled`.
-      */
-    final case class Failure(ex: Throwable) extends State {
-      def isComplete = true
-    }
-    final case class Progress(amount: Double) extends State {
-      def isComplete = false
-    }
-
-    val  Cancelled = Processor.Aborted
-    type Cancelled = Processor.Aborted
-  }
-  trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
-    def state(implicit tx: S#Tx): Rendering.State
-
-    /** Like `react` but invokes the function immediately with the current state. */
-    def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
-
-    /** Cancels the process and does not keep results. */
-    def cancel()(implicit tx: S#Tx): Unit
-
-    /** Stops process at the next possible moment, and return current results. */
-    def stop  ()(implicit tx: S#Tx): Unit
-  }
-
   object Generation {
     def apply(
                population      : Int     = 500,
@@ -258,7 +224,7 @@ object Negatum extends Obj.Type {
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
 
   def run(config: Negatum.Config, iter: Int = 1)
-         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Negatum.Rendering[S]
+         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S, Unit]
 
   def template: AudioCue.Obj.Var[S]
 

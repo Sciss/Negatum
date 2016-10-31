@@ -7,7 +7,6 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{Folder, Workspace}
-import SVMModel.Rendering
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -50,10 +49,10 @@ object SelectionTest extends App {
 
       val rendering = model.predict(negOut)
       rendering.reactNow { implicit tx => {
-        case Rendering.Success(selected) =>
+        case Rendering.Completed(Success(selected)) =>
           tx.afterCommit(sys.exit())
 
-        case Rendering.Failure(ex) =>
+        case Rendering.Completed(Failure(ex)) =>
           tx.afterCommit {
             println("Prediction failed!")
             ex.printStackTrace()

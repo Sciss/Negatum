@@ -27,12 +27,12 @@ import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerV
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.{AttrCellView, GUI}
-import de.sciss.negatum.Negatum.Rendering
 import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc.Workspace
 
 import scala.concurrent.stm.Ref
 import scala.swing.{BorderPanel, BoxPanel, Component, FlowPanel, Label, Orientation, ProgressBar, Swing}
+import scala.util.{Success, Failure}
 
 object NegatumViewImpl {
   def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -144,10 +144,10 @@ object NegatumViewImpl {
       this
     }
 
-    private[this] val renderRef = Ref(Option.empty[Negatum.Rendering[S]])
+    private[this] val renderRef = Ref(Option.empty[Rendering[S, Unit]])
 
-    def negatum  (implicit tx: S#Tx): Negatum[S]            = negatumH()
-    def rendering(implicit tx: S#Tx): Option[Rendering[S]]  = renderRef.get(tx.peer)
+    def negatum  (implicit tx: S#Tx): Negatum[S]                  = negatumH()
+    def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]  = renderRef.get(tx.peer)
 
     private def guiInit(panelParams: Component): Unit = {
 
@@ -223,12 +223,12 @@ object NegatumViewImpl {
 
               val rendering = obj.run(config, iter = numIter)
               /* val obs = */ rendering.reactNow { implicit tx => {
-                case Negatum.Rendering.Success => finished()
-                case Negatum.Rendering.Failure(Negatum.Rendering.Cancelled()) => finished()
-                case Negatum.Rendering.Failure(ex) =>
+                case Rendering.Completed(Success(_)) => finished()
+                case Rendering.Completed(Failure(Rendering.Cancelled())) => finished()
+                case Rendering.Completed(Failure(ex)) =>
                   finished()
                   deferTx(ex.printStackTrace())
-                case Negatum.Rendering.Progress(amt) =>
+                case Rendering.Progress(amt) =>
                   deferTx {
                     ggProgress.value = (amt * ggProgress.max).toInt
                   }

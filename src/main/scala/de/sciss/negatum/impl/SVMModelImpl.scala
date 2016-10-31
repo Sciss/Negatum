@@ -23,8 +23,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
 import de.sciss.negatum.SVMConfig.{Type, Weight}
-import de.sciss.negatum.SVMModel.Rendering
-import de.sciss.negatum.SVMModel.Rendering.State
+import de.sciss.negatum.Rendering.State
 import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -387,15 +386,15 @@ object SVMModelImpl {
                                               (implicit cursor: stm.Cursor[S])
     extends ProcessorImpl[Int, Processor[Int]]
       with Processor[Int]
-      with SVMModel.Rendering[S]
-      with ObservableImpl[S, SVMModel.Rendering.State] {
+      with Rendering[S, Int]
+      with ObservableImpl[S, State[Int]] {
 
     override def toString = s"SVMModel.predict@${hashCode.toHexString}"
 
-    private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
+    private[this] val _state        = Ref[State[Int]](Rendering.Progress(0.0))
     private[this] val _disposed     = Ref(false)
 
-    def reactNow(fun: (S#Tx) => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+    def reactNow(fun: (S#Tx) => State[Int] => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
       fun(tx)(state)
       res
@@ -407,9 +406,9 @@ object SVMModelImpl {
           import TxnLike.peer
           if (!_disposed()) t match {
             case Success(selected) =>
-              state = Rendering.Success(selected)
+              state = Rendering.Completed(Success(selected))
             case Failure(ex) =>
-              state = Rendering.Failure(ex)
+              state = Rendering.Completed(Failure(ex))
           }
         }
       }
@@ -433,19 +432,19 @@ object SVMModelImpl {
       }
     }
 
-    def state(implicit tx: S#Tx): State = {
+    def state(implicit tx: S#Tx): State[Int] = {
       import TxnLike.peer
       _state()
     }
 
-    protected def state_=(value: Rendering.State)(implicit tx: S#Tx): Unit = {
+    protected def state_=(value: State[Int])(implicit tx: S#Tx): Unit = {
       import TxnLike.peer
       val old = _state.swap(value)
       if (old != value) fire(value)
     }
 
     def cancel ()(implicit tx: S#Tx): Unit = tx.afterCommit(abort())
-//    def stop   ()(implicit tx: S#Tx): Unit = tx.afterCommit { _shouldStop = true }
+    def stop   ()(implicit tx: S#Tx): Unit = cancel() // tx.afterCommit { _shouldStop = true }
     def dispose()(implicit tx: S#Tx): Unit = cancel()
 
     protected def body(): Int = blocking {
@@ -532,7 +531,7 @@ object SVMModelImpl {
       svm.svm_predict(peer, nodes)
     }
 
-    def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S] = {
+    def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = {
       val res = new PredictImpl(this, tx.newHandle(n), numCoeff = numCoeff)
       res.startTx()
       res

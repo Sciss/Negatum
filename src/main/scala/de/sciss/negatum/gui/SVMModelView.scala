@@ -27,5 +27,5 @@ object SVMModelView {
 trait SVMModelView[S <: Sys[S]] extends ViewHasWorkspace[S] /* with View.Editable[S] */ {
   def model(implicit tx: S#Tx): SVMModel[S]
 
-  def rendering(implicit tx: S#Tx): Option[SVMModel.Rendering[S]]
+  def rendering(implicit tx: S#Tx): Option[Rendering[S, Int]]
 }

@@ -93,42 +93,6 @@ object SVMModel extends Obj.Type {
     }
   }
 
-  // ---- rendering ----
-
-  object Rendering {
-    sealed trait State {
-      def isComplete: Boolean
-    }
-    case class Success(selected: Int) extends State {
-      def isComplete = true
-    }
-    /** Rendering either failed or was aborted.
-      * In the case of abortion, the throwable is
-      * of type `Cancelled`.
-      */
-    final case class Failure(ex: Throwable) extends State {
-      def isComplete = true
-    }
-    final case class Progress(amount: Double) extends State {
-      def isComplete = false
-    }
-
-    val  Cancelled = Processor.Aborted
-    type Cancelled = Processor.Aborted
-  }
-  trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
-    def state(implicit tx: S#Tx): Rendering.State
-
-    /** Like `react` but invokes the function immediately with the current state. */
-    def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
-
-    /** Cancels the process and does not keep results. */
-    def cancel()(implicit tx: S#Tx): Unit
-
-//    /** Stops process at the next possible moment, and return current results. */
-//    def stop  ()(implicit tx: S#Tx): Unit
-  }
-
   def attrSelected: String = Negatum.attrSelected
 }
 trait SVMModel[S <: Sys[S]] extends Obj[S] {
@@ -142,5 +106,5 @@ trait SVMModel[S <: Sys[S]] extends Obj[S] {
     * `Negatum.attrSelected` key in the individuals' attribute maps.
     * The processor returns the number of selected individuals.
     */
-  def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): SVMModel.Rendering[S]
+  def predict(n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int]
 }

@@ -25,11 +25,11 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.mellite.gui.{GUI, ListObjView}
-import de.sciss.negatum.SVMModel.Rendering
 import de.sciss.synth.proc.Workspace
 
 import scala.concurrent.stm.Ref
 import scala.swing.{Action, Alignment, BorderPanel, Component, FlowPanel, Label, ProgressBar, Swing}
+import scala.util.{Success, Failure}
 
 object SVMModelViewImpl {
   def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -49,10 +49,10 @@ object SVMModelViewImpl {
       this
     }
 
-    private[this] val renderRef = Ref(Option.empty[SVMModel.Rendering[S]])
+    private[this] val renderRef = Ref(Option.empty[Rendering[S, Int]])
 
-    def model    (implicit tx: S#Tx): SVMModel[S]           = modelH()
-    def rendering(implicit tx: S#Tx): Option[Rendering[S]]  = renderRef.get(tx.peer)
+    def model    (implicit tx: S#Tx): SVMModel[S]               = modelH()
+    def rendering(implicit tx: S#Tx): Option[Rendering[S, Int]] = renderRef.get(tx.peer)
 
     private def guiInit(): Unit = {
       val ggProgress: ProgressBar = new ProgressBar
@@ -104,12 +104,12 @@ object SVMModelViewImpl {
             val n: Negatum[S] = nH()
             val rendering = obj.predict(n)
             /* val obs = */ rendering.reactNow { implicit tx => {
-              case SVMModel.Rendering.Success(num) => finished(num)
-              case SVMModel.Rendering.Failure(SVMModel.Rendering.Cancelled()) => finished(-1)
-              case SVMModel.Rendering.Failure(ex) =>
+              case Rendering.Completed(Success(num)) => finished(num)
+              case Rendering.Completed(Failure(Rendering.Cancelled())) => finished(-1)
+              case Rendering.Completed(Failure(ex)) =>
                 finished(-1)
                 deferTx(ex.printStackTrace())
-              case SVMModel.Rendering.Progress(amt) =>
+              case Rendering.Progress(amt) =>
                 deferTx {
                   ggProgress.value = (amt * ggProgress.max).toInt
                 }

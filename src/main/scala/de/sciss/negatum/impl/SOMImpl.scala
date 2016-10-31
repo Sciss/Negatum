@@ -17,11 +17,13 @@ package impl
 import de.sciss.lucre.data.{SkipList, SkipOctree}
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
 import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
-import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, LongDistanceMeasure2D, Space}
+import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.Config
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
+import de.sciss.synth.proc.Folder
 
 import scala.language.existentials
 
@@ -487,6 +489,8 @@ object SOMImpl {
     extends SOM[S] {
 
     def tpe: Obj.Type = SOM
+
+    def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = ???
 
     def add(key: Vec[Double], obj: Obj[S])(implicit tx: S#Tx): Unit = {
       val lat       = lattice().copy()  // for InMemory, we might get into trouble if we don't isolate the arrays

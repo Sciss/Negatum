@@ -13,7 +13,9 @@
 
 package de.sciss.negatum
 
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.synth.proc.Folder
 import de.sciss.negatum.impl.{SOMImpl => Impl}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 
@@ -77,6 +79,8 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   def debugStats()(implicit tx: S#Tx): String
 
-    //  /** Current iteration, i.e. how many elements have been added. */
+  def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int]
+
+  //  /** Current iteration, i.e. how many elements have been added. */
   //  def iteration(implicit tx: S#Tx): Int
 }

@@ -22,8 +22,8 @@ import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
-import de.sciss.negatum.Negatum.Rendering.State
-import de.sciss.negatum.Negatum.{Config, Rendering}
+import de.sciss.negatum.Rendering.State
+import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util._
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -46,15 +46,15 @@ object RenderingImpl {
 final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
                                        popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]], numIter: Int)
                                       (implicit cursor: stm.Cursor[S])
-  extends Rendering[S]
-    with ObservableImpl[S, Rendering.State]
-    with ProcessorImpl[Vec[Individual], Rendering[S]] {
+  extends Rendering[S, Unit]
+    with ObservableImpl[S, Rendering.State[Unit]]
+    with ProcessorImpl[Vec[Individual], Rendering[S, Unit]] {
 
   RenderingImpl.instance = this
 
   private[this] val STORE_BAD_DEFS = false
 
-  private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
+  private[this] val _state        = Ref[State[Unit]](Rendering.Progress(0.0))
   private[this] val _disposed     = Ref(false)
 
   @volatile
@@ -238,7 +238,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   // ---- observable ----
 
-  def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+  def reactNow(fun: (S#Tx) => (State[Unit]) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
     val res = react(fun)
     fun(tx)(state)
     res
@@ -246,7 +246,7 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
 
   private def progressTx(amt: Double): Unit = if (!_disposed.single.get)
     cursor.step { implicit tx =>
-      state = Negatum.Rendering.Progress(amt)
+      state = Rendering.Progress(amt)
     }
 
   private def mkGraphName(graph: SynthGraph): String = s"negatum-${graph.hashCode().toHexString}"
@@ -281,9 +281,9 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
         if (!_disposed()) t match {
           case Success(popOut) =>
             fillResult(popOut)
-            state = Rendering.Success
+            state = Rendering.Completed(Success(()))
           case Failure(ex) =>
-            state = Rendering.Failure(ex)
+            state = Rendering.Completed(Failure(ex))
         }
       }
     }
@@ -305,12 +305,12 @@ final class RenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
     }
   }
 
-  def state(implicit tx: S#Tx): State = {
+  def state(implicit tx: S#Tx): State[Unit] = {
     import TxnLike.peer
     _state()
   }
 
-  protected def state_=(value: Rendering.State)(implicit tx: S#Tx): Unit = {
+  protected def state_=(value: State[Unit])(implicit tx: S#Tx): Unit = {
     import TxnLike.peer
     val old = _state.swap(value)
     if (old != value) fire(value)
