@@ -16,12 +16,13 @@ package gui
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.gui.ViewHasWorkspace
 import de.sciss.negatum.gui.impl.{SOMViewImpl => Impl}
 import de.sciss.synth.proc.Workspace
 
 object SOMView {
-  def apply[S <: Sys[S]](map: SOM[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
+  def apply[S <: SSys[S]](map: SOM[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                       workspace: Workspace[S]): SOMView[S] = Impl(map)
 }
 trait SOMView[S <: Sys[S]] extends ViewHasWorkspace[S] {

@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 
 import de.sciss.lucre.data.{SkipList, SkipOctree}
 import de.sciss.lucre.event.{Dummy, Event, EventLike}
-import de.sciss.lucre.expr.DoubleVector
+import de.sciss.lucre.expr.{BooleanObj, DoubleVector}
 import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
 import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm
@@ -178,8 +178,8 @@ object SOMImpl {
         val grid        = config.gridStep
         val ext2        = ext << 1
         val numLatSide  = ext2 / grid
-        val x           = ((index % numLatSide) * grid) // - ext
-        val y           = ((index / numLatSide) * grid) // - ext
+        val x           = (index % numLatSide) * grid // - ext
+        val y           = (index / numLatSide) * grid // - ext
         IntPoint2D(x = x, y = y)
       }
 
@@ -439,7 +439,7 @@ object SOMImpl {
     var dec         = index
     var i           = 0
     while (i < dim) {
-      arr(i) = ((dec % numLatSide) * grid) // - ext
+      arr(i) = (dec % numLatSide) * grid // - ext
       dec   /= numLatSide
       i     += 1
     }
@@ -614,11 +614,14 @@ object SOMImpl {
 
     def tpe: Obj.Type = SOM
 
-    def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = {
+    def addAll(f: Folder[S], selected: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = {
       val vecSize = config.features
       val runs = f.iterator.zipWithIndex.flatMap { case (obj, fIdx) =>
-        obj.attr.$[DoubleVector](Negatum.attrFeatures).map(_.value).filter(_.size == vecSize)
+        val attr = obj.attr
+        val opt = attr.$[DoubleVector](Negatum.attrFeatures).map(_.value).filter(_.size == vecSize)
           .map { vec => new Run(toArray(vec), folderIdx = fIdx) }
+        val ok = !selected || attr.$[BooleanObj](Negatum.attrSelected).exists(_.value)
+        if (ok) opt else None
       } .toArray
 
       val lat = lattice().copy()  // for InMemory, we might get into trouble if we don't isolate the arrays
@@ -729,9 +732,12 @@ object SOMImpl {
 
 //    def iteration(implicit tx: S#Tx): Int = iter()
 
-    def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]] = {
+    def query(point: Seq[Int])(implicit tx: S#Tx): Option[(ISeq[Int], Obj[S])] = {
       val p = spaceHelper.toPoint(point)
-      map.nearestNeighborOption(p, spaceHelper.metric).map(_.value)
+      map.nearestNeighborOption(p, spaceHelper.metric).map { node =>
+        val vec = spaceHelper.toVector(node.key)
+        (vec, node.value)
+      }
     }
 
     def iterator(implicit tx: S#Tx): Iterator[(ISeq[Int], Obj[S])] =
@@ -741,7 +747,7 @@ object SOMImpl {
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
 
-    final def changed: EventLike[S, Any] = Dummy[S, Any]
+    def changed: EventLike[S, Any] = Dummy[S, Any]
 
     def write(out: DataOutput): Unit = {
       out.writeInt(tpe.typeID)

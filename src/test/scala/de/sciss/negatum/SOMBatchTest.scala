@@ -6,8 +6,6 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.synth.proc.{Durable, Folder}
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 object SOMBatchTest extends App {
@@ -42,7 +40,7 @@ object SOMBatchTest extends App {
       obj.attr.put(Negatum.attrFeatures, DoubleVector.newConst(key))
       f.addLast(obj)
     }
-    val render = som.addAll(f)
+    val render = som.addAll(f, selected = false)
 
     // ----
     render.reactNow { implicit tx => {

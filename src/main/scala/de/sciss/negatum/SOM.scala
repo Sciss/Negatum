@@ -118,13 +118,13 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit
 
-  def query(point: Seq[Int])(implicit tx: S#Tx): Option[Obj[S]]
+  def query(point: Seq[Int])(implicit tx: S#Tx): Option[(ISeq[Int], Obj[S])]
 
   def iterator(implicit tx: S#Tx): Iterator[(ISeq[Int], Obj[S])]
 
   def debugStats()(implicit tx: S#Tx): String
 
-  def addAll(f: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int]
+  def addAll(f: Folder[S], selected: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int]
 
   //  /** Current iteration, i.e. how many elements have been added. */
   //  def iteration(implicit tx: S#Tx): Int
