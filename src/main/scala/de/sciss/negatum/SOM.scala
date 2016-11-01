@@ -61,7 +61,7 @@ object SOM extends Obj.Type {
 
       def read(in: DataInput): Config = {
         val ver           = in.readByte()
-        if (ver != SER_VERSION) sys.error(s"Unexpected serialization version ($ver) - expected ${SER_VERSION}")
+        if (ver != SER_VERSION) sys.error(s"Unexpected serialization version ($ver) - expected $SER_VERSION")
         val features      = in.readInt()
         val dimensions    = in.readInt()
         val extent        = in.readInt()
@@ -70,9 +70,9 @@ object SOM extends Obj.Type {
         val numIterations = in.readInt()
         val learningCoef  = in.readDouble()
         val seed          = in.readLong()
-        ConfigImpl(features = features, extent = extent, gridStep = gridStep,
+        ConfigImpl(features = features, dimensions = dimensions, extent = extent, gridStep = gridStep,
 //          maxNodes = maxNodes,
-          seed = seed)
+          numIterations = numIterations, learningCoef = learningCoef, seed = seed)
       }
     }
   }
@@ -80,13 +80,13 @@ object SOM extends Obj.Type {
 
   private final case class ConfigImpl(
                           features      : Int,
-                          dimensions    : Int     = 2,
-                          extent        : Int     = 256,
-                          gridStep      : Int     = 1,
+                          dimensions    : Int,
+                          extent        : Int,
+                          gridStep      : Int,
 //                          maxNodes      : Int     = 16384,
-                          numIterations : Int     = 32768,
-                          learningCoef  : Double  = 0.072,
-                          seed          : Long    = System.currentTimeMillis()
+                          numIterations : Int,
+                          learningCoef  : Double,
+                          seed          : Long
                          )
     extends Config
 
@@ -118,14 +118,29 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   def add(key: Vec[Double], value: Obj[S])(implicit tx: S#Tx): Unit
 
+  /** Searches in the map for the object closest to a given point.
+    *
+    * @param point    the point in the map (i.e. with each axis
+    *                 between zero and `config.extent * 2`.
+    * @return if the map is not empty, the closest element together with
+    *         its actual map location.
+    */
   def query(point: Seq[Int])(implicit tx: S#Tx): Option[(ISeq[Int], Obj[S])]
 
   def iterator(implicit tx: S#Tx): Iterator[(ISeq[Int], Obj[S])]
 
   def debugStats()(implicit tx: S#Tx): String
 
+  /** Asynchronously adds all elements in the folder for which the `attrFeatures` attribute is set.
+    *
+    * @param selected   if `true`, only adds elements of the folder, for which the `attrSelected`
+    *                   attribute is set to `true`.
+    */
   def addAll(f: Folder[S], selected: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int]
 
-  //  /** Current iteration, i.e. how many elements have been added. */
-  //  def iteration(implicit tx: S#Tx): Int
+  /** Current iteration */
+  def iteration(implicit tx: S#Tx): Int
+
+  /** Number of objects in the map */
+  def size(implicit tx: S#Tx): Int
 }

@@ -98,6 +98,25 @@ object SOMImpl {
   private final class Lattice(var iter: Int, val data: Array[Float], val occupied: Array[Int]) {
     def copy(): Lattice = new Lattice(iter = iter, data = data.clone(), occupied = occupied.clone())
 
+//    // cf. http://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
+//    private def countBits(i: Int): Int = {
+//      val j = i - ((i >>> 1) & 0x55555555)
+//      val k = (j & 0x33333333) + ((j >>> 2) & 0x33333333)
+//      (((k + (k >> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24
+//    }
+    
+    def numOccupied: Int = {
+      var res = 0
+      val sz  = occupied.length
+      var i   = 0
+      while (i < sz) {
+        val mask = occupied(i)
+        res += java.lang.Integer.bitCount(mask) // countBits(mask)
+        i += 1
+      }
+      res
+    }
+
     def isOccupied(index: Int): Boolean = {
       val occIdx  = index >>> 5
       val bit     = index & 0x1F
@@ -730,7 +749,8 @@ object SOMImpl {
       s2
     }
 
-//    def iteration(implicit tx: S#Tx): Int = iter()
+    def iteration(implicit tx: S#Tx): Int = lattice().iter
+    def size     (implicit tx: S#Tx): Int = lattice().numOccupied
 
     def query(point: Seq[Int])(implicit tx: S#Tx): Option[(ISeq[Int], Obj[S])] = {
       val p = spaceHelper.toPoint(point)
