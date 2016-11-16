@@ -38,7 +38,7 @@ import scala.util.control.NonFatal
   * initializes some type extensions that would be missing otherwise.
   */
 object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Application {
-  def LOG_FRAME: Boolean = false
+  def LOG_FRAME: Boolean = true
 
   override lazy val windowHandler: WindowHandler = new WindowHandlerImpl(this, menuFactory) {
     override lazy val usesInternalFrames = {

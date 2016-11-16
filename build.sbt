@@ -13,12 +13,14 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.6.1"
-lazy val soundProcessesVersion  = "3.8.1"
-lazy val ugensVersion           = "1.16.1"
+lazy val melliteVersion         = "2.7.0"
+lazy val soundProcessesVersion  = "3.9.1"
+lazy val scalaColliderVersion   = "1.22.1"
+lazy val ugensVersion           = "1.16.2"
 lazy val dspVersion             = "1.2.2"
-lazy val strugatzkiVersion      = "2.13.0"
+lazy val strugatzkiVersion      = "2.14.0"
 lazy val fileCacheVersion       = "0.3.3"
+lazy val kollFlitzVersion       = "0.2.0"
 lazy val libSVMVersion          = "3.21"
 
 // ---- test dependencies ----
@@ -26,15 +28,18 @@ lazy val libSVMVersion          = "3.21"
 lazy val traceVersion           = "0.1.0"
 
 libraryDependencies ++= Seq(
-  "de.sciss"        %% "mellite"                 % melliteVersion,
-  "de.sciss"        %% "soundprocesses-core"     % soundProcessesVersion,
-  "de.sciss"        %% "scalacolliderugens-core" % ugensVersion,
-  "de.sciss"        %% "scissdsp"                % dspVersion,
-  "de.sciss"        %% "strugatzki"              % strugatzkiVersion,
-  "de.sciss"        %% "filecache-txn"           % fileCacheVersion,
+  "de.sciss"        %% "mellite"                    % melliteVersion,
+  "de.sciss"        %% "soundprocesses-core"        % soundProcessesVersion,
+  "de.sciss"        %% "scalacollider"              % scalaColliderVersion,
+  "de.sciss"        %% "scalacolliderugens-core"    % ugensVersion,
+  "de.sciss"        %% "scalacolliderugens-plugins" % ugensVersion,
+  "de.sciss"        %% "scissdsp"                   % dspVersion,
+  "de.sciss"        %% "strugatzki"                 % strugatzkiVersion,
+  "de.sciss"        %% "filecache-txn"              % fileCacheVersion,
+  "de.sciss"        %% "kollflitz"                  % kollFlitzVersion,
 //  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion,
-  "com.datumbox"    %  "libsvm"                  % libSVMVersion,
-  "at.iem"          %% "scalacollider-trace"     % traceVersion % "test"
+  "com.datumbox"    %  "libsvm"                     % libSVMVersion,
+  "at.iem"          %% "scalacollider-trace"        % traceVersion % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
