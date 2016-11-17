@@ -9,8 +9,8 @@ import de.sciss.mellite.Mellite
 import de.sciss.mellite.gui.TimelineObjView
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Folder, ObjKeys, Proc, TimeRef, Timeline, Workspace}
-import de.sciss.synth.{SynthGraph, proc, ugen}
+import de.sciss.synth.proc.{FadeSpec, Folder, ObjKeys, Proc, TimeRef, Timeline, Workspace}
+import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 
 object MakeTimeline extends App {
   val sessionF = userHome / "mellite" / "sessions" / "som_test.mllt"
@@ -39,7 +39,8 @@ object MakeTimeline extends App {
       assert(dim == 2, s"SOM does not have two dimensions: $dim")
 
       val pt1   = List(0.0, 0.0)
-      val pt2   = List(1.0, 0.0)
+//      val pt2   = List(1.0, 0.0)
+      val pt2   = List(0.0, 1.0)
       val trj   = Vector(pt1, pt2)
 
       println("Generating TL...")
@@ -61,8 +62,14 @@ object MakeTimeline extends App {
       pBus.attr.put(Proc.mainIn, fBus)
       pBus.name = "main"
 
+      var prevObj = Option.empty[Proc[S]]
+      var prevSpan: Span = Span(0L, 0L)
+
+      val trkIdx    = (0 until 4).map(i => IntObj.newConst[S](i * 2))
+      val trkHeight = IntObj.newConst[S](2)
+
       ScanSOM(som, tl, Span(start, stop), trj, cfg) {
-        case Input(pIn: Proc[S], _, idx) =>
+        case Input(pIn: Proc[S], pSpan, idx) =>
 //          val cpy   = Copy[S, S]
 //          val pOut  = cpy(pIn)
 //          cpy.finish()
@@ -95,15 +102,41 @@ object MakeTimeline extends App {
           }
           // println(s"in ${gIn.sources.size}; out ${gOut.sources.size}")
           pOut.graph() = gOut
-          val trk   = (idx % 3) * 4   // minimise overlap without extensive analysis
-          pOut.attr.put(TimelineObjView.attrTrackIndex, IntObj.newVar[S](trk))
+          val trk   = idx % 4   // minimise overlap without extensive analysis
+          val pAttr = pOut.attr
+          pAttr.put(TimelineObjView.attrTrackIndex , IntObj.newVar[S](trkIdx(trk)))
+          pAttr.put(TimelineObjView.attrTrackHeight, IntObj.newVar[S](trkHeight))
           pOut.name = pIn.name
           val output = pOut.outputs.add(Proc.mainOut)
           fBus.addLast(output)
-          Some(pOut)
+
+          val fadeLen     = math.max((0.1 * TimeRef.SampleRate).toLong, prevSpan.intersect(pSpan).length)
+          val fadeInLen   = math.min(fadeLen, pSpan.length/2)
+          val fadeIn      = FadeSpec(numFrames = fadeInLen, Curve.welch)
+          val fadeInObj   = FadeSpec.Obj.newVar[S](fadeIn)
+          pAttr.put(ObjKeys.attrFadeIn, fadeInObj)
+
+          prevObj.foreach { pPrev =>
+            val fadeOutLen  = math.min(fadeLen, prevSpan.length/2)
+            val fadeOut     = FadeSpec(numFrames = fadeOutLen, Curve.welch)
+            val fadeOutObj  = FadeSpec.Obj.newVar[S](fadeOut)
+            pPrev.attr.put(ObjKeys.attrFadeOut, fadeOutObj)
+          }
+
+          prevSpan = pSpan
+          prevObj  = Some(pOut)
+          prevObj
+
         case x =>
           println(s"Not a proc in SOM: ${x.obj}")
           None
+      }
+
+      prevObj.foreach { pPrev =>
+        val fadeOutLen  = prevSpan.length/2
+        val fadeOut     = FadeSpec(numFrames = fadeOutLen, Curve.welch)
+        val fadeOutObj  = FadeSpec.Obj.newVar[S](fadeOut)
+        pPrev.attr.put(ObjKeys.attrFadeOut, fadeOutObj)
       }
 
       println("Adding TL...")
