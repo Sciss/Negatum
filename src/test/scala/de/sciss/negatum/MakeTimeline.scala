@@ -112,13 +112,13 @@ object MakeTimeline extends App {
 
           val fadeLen     = math.max((0.1 * TimeRef.SampleRate).toLong, prevSpan.intersect(pSpan).length)
           val fadeInLen   = math.min(fadeLen, pSpan.length/2)
-          val fadeIn      = FadeSpec(numFrames = fadeInLen, Curve.welch)
+          val fadeIn      = FadeSpec(numFrames = fadeInLen, curve = Curve.welch)
           val fadeInObj   = FadeSpec.Obj.newVar[S](fadeIn)
           pAttr.put(ObjKeys.attrFadeIn, fadeInObj)
 
           prevObj.foreach { pPrev =>
             val fadeOutLen  = math.min(fadeLen, prevSpan.length/2)
-            val fadeOut     = FadeSpec(numFrames = fadeOutLen, Curve.welch)
+            val fadeOut     = FadeSpec(numFrames = fadeOutLen, curve = Curve.welch)
             val fadeOutObj  = FadeSpec.Obj.newVar[S](fadeOut)
             pPrev.attr.put(ObjKeys.attrFadeOut, fadeOutObj)
           }
@@ -134,7 +134,7 @@ object MakeTimeline extends App {
 
       prevObj.foreach { pPrev =>
         val fadeOutLen  = prevSpan.length/2
-        val fadeOut     = FadeSpec(numFrames = fadeOutLen, Curve.welch)
+        val fadeOut     = FadeSpec(numFrames = fadeOutLen, curve = Curve.welch)
         val fadeOutObj  = FadeSpec.Obj.newVar[S](fadeOut)
         pPrev.attr.put(ObjKeys.attrFadeOut, fadeOutObj)
       }
