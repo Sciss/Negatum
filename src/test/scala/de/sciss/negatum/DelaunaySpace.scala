@@ -4,6 +4,7 @@ import java.awt.{Color, RenderingHints}
 
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.event.MouseMoved
 import scala.swing.{Component, Dimension, Frame, Graphics2D, Point, Swing}
 
@@ -79,15 +80,15 @@ object DelaunaySpace {
     val prefW   = 800
     val prefH   = (prefW * selectH / selectW + 0.5).toInt
     val tri     = Delaunay(select)
-    val triLn0  = tri.map { case TriangleIndex(a, b, c) =>
+    val triLn0: Vec[List[(Int, Int)]] = tri.map { case TriangleIndex(a, b, c) =>
       List(
         (math.min(a, b), math.max(a, b)),
         (math.min(a, c), math.max(a, c)),
         (math.min(b, c), math.max(b, c))
       )
     } 
-    val triLn = triLn0.flatten.distinct
-    val lineIndices = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
+    val triLn: Vec[(Int, Int)] = triLn0.flatten.distinct
+    val lineIndices: Vec[(Int, Int, Int)] = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
       (triLn.indexOf(key1), triLn.indexOf(key2), triLn.indexOf(key3))
     }
 
@@ -149,7 +150,7 @@ object DelaunaySpace {
           // drawPoint(px, py)
 
           g.setColor(colrRed)
-          val inside = triLn.map { case (i1, i2) =>
+          val projections: Vec[(Float, Float)] = triLn.map { case (i1, i2) =>
             val v1    = select(i1)
             val v2    = select(i2)
             val dvx   = v2.x - v1.x
@@ -165,20 +166,35 @@ object DelaunaySpace {
 
             if (in) drawPoint(prjX, prjY)
 
-            (in, prjX, prjY)
+            (prjX, prjY)
           }
-          g.setColor(colrGreen)
-          lineIndices.foreach { case (i1, i2, i3) =>
-            val (in1, prjX1, prjY1) = inside(i1)
-            val (in2, prjX2, prjY2) = inside(i2)
-            val (in3, prjX3, prjY3) = inside(i3)
-            val allInside = in1 && in2 && in3
-            // g.setColor(if (allInside) colrGreen else colrRed)
-            if (allInside) {
-              drawPoint(prjX1, prjY1)
-              drawPoint(prjX2, prjY2)
-              drawPoint(prjX3, prjY3)
-            }
+
+          val inside = tri.indexWhere { case TriangleIndex(i1, i2, i3) =>
+            val v1    = select(i1)
+            val v2    = select(i2)
+            val v3    = select(i3)
+            // cf. https://en.wikipedia.org/wiki/Barycentric_coordinate_system
+            val dx3   = px   - v3.x
+            val dy3   = py   - v3.y
+            // det of 2x2 matrix: r1c1 * r2c2 - r1c2 * r2c1
+            // where r1c1 = x1 - x3, r2c2 = y2 - y3,
+            //       r1c2 = x2 - x3, r2c1 = y1 - y3
+            val detT  = (v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y)
+            val alpha = ((v2.y - v3.y) * dx3 + (v3.x - v2.x) * dy3) / detT
+            val beta  = ((v3.y - v1.y) * dx3 + (v1.x - v3.x) * dy3) / detT
+            val gamma = 1.0f - alpha - beta
+            alpha >= 0 && beta >= 0 && gamma >= 0
+          }
+
+          if (inside >= 0) {
+            val (i1, i2, i3) = lineIndices(inside)
+            g.setColor(colrGreen)
+            val (prjX1, prjY1) = projections(i1)
+            val (prjX2, prjY2) = projections(i2)
+            val (prjX3, prjY3) = projections(i3)
+            drawPoint(prjX1, prjY1)
+            drawPoint(prjX2, prjY2)
+            drawPoint(prjX3, prjY3)
           }
         }
       }
