@@ -1,12 +1,16 @@
 package de.sciss.negatum
 
+import java.awt.image.BufferedImage
 import java.awt.{Color, RenderingHints}
+import javax.imageio.ImageIO
 
+import de.sciss.file._
+import de.sciss.numbers
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.event.MouseMoved
-import scala.swing.{Component, Dimension, Frame, Graphics2D, Point, Swing}
+import scala.swing.{BorderPanel, Button, Component, Dimension, Frame, Graphics2D, Point, Swing}
 
 object DelaunaySpace {
   val even = Vector(
@@ -71,6 +75,28 @@ object DelaunaySpace {
     def inside: Boolean = 0 <= loc && loc <= 1
   }
 
+  def intersectLineLineF(a1x: Float, a1y: Float, a2x: Float, a2y: Float,
+                        b1x: Float, b1y: Float, b2x: Float, b2y: Float): (Float, Float) =  {
+    val dax   = a2x - a1x
+    val day   = a2y - a1y
+    val dbx   = b2x - b1x
+    val dby   = b2y - b1y
+    val dx1   = a1x - b1x
+    val dy1   = a1y - b1y
+    val ua_t  = dbx*dy1 - dby*dx1
+    val ub_t  = dax*dy1 - day*dx1
+    val u_b   = dby*dax - dbx*day
+
+    require (u_b != 0)
+
+    val ua = ua_t / u_b
+    val ub = ub_t / u_b
+
+    val ix = a1x + ua * dax
+    val iy = a1y + ua * day
+    (ix, iy)
+  }
+
   def projectPointOntoLineSegment(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: Float, py: Float): Proj = {
     val dvx   = v2x - v1x
     val dvy   = v2y - v1y
@@ -113,7 +139,7 @@ object DelaunaySpace {
       preferredSize = new Dimension(prefW + padT, prefH + padT)
       opaque        = true
 
-      private[this] var ptMouse = new Point(-1, -1)
+      var ptMouse = new Point(-1, -1)
 
       listenTo(mouse.moves)
       reactions += {
@@ -126,7 +152,7 @@ object DelaunaySpace {
       private[this] val colrRed   = Color.red
       private[this] val colrBlue  = Color.blue
 
-      override protected def paintComponent(g: Graphics2D): Unit = {
+      override def paintComponent(g: Graphics2D): Unit = {
         g.setColor(Color.lightGray)
         val w     = peer.getWidth
         val h     = peer.getHeight
@@ -151,8 +177,11 @@ object DelaunaySpace {
           g.drawOval(sx - ri, sy - ri, ri * 2, ri * 2)
         }
 
-        select.foreach { v =>
+        select.zipWithIndex.foreach { case (v, vi) =>
           drawPoint(v.x, v.y)
+          val sx = ((v.x - minX) * scale + pad + 0.5).toInt
+          val sy = ((v.y - minY) * scale + pad + 0.5).toInt
+          g.drawString(vi.toString, sx, sy)
         }
 
         def drawLine(x1: Float, y1: Float, x2: Float, y2: Float): Unit = {
@@ -172,8 +201,9 @@ object DelaunaySpace {
         if (ptMouse.x >= 0) {
           val px = (ptMouse.x - pad) / scale + minX
           val py = (ptMouse.y - pad) / scale + minY
-          // g.setColor(Color.red)
-          // drawPoint(px, py)
+
+          g.setColor(Color.magenta)
+          drawCircle(px, py, 4)
 
           g.setColor(colrRed)
           lazy val prjSides: Vec[Proj] = triLn.map { case (i1, i2) =>
@@ -221,32 +251,75 @@ object DelaunaySpace {
             val v2    = select(i2)
             val v3    = select(i3)
             val (alt1, alt2, alt3) = prjAlt(inside)
+            val a1x   = alt1.x
+            val a1y   = alt1.y
+            val a2x   = alt2.x
+            val a2y   = alt2.y
+            val a3x   = alt3.x
+            val a3y   = alt3.y
+//            val a1x   = (v2.x + v3.x)/2
+//            val a1y   = (v2.y + v3.y)/2
+//            val a2x   = (v3.x + v1.x)/2
+//            val a2y   = (v3.y + v1.y)/2
+//            val a3x   = (v1.x + v2.x)/2
+//            val a3y   = (v1.y + v2.y)/2
+            
+//            val (a1x, a1y) = intersectLineLineF(v2.x, v2.y, v3.x, v3.y, v1.x, v1.y, px, py)
+//            val (a2x, a2y) = intersectLineLineF(v3.x, v3.y, v1.x, v1.y, v2.x, v2.y, px, py)
+//            val (a3x, a3y) = intersectLineLineF(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, px, py)
+
             g.setColor(colrRed)
-            drawLine(v1.x, v1.y, alt1.x, alt1.y)
-            drawLine(v2.x, v2.y, alt2.x, alt2.y)
-            drawLine(v3.x, v3.y, alt3.x, alt3.y)
+            drawLine(v1.x, v1.y, a1x, a1y)
+            drawLine(v2.x, v2.y, a2x, a2y)
+            drawLine(v3.x, v3.y, a3x, a3y)
             g.setColor(colrGreen)
-            val prj1 = projectPointOntoLineSegment(v1.x, v1.y, alt1.x, alt1.y, px, py)
-            val prj2 = projectPointOntoLineSegment(v2.x, v2.y, alt2.x, alt2.y, px, py)
-            val prj3 = projectPointOntoLineSegment(v3.x, v3.y, alt3.x, alt3.y, px, py)
+            val prj1 = projectPointOntoLineSegment(v1.x, v1.y, a1x, a1y, px, py)
+            val prj2 = projectPointOntoLineSegment(v2.x, v2.y, a2x, a2y, px, py)
+            val prj3 = projectPointOntoLineSegment(v3.x, v3.y, a3x, a3y, px, py)
             drawPoint(prj1.x, prj1.y)
             drawPoint(prj2.x, prj2.y)
             drawPoint(prj3.x, prj3.y)
+//            val amp1 = math.sqrt(1 - prj1.loc).toFloat
+//            val amp2 = math.sqrt(1 - prj2.loc).toFloat
+//            val amp3 = math.sqrt(1 - prj3.loc).toFloat
+//            println(f"$i1 - ${prj1.loc}%g, $i2 - ${prj2.loc}%g, $i3 - ${prj3.loc}%g")
             val amp1 = math.sqrt(1 - prj1.loc).toFloat
             val amp2 = math.sqrt(1 - prj2.loc).toFloat
             val amp3 = math.sqrt(1 - prj3.loc).toFloat
             g.setColor(colrBlue)
-            drawCircle(v1.x, v1.y, amp1 * 16)
-            drawCircle(v2.x, v2.y, amp2 * 26)
-            drawCircle(v3.x, v3.y, amp3 * 36)
+            drawCircle(v1.x, v1.y, amp1 * 24)
+            drawCircle(v2.x, v2.y, amp2 * 24)
+            drawCircle(v3.x, v3.y, amp3 * 24)
           }
         }
       }
     }
 
+    val ggMakeVideo = Button("Export Video") {
+      val dir = userHome / "Documents" / "temp" / "delaunay"
+      if (!dir.exists()) dir.mkdir()
+      val w   = view.peer.getWidth
+      val wi  = w - padT
+      val h   = view.peer.getHeight
+      val hi  = h - padT
+      val b = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+      val g = b.createGraphics()
+      for (i <- 1 to 100) {
+        import numbers.Implicits._
+        val px = (i.linlin(1, 100, pad, pad + wi) + 0.5).toInt
+        val py = (i.linlin(100, 1, pad, pad + hi) + 0.5).toInt
+        view.ptMouse = new Point(px, py)
+        view.paintComponent(g)
+        ImageIO.write(b, "png", dir / s"frame-$i.png")
+      }
+    }
+
     new Frame {
       title = "Delaunay Space"
-      contents = view
+      contents = new BorderPanel {
+        add(view, BorderPanel.Position.Center)
+        add(ggMakeVideo, BorderPanel.Position.South)
+      }
       pack().centerOnScreen()
       open()
 
