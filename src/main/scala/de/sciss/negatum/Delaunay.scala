@@ -1,3 +1,16 @@
+/*
+ *  Delaunay.scala
+ *  (Negatum)
+ *
+ *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.negatum
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -6,7 +19,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * Original author: Martin Andrews
   * Original project: https://github.com/mdda/DelaunayScala
-  * License: GPL v2, same as Negatum
+  * License: GPL v2
   *
   * Edited by H.H.Rutz 2016
   */

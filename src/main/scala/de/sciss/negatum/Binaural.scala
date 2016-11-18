@@ -16,7 +16,6 @@ package de.sciss.negatum
 
 import de.sciss.file._
 import de.sciss.lucre.synth.{AudioBus, Buffer, Bus, BusNodeSetter, Group, Node, Synth, Txn}
-import de.sciss.mellite.Prefs
 import de.sciss.negatum.Delaunay.Vector2
 import de.sciss.synth.{AddAction, ControlSet, SynthGraph, addBefore, addToHead, addToTail, message}
 import de.sciss.{numbers, synth}
@@ -25,7 +24,7 @@ import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Binaural {
-  var DEBUG = true
+  var DEBUG = false // true
 
   final val audioWork: File = userHome / "Documents" / "projects" / "Imperfect" / "audio_work"
 
@@ -163,7 +162,6 @@ object Binaural {
 //    val ll    = LatLon(lat = ele.toDegrees, lon = azi.value.toDegrees)
 //    val r     = ll.toCartesian
 //    val idx   = SamplePoints.minBy(_._1 distanceTo r)._2
-    import numbers.Implicits._
     val idx: Int = SamplePoints.minBy { case (ang, _) =>
         ang.angleTo(azi).value
 //      val dAng  = ang - azi.value

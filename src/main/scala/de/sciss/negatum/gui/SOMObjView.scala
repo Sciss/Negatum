@@ -1,6 +1,6 @@
 /*
  *  SOMObjView.scala
- *  (SOM)
+ *  (Negatum)
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *

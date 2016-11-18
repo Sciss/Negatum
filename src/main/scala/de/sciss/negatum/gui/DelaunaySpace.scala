@@ -1,4 +1,17 @@
-package de.sciss.negatum
+/*
+ *  DelaunaySpace.scala
+ *  (Negatum)
+ *
+ *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
+package de.sciss.negatum.gui
 
 import java.awt.image.BufferedImage
 import java.awt.{Color, RenderingHints}
@@ -7,6 +20,8 @@ import javax.imageio.ImageIO
 import de.sciss.file._
 import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.synth.{Group, Server, Synth, Txn}
+import de.sciss.mellite.Mellite
+import de.sciss.negatum.Binaural
 import de.sciss.negatum.Binaural.{Person, Radians}
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 import de.sciss.negatum.Speakers._
@@ -19,8 +34,7 @@ import de.sciss.{numbers, synth}
 import scala.Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm
-import scala.concurrent.stm.atomic
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{Ref, atomic}
 import scala.swing.event.{MouseDragged, MouseMoved, MousePressed, MouseReleased}
 import scala.swing.{BorderPanel, Button, Component, Dimension, Frame, Graphics2D, Point, Swing}
 
@@ -28,12 +42,13 @@ object DelaunaySpace {
   private val synthOpt = Ref(Option.empty[Synth])
   private val binOpt   = Ref(Option.empty[Group])
 
-  val as = AuralSystem()
+  def as: AuralSystem = Mellite.auralSystem
 
   def main(args: Array[String]): Unit = {
-    Swing.onEDT(mkGUI())
+    Swing.onEDT(mkGUI(exitOnClose = true))
     val cfg = Server.Config()
     cfg.outputBusChannels = select.size
+    cfg.audioBusChannels  = 512
     atomic { itx =>
       implicit val tx = Txn.wrap(itx)
       as.addClient(new Client {
@@ -61,77 +76,20 @@ object DelaunaySpace {
     }
   }
 
-  def insideGE(px: GE, py: GE): Vec[GE] = {
-    val sq = tri.map { case TriangleIndex(i1, i2, i3) =>
-      val v1    = select(i1)
-      val v2    = select(i2)
-      val v3    = select(i3)
-      // cf. https://en.wikipedia.org/wiki/Barycentric_coordinate_system
-      val dx3   = px - v3.x
-      val dy3   = py - v3.y
-      // det of 2x2 matrix: r1c1 * r2c2 - r1c2 * r2c1
-      // where r1c1 = x1 - x3, r2c2 = y2 - y3,
-      //       r1c2 = x2 - x3, r2c1 = y1 - y3
-      val detT  = (v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y)
-      val alpha = ((v2.y - v3.y) * dx3 + (v3.x - v2.x) * dy3) / detT
-      val beta  = ((v3.y - v1.y) * dx3 + (v1.x - v3.x) * dy3) / detT
-      val gamma = 1.0f - alpha - beta
-      alpha >= 0 & beta >= 0 & gamma >= 0
-    }
-    sq
-  }
-
-  def ampGE(px: GE, py: GE): GE = {
-    val amps = Array.fill[GE](select.size)(0f)
-    val ins  = insideGE(px, py)
-
-    tri.zipWithIndex.foreach { case (TriangleIndex(i1, i2, i3), triIdx) =>
-      val v1    = select(i1)
-      val v2    = select(i2)
-      val v3    = select(i3)
-      val (alt1, alt2, alt3) = prjAlt(triIdx)
-      val a1x   = alt1.x
-      val a1y   = alt1.y
-      val a2x   = alt2.x
-      val a2y   = alt2.y
-      val a3x   = alt3.x
-      val a3y   = alt3.y
-
-      val prj1 = projectPointOntoLineSegmentGE(v1.x, v1.y, a1x, a1y, px, py)
-      val prj2 = projectPointOntoLineSegmentGE(v2.x, v2.y, a2x, a2y, px, py)
-      val prj3 = projectPointOntoLineSegmentGE(v3.x, v3.y, a3x, a3y, px, py)
-
-      val amp1 = (1 - prj1.loc).sqrt
-      val amp2 = (1 - prj2.loc).sqrt
-      val amp3 = (1 - prj3.loc).sqrt
-
-      val in    = ins(triIdx)
-      amps(i1) += amp1 * in
-      amps(i2) += amp2 * in
-      amps(i3) += amp3 * in
-    }
-
-    amps.toIndexedSeq
-  }
-
   def mkSynth(s: Server)(implicit tx: Txn): Synth = {
-    import synth.ugen
     import synth.Ops._
+    import synth.ugen
     import ugen._
     val g = SynthGraph {
       val sig = WhiteNoise.ar(0.2)
       val px  = "x".kr(0f)
       val py  = "y".kr(0f)
-      val amp = ampGE(px, py)
+      val amp = NegatumDelaunay(px, py)
       Out.ar(0, sig * amp)
     }
     val syn = Synth(s, g)
     syn.play(target = s.defaultGroup, args = Nil, addAction = addToHead, dependencies = Nil)
     syn
-  }
-
-  final case class ProjGE(x: GE, y: GE, loc: GE) {
-    def inside: GE = 0 <= loc & loc <= 1
   }
 
   def intersectLineLineF(a1x: Float, a1y: Float, a2x: Float, a2y: Float,
@@ -156,20 +114,7 @@ object DelaunaySpace {
     (ix, iy)
   }
 
-  def projectPointOntoLineSegmentGE(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: GE, py: GE): ProjGE = {
-    val dvx   = v2x - v1x
-    val dvy   = v2y - v1y
-    val dpx   = px - v1x
-    val dpy   = py - v1y
-    val dot   = dvx * dpx + dvy * dpy
-    val len   = dvx * dvx + dvy * dvy
-    val f     = dot / len
-    val prjX  = v1x + dvx * f
-    val prjY  = v1y + dvy * f
-    ProjGE(x = prjX, y = prjY, loc = f)
-  }
-
-  def mkGUI(): Unit = {
+  def mkGUI(exitOnClose: Boolean): Unit = {
     val minX    = select.minBy(_.x).x
     val minY    = select.minBy(_.y).y
     val maxX    = select.maxBy(_.x).x
@@ -417,7 +362,8 @@ object DelaunaySpace {
       pack().centerOnScreen()
       open()
 
-      override def closeOperation(): Unit = sys.exit()
+      override def closeOperation(): Unit =
+        if (exitOnClose) sys.exit()
     }
   }
 }

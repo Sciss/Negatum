@@ -1,6 +1,6 @@
 /*
  *  NegatumApp.scala
- *  (Negatum - test)
+ *  (Negatum)
  *
  *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
  *

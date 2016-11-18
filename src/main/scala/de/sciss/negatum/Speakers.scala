@@ -1,7 +1,22 @@
+/*
+ *  Speakers.scala
+ *  (Negatum)
+ *
+ *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.negatum
 
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
+import de.sciss.synth.GE
 
+import Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Speakers {
@@ -66,6 +81,11 @@ object Speakers {
     def inside: Boolean = 0 <= loc && loc <= 1
   }
 
+  final case class ProjGE(x: GE, y: GE, loc: GE) {
+    def inside: GE = 0 <= loc & loc <= 1
+  }
+
+  /** Altitude projections for each triangle. */
   val prjAlt: Vec[(Proj, Proj, Proj)] = tri.map { case TriangleIndex(i1, i2, i3) =>
     val v1    = select(i1)
     val v2    = select(i2)
@@ -87,5 +107,31 @@ object Speakers {
     val prjX  = v1x + dvx * f
     val prjY  = v1y + dvy * f
     Proj(x = prjX, y = prjY, loc = f)
+  }
+
+  def projectPointOntoLineSegmentGE(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: GE, py: GE): ProjGE = {
+    val dvx   = v2x - v1x
+    val dvy   = v2y - v1y
+    val dpx   = px - v1x
+    val dpy   = py - v1y
+    val dot   = dvx * dpx + dvy * dpy
+    val len   = dvx * dvx + dvy * dvy
+    val f     = dot / len
+    val prjX  = v1x + dvx * f
+    val prjY  = v1y + dvy * f
+    ProjGE(x = prjX, y = prjY, loc = f)
+  }
+
+  def projectPointLineLoc(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: GE, py: GE): GE = {
+    val dvx   = v2x - v1x
+    val dvy   = v2y - v1y
+    val dpx   = px - v1x
+    val dpy   = py - v1y
+    val dot   = dvx * dpx + dvy * dpy
+    val len   = dvx * dvx + dvy * dvy
+    val f     = dot / len
+//    val prjX  = v1x + dvx * f
+//    val prjY  = v1y + dvy * f
+    f
   }
 }
