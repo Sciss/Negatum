@@ -66,6 +66,23 @@ object DelaunaySpace {
   def main(args: Array[String]): Unit = {
     Swing.onEDT(run())
   }
+  
+  final case class Proj(x: Float, y: Float, loc: Float) {
+    def inside: Boolean = 0 <= loc && loc <= 1
+  }
+
+  def projectPointOntoLineSegment(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: Float, py: Float): Proj = {
+    val dvx   = v2x - v1x
+    val dvy   = v2y - v1y
+    val dpx   = px - v1x
+    val dpy   = py - v1y
+    val dot   = dvx * dpx + dvy * dpy
+    val len   = dvx * dvx + dvy * dvy
+    val f     = dot / len
+    val prjX  = v1x + dvx * f
+    val prjY  = v1y + dvy * f
+    Proj(x = prjX, y = prjY, loc = f)
+  }
 
   def run(): Unit = {
     val select  = even
@@ -91,7 +108,7 @@ object DelaunaySpace {
     val lineIndices: Vec[(Int, Int, Int)] = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
       (triLn.indexOf(key1), triLn.indexOf(key2), triLn.indexOf(key3))
     }
-
+    
     object view extends Component {
       preferredSize = new Dimension(prefW + padT, prefH + padT)
       opaque        = true
@@ -107,6 +124,7 @@ object DelaunaySpace {
 
       private[this] val colrGreen = new Color(0, 0xA0, 0)
       private[this] val colrRed   = Color.red
+      private[this] val colrBlue  = Color.blue
 
       override protected def paintComponent(g: Graphics2D): Unit = {
         g.setColor(Color.lightGray)
@@ -123,6 +141,14 @@ object DelaunaySpace {
           val sx = ((x - minX) * scale + pad + 0.5).toInt
           val sy = ((y - minY) * scale + pad + 0.5).toInt
           g.drawRect(sx - 2, sy - 2, 5, 5)
+        }
+
+        def drawCircle(x: Float, y: Float, radius: Float): Unit = {
+          val sx = ((x - minX) * scale + pad + 0.5).toInt
+          val sy = ((y - minY) * scale + pad + 0.5).toInt
+//          g.drawRect(sx - 2, sy - 2, 5, 5)
+          val ri = (radius + 0.5).toInt
+          g.drawOval(sx - ri, sy - ri, ri * 2, ri * 2)
         }
 
         select.foreach { v =>
@@ -150,23 +176,22 @@ object DelaunaySpace {
           // drawPoint(px, py)
 
           g.setColor(colrRed)
-          val projections: Vec[(Float, Float)] = triLn.map { case (i1, i2) =>
+          lazy val prjSides: Vec[Proj] = triLn.map { case (i1, i2) =>
             val v1    = select(i1)
             val v2    = select(i2)
-            val dvx   = v2.x - v1.x
-            val dvy   = v2.y - v1.y
-            val dpx   = px - v1.x                   // 1 ADD
-            val dpy   = py - v1.y                   // 1 ADD
-            val dot   = dvx * dpx + dvy * dpy       // 1 ADD, 2 MUL
-            val len   = dvx * dvx + dvy * dvy       // 1 ADD, 2 MUL
-            val f     = dot / len                   // 1 MUL
-            val prjX  = v1.x + dvx * f
-            val prjY  = v1.y + dvy * f
-            val in    = 0 <= f && f <= 1
+            val res   = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, px, py)
+            if (res.inside) drawPoint(res.x, res.y)
+            res
+          }
 
-            if (in) drawPoint(prjX, prjY)
-
-            (prjX, prjY)
+          val prjAlt = tri.map { case TriangleIndex(i1, i2, i3) =>
+            val v1    = select(i1)
+            val v2    = select(i2)
+            val v3    = select(i3)
+            val alt1  = projectPointOntoLineSegment(v2.x, v2.y, v3.x, v3.y, v1.x, v1.y)
+            val alt2  = projectPointOntoLineSegment(v3.x, v3.y, v1.x, v1.y, v2.x, v2.y)
+            val alt3  = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y)
+            (alt1, alt2, alt3)
           }
 
           val inside = tri.indexWhere { case TriangleIndex(i1, i2, i3) =>
@@ -187,14 +212,33 @@ object DelaunaySpace {
           }
 
           if (inside >= 0) {
-            val (i1, i2, i3) = lineIndices(inside)
+//            val (i1, i2, i3) = lineIndices(inside)
+//            val prj1 = prjSides(i1)
+//            val prj2 = prjSides(i2)
+//            val prj3 = prjSides(i3)
+            val TriangleIndex(i1, i2, i3) = tri(inside)
+            val v1    = select(i1)
+            val v2    = select(i2)
+            val v3    = select(i3)
+            val (alt1, alt2, alt3) = prjAlt(inside)
+            g.setColor(colrRed)
+            drawLine(v1.x, v1.y, alt1.x, alt1.y)
+            drawLine(v2.x, v2.y, alt2.x, alt2.y)
+            drawLine(v3.x, v3.y, alt3.x, alt3.y)
             g.setColor(colrGreen)
-            val (prjX1, prjY1) = projections(i1)
-            val (prjX2, prjY2) = projections(i2)
-            val (prjX3, prjY3) = projections(i3)
-            drawPoint(prjX1, prjY1)
-            drawPoint(prjX2, prjY2)
-            drawPoint(prjX3, prjY3)
+            val prj1 = projectPointOntoLineSegment(v1.x, v1.y, alt1.x, alt1.y, px, py)
+            val prj2 = projectPointOntoLineSegment(v2.x, v2.y, alt2.x, alt2.y, px, py)
+            val prj3 = projectPointOntoLineSegment(v3.x, v3.y, alt3.x, alt3.y, px, py)
+            drawPoint(prj1.x, prj1.y)
+            drawPoint(prj2.x, prj2.y)
+            drawPoint(prj3.x, prj3.y)
+            val amp1 = math.sqrt(1 - prj1.loc).toFloat
+            val amp2 = math.sqrt(1 - prj2.loc).toFloat
+            val amp3 = math.sqrt(1 - prj3.loc).toFloat
+            g.setColor(colrBlue)
+            drawCircle(v1.x, v1.y, amp1 * 16)
+            drawCircle(v2.x, v2.y, amp2 * 26)
+            drawCircle(v3.x, v3.y, amp3 * 36)
           }
         }
       }
