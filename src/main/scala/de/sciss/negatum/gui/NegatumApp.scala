@@ -20,7 +20,7 @@ import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
 
 import de.sciss.desktop.Menu.Root
-import de.sciss.desktop.WindowHandler
+import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
 import de.sciss.mellite
 import de.sciss.mellite.gui.{LogFrame, MenuBar}
@@ -30,6 +30,7 @@ import de.sciss.synth.proc.SynthGraphObj
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.language.existentials
+import scala.swing.Action
 import scala.util.control.NonFatal
 
 /** The main entry point for the desktop Swing application.
@@ -83,14 +84,18 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     new mellite.gui.MainFrame
   }
 
-//  lazy val menuFactory: Menu.Root = {
-//    val res = MenuBar.instance
-//    val gActions = res.get("actions").get.asInstanceOf[Menu.Group]
-//    gActions.addLine()
-//    gActions.add(Menu.Item("features", Action("Analyze Features...")(analyzeFeatures())))
-//    res
-//  }
-//
+  lazy val menuFactory: Menu.Root = {
+    val res = MenuBar.instance
+    val gActions = res.get("actions").get.asInstanceOf[Menu.Group]
+    gActions.addLine()
+    gActions.add(Menu.Item("binaural", Action("Binaural GUI...")(openBinaural())))
+    res
+  }
+
+  private[this] lazy val _binaural = DelaunaySpace.mkGUI(exitOnClose = false, videoOption = false)
+
+  def openBinaural(): Unit = _binaural.open()
+
 //  def analyzeFeatures(): Unit = {
 //    def invoke[S <: Sys[S]](implicit workspace: Workspace[S]): Unit = {
 //      implicit val cursor: stm.Cursor[S] = workspace.cursor
@@ -105,7 +110,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
 //    }
 //  }
 
-  protected def menuFactory: Root = MenuBar.instance
+//  protected def menuFactory: Root = MenuBar.instance
 
   override lazy val documentHandler: DocumentHandler = new DocumentHandlerImpl
 

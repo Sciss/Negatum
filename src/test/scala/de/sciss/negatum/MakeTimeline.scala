@@ -53,7 +53,10 @@ object MakeTimeline extends App {
         val bus   = ObjKeys.attrBus .kr(0f)
         val gain  = ObjKeys.attrGain.kr(1f)
         val in    = ScanInFix(numChannels = 1)
-        val sig   = in * gain
+        val px    = "traj-x".kr(0f)
+        val py    = "traj-y".kr(0f)
+        val amp   = NegatumDelaunay(px, py)
+        val sig   = in * gain * amp
         PhysicalOut.ar(indices = bus, in = sig)
       }
       pBus.graph() = gBus

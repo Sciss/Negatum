@@ -46,7 +46,7 @@ object DelaunaySpace {
   def as: AuralSystem = Mellite.auralSystem
 
   def main(args: Array[String]): Unit = {
-    Swing.onEDT(mkGUI(exitOnClose = true))
+    Swing.onEDT(mkGUI(exitOnClose = true, videoOption = false))
     val cfg = Server.Config()
     cfg.outputBusChannels = select.size
     cfg.audioBusChannels  = 512
@@ -115,7 +115,7 @@ object DelaunaySpace {
     (ix, iy)
   }
 
-  def mkGUI(exitOnClose: Boolean): Unit = {
+  def mkGUI(exitOnClose: Boolean, videoOption: Boolean): Frame = {
     val selectW = maxX - minX
     val selectH = maxY - minY
     val pad     = 16
@@ -354,14 +354,21 @@ object DelaunaySpace {
     new Frame {
       title     = "Delaunay Space"
       contents  = new BorderPanel {
-        add(view       , BorderPanel.Position.Center)
-        add(ggMakeVideo, BorderPanel.Position.South )
+        add(view, BorderPanel.Position.Center)
+        if (videoOption) add(ggMakeVideo, BorderPanel.Position.South )
       }
       pack().centerOnScreen()
       open()
 
-      override def closeOperation(): Unit =
+      override def closeOperation(): Unit = {
         if (exitOnClose) sys.exit()
+        else {
+          atomic { itx =>
+            implicit val tx = Txn.wrap(itx)
+            binOpt.get(itx).foreach(_.free())
+          }
+        }
+      }
     }
   }
 }
