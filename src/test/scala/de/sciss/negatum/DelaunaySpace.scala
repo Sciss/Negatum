@@ -79,13 +79,17 @@ object DelaunaySpace {
     val prefW   = 800
     val prefH   = (prefW * selectH / selectW + 0.5).toInt
     val tri     = Delaunay(select)
-    val triLn   = tri.flatMap { case TriangleIndex(a, b, c) =>
+    val triLn0  = tri.map { case TriangleIndex(a, b, c) =>
       List(
         (math.min(a, b), math.max(a, b)),
         (math.min(a, c), math.max(a, c)),
         (math.min(b, c), math.max(b, c))
       )
-    } .distinct
+    } 
+    val triLn = triLn0.flatten.distinct
+    val lineIndices = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
+      (triLn.indexOf(key1), triLn.indexOf(key2), triLn.indexOf(key3))
+    }
 
     object view extends Component {
       preferredSize = new Dimension(prefW + padT, prefH + padT)
@@ -144,7 +148,8 @@ object DelaunaySpace {
           // g.setColor(Color.red)
           // drawPoint(px, py)
 
-          triLn.foreach { case (i1, i2) =>
+          g.setColor(colrRed)
+          val inside = triLn.map { case (i1, i2) =>
             val v1    = select(i1)
             val v2    = select(i2)
             val dvx   = v2.x - v1.x
@@ -156,9 +161,24 @@ object DelaunaySpace {
             val f     = dot / len                   // 1 MUL
             val prjX  = v1.x + dvx * f
             val prjY  = v1.y + dvy * f
-            val inside = 0 <= f && f <= 1
-            g.setColor(if (inside) colrGreen else colrRed)
-            drawPoint(prjX, prjY)
+            val in    = 0 <= f && f <= 1
+
+            if (in) drawPoint(prjX, prjY)
+
+            (in, prjX, prjY)
+          }
+          g.setColor(colrGreen)
+          lineIndices.foreach { case (i1, i2, i3) =>
+            val (in1, prjX1, prjY1) = inside(i1)
+            val (in2, prjX2, prjY2) = inside(i2)
+            val (in3, prjX3, prjY3) = inside(i3)
+            val allInside = in1 && in2 && in3
+            // g.setColor(if (allInside) colrGreen else colrRed)
+            if (allInside) {
+              drawPoint(prjX1, prjY1)
+              drawPoint(prjX2, prjY2)
+              drawPoint(prjX3, prjY3)
+            }
           }
         }
       }
