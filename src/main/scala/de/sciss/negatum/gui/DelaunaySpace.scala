@@ -25,11 +25,12 @@ import de.sciss.negatum.Binaural
 import de.sciss.negatum.Binaural.{Person, Radians}
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 import de.sciss.negatum.Speakers._
+import de.sciss.numbers.Implicits._
+import de.sciss.synth
 import de.sciss.synth.proc.AuralSystem
 import de.sciss.synth.proc.AuralSystem.Client
 import de.sciss.synth.swing.ServerStatusPanel
-import de.sciss.synth.{GE, SynthGraph, addToHead, addToTail}
-import de.sciss.{numbers, synth}
+import de.sciss.synth.{SynthGraph, addToHead, addToTail}
 
 import scala.Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -115,10 +116,6 @@ object DelaunaySpace {
   }
 
   def mkGUI(exitOnClose: Boolean): Unit = {
-    val minX    = select.minBy(_.x).x
-    val minY    = select.minBy(_.y).y
-    val maxX    = select.maxBy(_.x).x
-    val maxY    = select.maxBy(_.y).y
     val selectW = maxX - minX
     val selectH = maxY - minY
     val pad     = 16
@@ -243,11 +240,13 @@ object DelaunaySpace {
         if (ptMouse.x >= 0) {
           val px = (ptMouse.x - pad) / scale + minX
           val py = (ptMouse.y - pad) / scale + minY
+          val nx = px.linlin(minX, maxX, 0, 1)
+          val ny = py.linlin(minY, maxY, 0, 1)
 
           stm.atomic { itx =>
             implicit val tx = Txn.wrap(itx)
             synthOpt.get(itx).foreach { n =>
-              n.set("x" -> px, "y" -> py)
+              n.set("x" -> nx, "y" -> ny)
             }
           }
 
@@ -289,7 +288,7 @@ object DelaunaySpace {
             val v1    = select(i1)
             val v2    = select(i2)
             val v3    = select(i3)
-            val (alt1, alt2, alt3) = prjAlt(inside)
+            val (alt1, alt2, alt3) = altitudeProjections(inside)
             val a1x   = alt1.x
             val a1y   = alt1.y
             val a2x   = alt2.x
@@ -344,7 +343,6 @@ object DelaunaySpace {
       val b = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
       val g = b.createGraphics()
       for (i <- 1 to 100) {
-        import numbers.Implicits._
         val px = (i.linlin(1, 100, pad, pad + wi) + 0.5).toInt
         val py = (i.linlin(100, 1, pad, pad + hi) + 0.5).toInt
         view.ptMouse = new Point(px, py)

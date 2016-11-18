@@ -3,23 +3,25 @@ package ugen
 
 import de.sciss.negatum.Delaunay.TriangleIndex
 import de.sciss.negatum.Speakers
-import de.sciss.negatum.Speakers.{prjAlt, select, tri}
+import de.sciss.negatum.Speakers.{altitudeProjectionsN, selectN, tri}
 import de.sciss.synth.UGenSource.Vec
 
 /** A graph element that produces an amplitude signal from a spatial
   * position (x, y).
-  * 
-  * @param x
-  * @param y
+  *
+  * @param x  horizontal position (in the `Speakers.select` space),
+  *           normalized between 0 and 1
+  * @param y  vertical position (in the `Speakers.select` space),
+  *           normalized between 0 and 1
   */
 final case class NegatumDelaunay(x: GE, y: GE) extends GE.Lazy {
   def rate: MaybeRate = MaybeRate.max_?(x.rate, y.rate)
 
   private def insideGE(px: GE, py: GE): Vec[GE] = {
     val sq = tri.map { case TriangleIndex(i1, i2, i3) =>
-      val v1    = select(i1)
-      val v2    = select(i2)
-      val v3    = select(i3)
+      val v1    = selectN(i1)
+      val v2    = selectN(i2)
+      val v3    = selectN(i3)
       // cf. https://en.wikipedia.org/wiki/Barycentric_coordinate_system
       val dx3   = px - v3.x
       val dy3   = py - v3.y
@@ -36,14 +38,14 @@ final case class NegatumDelaunay(x: GE, y: GE) extends GE.Lazy {
   }
 
   private def ampGE(px: GE, py: GE): GE = {
-    val amps = Array.fill[GE](select.size)(Constant.C0)
+    val amps = Array.fill[GE](selectN.size)(Constant.C0)
     val ins  = insideGE(px, py)
 
     tri.zipWithIndex.foreach { case (TriangleIndex(i1, i2, i3), triIdx) =>
-      val v1    = select(i1)
-      val v2    = select(i2)
-      val v3    = select(i3)
-      val (alt1, alt2, alt3) = prjAlt(triIdx)
+      val v1    = selectN(i1)
+      val v2    = selectN(i2)
+      val v3    = selectN(i3)
+      val (alt1, alt2, alt3) = altitudeProjectionsN(triIdx)
       val a1x   = alt1.x
       val a1y   = alt1.y
       val a2x   = alt2.x
@@ -67,5 +69,6 @@ final case class NegatumDelaunay(x: GE, y: GE) extends GE.Lazy {
 
     amps.toIndexedSeq
   }
+
   protected def makeUGens: UGenInLike = ampGE(px = x, py = y)
 }

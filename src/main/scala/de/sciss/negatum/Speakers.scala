@@ -14,9 +14,10 @@
 package de.sciss.negatum
 
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
+import de.sciss.numbers
 import de.sciss.synth.GE
 
-import Predef.{any2stringadd => _, _}
+import scala.Predef.{any2stringadd => _}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Speakers {
@@ -74,8 +75,25 @@ object Speakers {
     Vector2(1559.1171f, 817.96606f)
   )
 
-  val select: Vec[Vector2]        = even
-  val tri   : Vec[TriangleIndex]  = Delaunay(select)
+  /** Speakers selected for the projection. */
+  val select : Vec[Vector2]        = even
+  /** Delaunay triangulation indices. */
+  val tri    : Vec[TriangleIndex]  = Delaunay(select)
+
+  /** Minimum horizontal coordinate in `select`. */
+  val minX: Float = select.minBy(_.x).x
+  /** Minimum vertical coordinate in `select`. */
+  val minY: Float = select.minBy(_.y).y
+  /** Maximum horizontal coordinate in `select`. */
+  val maxX: Float = select.maxBy(_.x).x
+  /** Maximum vertical coordinate in `select`. */
+  val maxY: Float = select.maxBy(_.y).y
+
+  /** Selected speakers with coordinates normalized to (0, 1) */
+  val selectN: Vec[Vector2] = select.map { case Vector2(x, y) =>
+    import numbers.Implicits._
+    Vector2(x.linlin(minX, maxX, 0, 1), y.linlin(minY, maxY, 0, 1))
+  }
 
   final case class Proj(x: Float, y: Float, loc: Float) {
     def inside: Boolean = 0 <= loc && loc <= 1
@@ -86,10 +104,21 @@ object Speakers {
   }
 
   /** Altitude projections for each triangle. */
-  val prjAlt: Vec[(Proj, Proj, Proj)] = tri.map { case TriangleIndex(i1, i2, i3) =>
+  val altitudeProjections: Vec[(Proj, Proj, Proj)] = tri.map { case TriangleIndex(i1, i2, i3) =>
     val v1    = select(i1)
     val v2    = select(i2)
     val v3    = select(i3)
+    val alt1  = projectPointOntoLineSegment(v2.x, v2.y, v3.x, v3.y, v1.x, v1.y)
+    val alt2  = projectPointOntoLineSegment(v3.x, v3.y, v1.x, v1.y, v2.x, v2.y)
+    val alt3  = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y)
+    (alt1, alt2, alt3)
+  }
+
+  /** Altitude projections for each triangle. */
+  val altitudeProjectionsN: Vec[(Proj, Proj, Proj)] = tri.map { case TriangleIndex(i1, i2, i3) =>
+    val v1    = selectN(i1)
+    val v2    = selectN(i2)
+    val v3    = selectN(i3)
     val alt1  = projectPointOntoLineSegment(v2.x, v2.y, v3.x, v3.y, v1.x, v1.y)
     val alt2  = projectPointOntoLineSegment(v3.x, v3.y, v1.x, v1.y, v2.x, v2.y)
     val alt3  = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y)
