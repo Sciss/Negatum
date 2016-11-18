@@ -21,7 +21,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm
 import scala.concurrent.stm.atomic
 import scala.concurrent.stm.Ref
-import scala.swing.event.{MouseMoved, MousePressed, MouseReleased}
+import scala.swing.event.{MouseDragged, MouseMoved, MousePressed, MouseReleased}
 import scala.swing.{BorderPanel, Button, Component, Dimension, Frame, Graphics2D, Point, Swing}
 
 object DelaunaySpace {
@@ -197,6 +197,8 @@ object DelaunaySpace {
       opaque        = true
 
       var ptMouse = new Point(-1, -1)
+      var ptBin1  = new Point(-1, -1)
+      var ptBin   = Person(Vector2(-1, -1), Radians(0))
 
       listenTo(mouse.clicks)
       listenTo(mouse.moves)
@@ -205,6 +207,9 @@ object DelaunaySpace {
           ptMouse = e.point
           repaint()
         case e: MousePressed =>
+          ptBin1 = e.point
+        case e: MouseDragged =>
+        case e: MouseReleased =>
 //          synthOpt.single().foreach(x => println(x.peer.server.counts))
           atomic { itx =>
             implicit val tx = Txn.wrap(itx)
@@ -214,16 +219,18 @@ object DelaunaySpace {
               val wi    = w - padT
               val hi    = h - padT
               val scale = math.min(wi / selectW, hi / selectH)
-              val sx    = ((e.point.x - minX) * scale + pad + 0.5).toInt
-              val sy    = ((e.point.y - minY) * scale + pad + 0.5).toInt
-              val l     = Person(pos = Vector2(sx, sy), azi = Radians(math.Pi/2))
+              val px    = (ptMouse.x - pad) / scale + minX
+              val py    = (ptMouse.y - pad) / scale + minY
+//              println(f"listener pos $sx%g, $sx%g")
+              val angle = math.atan2(-(e.point.y - ptBin1.y), e.point.x - ptBin1.x)
+              ptBin     = Person(pos = Vector2(px, py), azi = Radians(angle))
               binOpt.get(itx).foreach(_.free())
-              val bin = Binaural.build(target = s.defaultGroup, addAction = addToTail, listener = l)
+              val bin = Binaural.build(target = s.defaultGroup, addAction = addToTail, listener = ptBin)
               binOpt.set(Some(bin))(itx)
               //          synthOpt.foreach(x => x.server.dumpOSC(osc.Dump.Text))
             }
           }
-        case _: MouseReleased =>
+          repaint()
 //          synthOpt.foreach(x => x.server.dumpOSC(osc.Dump.Off))
       }
 
@@ -275,6 +282,17 @@ object DelaunaySpace {
           val v1 = select(i1)
           val v2 = select(i2)
           drawLine(v1.x, v1.y, v2.x, v2.y)
+        }
+
+        if (ptBin.pos.x >= 0) {
+          val px = ptBin.pos.x  // ((ptBin.pos.x - minX) * scale + pad + 0.5).toInt
+          val py = ptBin.pos.y  // ((ptBin.pos.y - minY) * scale + pad + 0.5).toInt
+//          val px = (ptBin.pos.x - pad) / scale + minX
+//          val py = (ptBin.pos.y - pad) / scale + minY
+          g.setColor(Color.blue)
+          drawCircle(px, py, 4)
+          val angle = ptBin.azi.value
+          drawLine(px, py, px + math.cos(angle).toFloat * 12, py - math.sin(angle).toFloat * 12)
         }
 
         if (ptMouse.x >= 0) {

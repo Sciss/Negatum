@@ -25,11 +25,11 @@ import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Binaural {
-  var DEBUG = false
+  var DEBUG = true
 
   final val audioWork: File = userHome / "Documents" / "projects" / "Imperfect" / "audio_work"
 
-  final val MetersPerPixel = 1.5/92 // hScale
+  final val MetersPerPixel = 10.20 / 824.0 // 1.5/92 // hScale
 
   val ChannelToMatrixMap: Map[Spk, Vector2] = Speakers.select.zipWithIndex.map { case (pt, i) =>
     Spk(i) -> pt
@@ -77,7 +77,7 @@ object Binaural {
     require(t % 15 == 0 && t >= 0 && t < 360)
     require(p % 15 == 0 && ((p >= 0 && p <= 90) || (p >= 315 && p < 360)))
 
-    val angleDeg = t.toRadians
+    val angleRadians = t.toRadians
 
 //    def toPolar: Polar = LatLon(lat = if (p < 90) p else p - 360, lon = t).toPolar
 //    def toCartesian: Pt3 = toPolar.toCartesian
@@ -109,7 +109,7 @@ object Binaural {
 
 //  final val SamplePoints: Vec[(Pt3, Int)] = Samples.map(_.toCartesian).zipWithIndex
 
-  final val SamplePoints: Vec[(Float, Int)] = Samples.map(_.angleDeg).zipWithIndex
+  final val SamplePoints: Vec[(Radians, Int)] = Samples.map(x => Radians(x.angleRadians)).zipWithIndex
 
   final case class Position(index: Int, distance: Double) {
     /** Acoustical delay in seconds, based on `distance`
@@ -131,7 +131,8 @@ object Binaural {
   }
 
   def angleTo(a: Vector2, b: Vector2): Radians = {
-    val r = math.atan2(-(b.y - a.y), b.x - b.x)
+//    val r = math.atan2(-(b.y - a.y), b.x - b.x)
+    val r = math.atan2(-(b.y - a.y), b.x - a.x)
     Radians(r)
   }
 
@@ -151,9 +152,10 @@ object Binaural {
   def calc(listener: Person, spk: Spk): Position = {
     val q     = ChannelToMatrixMap(spk) // .toPoint.equalize
     val p     = listener.pos // .equalize
-    val azi0  = listener.azi
-//    val azi0  = angleTo(p, q)
+//    val azi0  = listener.azi.value.toDegrees
+    val azi0  = angleTo(p, q)
 //    val azi   = azi0 - listener.azi
+    val azi   = listener.azi - azi0
     val dh    = distanceTo(p, q) * MetersPerPixel
     val dv    = 1.5   // ja?
     val dist  = math.sqrt(dh * dh + dv * dv)
@@ -162,7 +164,12 @@ object Binaural {
 //    val r     = ll.toCartesian
 //    val idx   = SamplePoints.minBy(_._1 distanceTo r)._2
     import numbers.Implicits._
-    val idx: Int = SamplePoints.minBy { case (ang, _) => (ang - azi0.value).wrap(0, math.Pi * 2) }._2
+    val idx: Int = SamplePoints.minBy { case (ang, _) =>
+        ang.angleTo(azi).value
+//      val dAng  = ang - azi.value
+//      val res   = dAng.wrap(0, 180)
+//      res
+    }._2
     Position(index = idx, distance = dist)
   }
 
@@ -305,8 +312,8 @@ object Binaural {
 
       if (DEBUG) println(s"$spk - $pos")
 
-      if (pos.distance < 6) { // use binaural for less than 6 meters distance
-      val chanSynth = Synth(s, chanGraph, Some("chan-bin"))
+      if (pos.distance < 8 /* 6 */) { // use binaural for less than 6 meters distance
+        val chanSynth = Synth(s, chanGraph, Some("chan-bin"))
         val (bufL, bufR) = binBufs.getOrElse(pos.index, {
           val ir    = Samples(pos.index)
           val path  = ir.file().absolutePath
