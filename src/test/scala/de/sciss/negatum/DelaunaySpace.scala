@@ -5,78 +5,137 @@ import java.awt.{Color, RenderingHints}
 import javax.imageio.ImageIO
 
 import de.sciss.file._
-import de.sciss.numbers
+import de.sciss.lucre.stm.TxnLike
+import de.sciss.lucre.synth.{Group, Server, Synth, Txn}
+import de.sciss.negatum.Binaural.{Person, Radians}
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
+import de.sciss.negatum.Speakers._
+import de.sciss.synth.proc.AuralSystem
+import de.sciss.synth.proc.AuralSystem.Client
+import de.sciss.synth.swing.ServerStatusPanel
+import de.sciss.synth.{GE, SynthGraph, addToHead, addToTail}
+import de.sciss.{numbers, synth}
 
+import scala.Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.swing.event.MouseMoved
+import scala.concurrent.stm
+import scala.concurrent.stm.atomic
+import scala.concurrent.stm.Ref
+import scala.swing.event.{MouseMoved, MousePressed, MouseReleased}
 import scala.swing.{BorderPanel, Button, Component, Dimension, Frame, Graphics2D, Point, Swing}
 
 object DelaunaySpace {
-  val even = Vector(
-    Vector2(238.396f, 521.4281f),
-    Vector2(161.6244f, 299.19452f),
-    Vector2(224.25385f, 167.87468f),
-    Vector2(832.36578f, 22.412703f),
-    Vector2(1297.0359f, 10.290872f),
-    Vector2(1299.0562f, 256.7681f),
-    Vector2(1313.1982f, 717.39764f),
-    Vector2(1317.2389f, 818.4129f),
-    Vector2(458.60925f, 834.57538f),
-    Vector2(684.88336f, 826.49414f),
-    Vector2(905.09668f, 826.49414f),
-    Vector2(1111.1677f, 820.43323f),
-    Vector2(711.1474f, 145.65134f),
-    Vector2(1119.249f, 472.94077f),
-    Vector2(296.98483f, 733.56018f),
-    Vector2(1305.1169f, 483.04227f),
-    Vector2(1080.8633f, 10.290871f),
-    Vector2(628.31488f, 52.717278f),
-    Vector2(739.43152f, 737.60071f),
-    Vector2(929.34027f, 479.00168f),
-    Vector2(428.30466f, 119.38736f),
-    Vector2(1485.2186f, 493.1438f),
-    Vector2(1483.1171f, 817.96606f),
-    Vector2(1559.1577f, 487.08289f)
-  )
+  private val synthOpt = Ref(Option.empty[Synth])
+  private val binOpt   = Ref(Option.empty[Group])
 
-  val odd = Vector(
-    Vector2(123.23861f, 190.09804f),
-    Vector2(327.2894f, 147.67163f),
-    Vector2(535.38086f, 91.103073f),
-    Vector2(731.35046f, 28.473616f),
-    Vector2(953.58405f, 22.412703f),
-    Vector2(1183.8988f, 16.351786f),
-    Vector2(1307.1375f, 121.40765f),
-    Vector2(1305.1171f, 375.96609f),
-    Vector2(272.74118f, 630.5246f),
-    Vector2(339.41125f, 840.63635f),
-    Vector2(565.68542f, 830.53473f),
-    Vector2(791.95953f, 826.49414f),
-    Vector2(327.2894f, 521.4281f),
-    Vector2(735.39099f, 644.66675f),
-    Vector2(1036.4165f, 476.98138f),
-    Vector2(195.96959f, 406.27069f),
-    Vector2(1010.1525f, 826.49414f),
-    Vector2(1220.2642f, 822.45355f),
-    Vector2(1309.1576f, 606.28088f),
-    Vector2(1214.2034f, 464.85956f),
-    Vector2(711.1474f, 250.7072f),
-    Vector2(1405.2389f, 818.4129f),
-    Vector2(1403.2186f, 493.1438f),
-    Vector2(1559.1171f, 817.96606f)
-  )
+  val as = AuralSystem()
 
   def main(args: Array[String]): Unit = {
-    Swing.onEDT(run())
+    Swing.onEDT(mkGUI())
+    val cfg = Server.Config()
+    cfg.outputBusChannels = select.size
+    atomic { itx =>
+      implicit val tx = Txn.wrap(itx)
+      as.addClient(new Client {
+        def auralStarted(s: Server)(implicit tx: Txn): Unit = {
+          import TxnLike.peer
+          s.nextNodeID()  // XXX TODO -- ugly
+          s.nextNodeID()
+          synthOpt() = Some(mkSynth(s))
+          import synth.swing.Implicits._
+          Swing.onEDT {
+            val f = s.peer.gui.meter()
+            f.location = new Point(0, 50)
+            val ssp = new ServerStatusPanel
+            ssp.server = Some(s.peer)
+            new Frame {
+              contents = ssp
+              pack().open()
+            }
+          }
+        }
+
+        def auralStopped()(implicit tx: Txn): Unit = ()
+      })
+      as.start(cfg)
+    }
   }
-  
-  final case class Proj(x: Float, y: Float, loc: Float) {
-    def inside: Boolean = 0 <= loc && loc <= 1
+
+  def insideGE(px: GE, py: GE): Vec[GE] = {
+    val sq = tri.map { case TriangleIndex(i1, i2, i3) =>
+      val v1    = select(i1)
+      val v2    = select(i2)
+      val v3    = select(i3)
+      // cf. https://en.wikipedia.org/wiki/Barycentric_coordinate_system
+      val dx3   = px - v3.x
+      val dy3   = py - v3.y
+      // det of 2x2 matrix: r1c1 * r2c2 - r1c2 * r2c1
+      // where r1c1 = x1 - x3, r2c2 = y2 - y3,
+      //       r1c2 = x2 - x3, r2c1 = y1 - y3
+      val detT  = (v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y)
+      val alpha = ((v2.y - v3.y) * dx3 + (v3.x - v2.x) * dy3) / detT
+      val beta  = ((v3.y - v1.y) * dx3 + (v1.x - v3.x) * dy3) / detT
+      val gamma = 1.0f - alpha - beta
+      alpha >= 0 & beta >= 0 & gamma >= 0
+    }
+    sq
+  }
+
+  def ampGE(px: GE, py: GE): GE = {
+    val amps = Array.fill[GE](select.size)(0f)
+    val ins  = insideGE(px, py)
+
+    tri.zipWithIndex.foreach { case (TriangleIndex(i1, i2, i3), triIdx) =>
+      val v1    = select(i1)
+      val v2    = select(i2)
+      val v3    = select(i3)
+      val (alt1, alt2, alt3) = prjAlt(triIdx)
+      val a1x   = alt1.x
+      val a1y   = alt1.y
+      val a2x   = alt2.x
+      val a2y   = alt2.y
+      val a3x   = alt3.x
+      val a3y   = alt3.y
+
+      val prj1 = projectPointOntoLineSegmentGE(v1.x, v1.y, a1x, a1y, px, py)
+      val prj2 = projectPointOntoLineSegmentGE(v2.x, v2.y, a2x, a2y, px, py)
+      val prj3 = projectPointOntoLineSegmentGE(v3.x, v3.y, a3x, a3y, px, py)
+
+      val amp1 = (1 - prj1.loc).sqrt
+      val amp2 = (1 - prj2.loc).sqrt
+      val amp3 = (1 - prj3.loc).sqrt
+
+      val in    = ins(triIdx)
+      amps(i1) += amp1 * in
+      amps(i2) += amp2 * in
+      amps(i3) += amp3 * in
+    }
+
+    amps.toIndexedSeq
+  }
+
+  def mkSynth(s: Server)(implicit tx: Txn): Synth = {
+    import synth.ugen
+    import synth.Ops._
+    import ugen._
+    val g = SynthGraph {
+      val sig = WhiteNoise.ar(0.2)
+      val px  = "x".kr(0f)
+      val py  = "y".kr(0f)
+      val amp = ampGE(px, py)
+      Out.ar(0, sig * amp)
+    }
+    val syn = Synth(s, g)
+    syn.play(target = s.defaultGroup, args = Nil, addAction = addToHead, dependencies = Nil)
+    syn
+  }
+
+  final case class ProjGE(x: GE, y: GE, loc: GE) {
+    def inside: GE = 0 <= loc & loc <= 1
   }
 
   def intersectLineLineF(a1x: Float, a1y: Float, a2x: Float, a2y: Float,
-                        b1x: Float, b1y: Float, b2x: Float, b2y: Float): (Float, Float) =  {
+                         b1x: Float, b1y: Float, b2x: Float, b2y: Float): (Float, Float) =  {
     val dax   = a2x - a1x
     val day   = a2y - a1y
     val dbx   = b2x - b1x
@@ -84,20 +143,20 @@ object DelaunaySpace {
     val dx1   = a1x - b1x
     val dy1   = a1y - b1y
     val ua_t  = dbx*dy1 - dby*dx1
-    val ub_t  = dax*dy1 - day*dx1
+    // val ub_t  = dax*dy1 - day*dx1
     val u_b   = dby*dax - dbx*day
 
     require (u_b != 0)
 
     val ua = ua_t / u_b
-    val ub = ub_t / u_b
+    // val ub = ub_t / u_b
 
     val ix = a1x + ua * dax
     val iy = a1y + ua * day
     (ix, iy)
   }
 
-  def projectPointOntoLineSegment(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: Float, py: Float): Proj = {
+  def projectPointOntoLineSegmentGE(v1x: Float, v1y: Float, v2x: Float, v2y: Float, px: GE, py: GE): ProjGE = {
     val dvx   = v2x - v1x
     val dvy   = v2y - v1y
     val dpx   = px - v1x
@@ -107,11 +166,10 @@ object DelaunaySpace {
     val f     = dot / len
     val prjX  = v1x + dvx * f
     val prjY  = v1y + dvy * f
-    Proj(x = prjX, y = prjY, loc = f)
+    ProjGE(x = prjX, y = prjY, loc = f)
   }
 
-  def run(): Unit = {
-    val select  = even
+  def mkGUI(): Unit = {
     val minX    = select.minBy(_.x).x
     val minY    = select.minBy(_.y).y
     val maxX    = select.maxBy(_.x).x
@@ -122,18 +180,17 @@ object DelaunaySpace {
     val padT    = pad << 1
     val prefW   = 800
     val prefH   = (prefW * selectH / selectW + 0.5).toInt
-    val tri     = Delaunay(select)
     val triLn0: Vec[List[(Int, Int)]] = tri.map { case TriangleIndex(a, b, c) =>
       List(
         (math.min(a, b), math.max(a, b)),
         (math.min(a, c), math.max(a, c)),
         (math.min(b, c), math.max(b, c))
       )
-    } 
-    val triLn: Vec[(Int, Int)] = triLn0.flatten.distinct
-    val lineIndices: Vec[(Int, Int, Int)] = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
-      (triLn.indexOf(key1), triLn.indexOf(key2), triLn.indexOf(key3))
     }
+    val triLn: Vec[(Int, Int)] = triLn0.flatten.distinct
+//    val lineIndices: Vec[(Int, Int, Int)] = triLn0.map { case key1 :: key2 :: key3 :: Nil =>
+//      (triLn.indexOf(key1), triLn.indexOf(key2), triLn.indexOf(key3))
+//    }
     
     object view extends Component {
       preferredSize = new Dimension(prefW + padT, prefH + padT)
@@ -141,11 +198,33 @@ object DelaunaySpace {
 
       var ptMouse = new Point(-1, -1)
 
+      listenTo(mouse.clicks)
       listenTo(mouse.moves)
       reactions += {
         case e: MouseMoved =>
           ptMouse = e.point
           repaint()
+        case e: MousePressed =>
+//          synthOpt.single().foreach(x => println(x.peer.server.counts))
+          atomic { itx =>
+            implicit val tx = Txn.wrap(itx)
+            as.serverOption.foreach { s =>
+              val w     = peer.getWidth
+              val h     = peer.getHeight
+              val wi    = w - padT
+              val hi    = h - padT
+              val scale = math.min(wi / selectW, hi / selectH)
+              val sx    = ((e.point.x - minX) * scale + pad + 0.5).toInt
+              val sy    = ((e.point.y - minY) * scale + pad + 0.5).toInt
+              val l     = Person(pos = Vector2(sx, sy), azi = Radians(math.Pi/2))
+              binOpt.get(itx).foreach(_.free())
+              val bin = Binaural.build(target = s.defaultGroup, addAction = addToTail, listener = l)
+              binOpt.set(Some(bin))(itx)
+              //          synthOpt.foreach(x => x.server.dumpOSC(osc.Dump.Text))
+            }
+          }
+        case _: MouseReleased =>
+//          synthOpt.foreach(x => x.server.dumpOSC(osc.Dump.Off))
       }
 
       private[this] val colrGreen = new Color(0, 0xA0, 0)
@@ -202,27 +281,24 @@ object DelaunaySpace {
           val px = (ptMouse.x - pad) / scale + minX
           val py = (ptMouse.y - pad) / scale + minY
 
+          stm.atomic { itx =>
+            implicit val tx = Txn.wrap(itx)
+            synthOpt.get(itx).foreach { n =>
+              n.set("x" -> px, "y" -> py)
+            }
+          }
+
           g.setColor(Color.magenta)
           drawCircle(px, py, 4)
 
           g.setColor(colrRed)
-          lazy val prjSides: Vec[Proj] = triLn.map { case (i1, i2) =>
-            val v1    = select(i1)
-            val v2    = select(i2)
-            val res   = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, px, py)
-            if (res.inside) drawPoint(res.x, res.y)
-            res
-          }
-
-          val prjAlt = tri.map { case TriangleIndex(i1, i2, i3) =>
-            val v1    = select(i1)
-            val v2    = select(i2)
-            val v3    = select(i3)
-            val alt1  = projectPointOntoLineSegment(v2.x, v2.y, v3.x, v3.y, v1.x, v1.y)
-            val alt2  = projectPointOntoLineSegment(v3.x, v3.y, v1.x, v1.y, v2.x, v2.y)
-            val alt3  = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y)
-            (alt1, alt2, alt3)
-          }
+//          val prjSides: Vec[Proj] = triLn.map { case (i1, i2) =>
+//            val v1    = select(i1)
+//            val v2    = select(i2)
+//            val res   = projectPointOntoLineSegment(v1.x, v1.y, v2.x, v2.y, px, py)
+//            if (res.inside) drawPoint(res.x, res.y)
+//            res
+//          }
 
           val inside = tri.indexWhere { case TriangleIndex(i1, i2, i3) =>
             val v1    = select(i1)
@@ -315,10 +391,10 @@ object DelaunaySpace {
     }
 
     new Frame {
-      title = "Delaunay Space"
-      contents = new BorderPanel {
-        add(view, BorderPanel.Position.Center)
-        add(ggMakeVideo, BorderPanel.Position.South)
+      title     = "Delaunay Space"
+      contents  = new BorderPanel {
+        add(view       , BorderPanel.Position.Center)
+        add(ggMakeVideo, BorderPanel.Position.South )
       }
       pack().centerOnScreen()
       open()

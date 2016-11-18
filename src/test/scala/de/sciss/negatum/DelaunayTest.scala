@@ -3,7 +3,7 @@ package de.sciss.negatum
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 
 object DelaunayTest extends App {
-  val select   = DelaunaySpace.even  // odd // ++ even // ++ odd
+  val select   = Speakers.even  // odd // ++ even // ++ odd
   val selectS  = select.map { case Vector2(x, y) => Vector2(x * 0.5f, y * 0.5f) }
 
   // Delaunay.mkProcessing(selectS)
