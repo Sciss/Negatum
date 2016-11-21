@@ -83,7 +83,7 @@ object DelaunaySpace {
     import synth.ugen
     import ugen._
     val g = SynthGraph {
-      val sig = WhiteNoise.ar(0.2)
+      val sig = WhiteNoise.ar(0.08)
       val px  = "x".kr(0f)
       val py  = "y".kr(0f)
       val amp = NegatumDelaunay(px, py)
