@@ -50,6 +50,7 @@ object DelaunaySpace {
     val cfg = Server.Config()
     cfg.outputBusChannels = select.size
     cfg.audioBusChannels  = 512
+    cfg.deviceName        = Some("Negatum")
     atomic { itx =>
       implicit val tx = Txn.wrap(itx)
       as.addClient(new Client {
