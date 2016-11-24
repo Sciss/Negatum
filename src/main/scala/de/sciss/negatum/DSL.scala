@@ -32,12 +32,16 @@ final class DSL[S <: SSys[S]] {
   import DSLAux._
 
   def proc(name: String)(implicit tx: S#Tx): ProcBuilder[S] = new ProcBuilder(name)
-  
+
   def ensemble(name: String)(implicit tx: S#Tx): EnsembleBuilder[S] = new EnsembleBuilder(name)
+
+  def folder(name: String)(implicit tx: S#Tx): FolderBuilder[S] = new FolderBuilder(name)
 
   def action(name: String)(implicit tx: S#Tx): ActionBuilder[S] = new ActionBuilder(name)
 
   def artifactLoc(dir: File)(implicit tx: S#Tx): ArtifactLocBuilder[S] = new ArtifactLocBuilder(dir)
+
+  def negatum(name: String)(implicit tx: S#Tx): NegatumBuilder[S] = new NegatumBuilder(name)
 
   def int   (value: Int   )(implicit tx: S#Tx): IntObj   .Var[S] = IntObj   .newVar(value)
   def double(value: Double)(implicit tx: S#Tx): DoubleObj.Var[S] = DoubleObj.newVar(value)
@@ -59,6 +63,7 @@ object DSLAux {
         val g = SynthGraph(thunk)
         p.graph() = g
         p.name = name
+        f.addLast(p)
         p
       }
     }
@@ -70,14 +75,30 @@ object DSLAux {
         case ens: Ensemble[S] if ens.name == name => ens
       }
       val res = exists.fold {
-        val ens = Ensemble[S](Folder[S], LongObj.newVar[S](0L), BooleanObj.newVar[S](initPlay))
-        ens.name = name
-        ens
+        val _res = Ensemble[S](Folder[S], LongObj.newVar[S](0L), BooleanObj.newVar[S](initPlay))
+        _res.name = name
+        f.addLast(_res)
+        _res
       } { ens =>
         if (ens.isPlaying != initPlay) {
           if (initPlay) ens.play() else ens.stop()
         }
         ens
+      }
+      res
+    }
+  }
+
+  final class FolderBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(f: Folder[S])(initPlay: Boolean)(implicit tx: S#Tx): Folder[S] = {
+      val exists = f.iterator.collectFirst {
+        case ens: Folder[S] if ens.name == name => ens
+      }
+      val res = exists.getOrElse {
+        val _res = Folder[S]
+        _res.name = name
+        f.addLast(_res)
+        _res
       }
       res
     }
@@ -113,6 +134,21 @@ object DSLAux {
     }
   }
 
+  final class NegatumBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(f: Folder[S])(cue: AudioCue.Obj[S])(implicit tx: S#Tx): Negatum[S] = {
+      val exists = f.iterator.collectFirst {
+        case n: Negatum[S] if n.name == name => n
+      }
+      val res = exists.getOrElse {
+        val n = Negatum(cue)
+        n.name = name
+        f.addLast(n)
+        n
+      }
+      res
+    }
+  }
+
   final class ArtifactLocBuilder[S <: Sys[S]](private val dir: File) extends AnyVal {
     def in(f: Folder[S])(implicit tx: S#Tx): ArtifactLocation.Var[S] = {
       val name = dir.name
@@ -122,11 +158,13 @@ object DSLAux {
       exists.fold {
         val loc = ArtifactLocation.newVar[S](dir)
         loc.name = name
+        f.addLast(loc)
         loc
       } { loc =>
-        ArtifactLocation.Var.unapply(loc).getOrElse {
+        val locVr = ArtifactLocation.Var.unapply(loc).getOrElse {
           ArtifactLocation.newVar(loc)
         }
+        locVr
       }
     }
   }
@@ -143,6 +181,36 @@ object DSLAux {
         val res = value
         a.put(key, res)
         res
+      }
+    }
+
+    def adjustDouble(key: String, value: Double)(implicit tx: S#Tx): DoubleObj.Var[S] = {
+      val a = in.attr
+      a.$[DoubleObj](key).fold[DoubleObj.Var[S]] {
+        val res = DoubleObj.newVar[S](value)
+        a.put(key, res)
+        res
+      } { exist =>
+        DoubleObj.Var.unapply(exist).getOrElse {
+          val res = DoubleObj.newVar[S](exist)
+          a.put(key, res)
+          res
+        }
+      }
+    }
+
+    def adjustInt(key: String, value: Int)(implicit tx: S#Tx): IntObj.Var[S] = {
+      val a = in.attr
+      a.$[IntObj](key).fold[IntObj.Var[S]] {
+        val res = IntObj.newVar[S](value)
+        a.put(key, res)
+        res
+      } { exist =>
+        IntObj.Var.unapply(exist).getOrElse {
+          val res = IntObj.newVar[S](exist)
+          a.put(key, res)
+          res
+        }
       }
     }
   }

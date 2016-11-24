@@ -13,11 +13,14 @@
 
 package de.sciss.negatum
 
+import java.text.SimpleDateFormat
+import java.util.{Date, Locale}
+
 import de.sciss.file._
-import de.sciss.lucre.artifact.Artifact
+import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.{BooleanObj, IntObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{NoSys, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.ugen
 import de.sciss.synth.proc.Action.Universe
@@ -26,6 +29,15 @@ import de.sciss.synth.proc._
 import scala.util.{Failure, Success}
 
 object Composition {
+  private[this] lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'proc' - ", Locale.US)
+  var showCompLog = true
+
+  def logComp(what: => String): Unit =
+    if (showCompLog) Console.out.println(s"${logHeader.format(new Date())}$what")
+
+  def logCompErr(what: => String): Unit =
+    Console.err.println(s"${logHeader.format(new Date())} ERROR - $what")
+
   def apply[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
     val dsl = DSL[S]
     import dsl._
@@ -66,24 +78,55 @@ object Composition {
       StopSelf(full)
     }
 
-    pNegListen("bus-in")  = int(2)
-    val artCaptureNeg = pNegListen.update("file", locImperfect / "anemone/rec/capture-negatum.aif")
-    pNegListen("rec-dur") = double(6)
+//    pNegListen("bus-in")  = int(2)
+//    val artCaptureNeg = pNegListen.update("file", locImperfect / "anemone/rec/capture-negatum.aif")
+//    pNegListen("rec-dur") = double(6)
+
+//    val neg = negatum("negatum").in(f)(cue = ...)
 
     val aNegRecDone = action("negatum-rec-done").at(pNegListen -> "done")(ActionNegatumRecDone)
     aNegRecDone("context")    = ensNegListen
-    aNegRecDone("negatum")    = ???     // Negatum
-    aNegRecDone("file")       = artCaptureNeg
+    aNegRecDone("negatum")    = ??? // neg
+    aNegRecDone("file")       = ??? // artCaptureNeg
     aNegRecDone("iterations") = int(2)
     aNegRecDone("som")        = ???     // SOM
     aNegRecDone("svm")        = ???     // SVMModel
+  }
+
+  trait NoSys extends SSys[NoSys]
+
+  object ActionNegatumRec extends Action.Body {
+    def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
+      type T = NoSys
+      // yes, that's ugly
+      begin[T](universe.asInstanceOf[Universe[T]])(tx.asInstanceOf[T#Tx])
+    }
+
+    def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
+      val dsl = DSL[S]
+      import dsl._
+      import universe._
+      logComp("negatum-rec-begin")
+
+      val attr          = self.attr
+      val Some(ens)     = attr.$[Ensemble]        ("context")
+      val Some(p)       = attr.$[Proc]            ("proc")
+      val Some(dir)     = attr.$[ArtifactLocation]("dir")
+
+      import Util._
+      import DefaultRandom._
+      val recDur = rrand(5.0, 7.0)
+      val micBus = rrand(0, 3)
+      p.adjustDouble("rec-dur", recDur)
+      p.adjustInt   ("bus-in" , micBus)
+    }
   }
 
   object ActionNegatumRecDone extends Action.Body {
     // step 1
     def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       import universe._
-      println("rec-done")
+      logComp("negatum-rec-done")
       val attr          = self.attr
       val Some(ens)     = attr.$[Ensemble]("context")
       val Some(neg)     = attr.$[Negatum ]("negatum")
@@ -105,7 +148,7 @@ object Composition {
       neg.template() = tempCueObj
       neg.population.clear()
 
-      println("Starting Negatum rendering...")
+      logComp("Starting Negatum rendering...")
       val renderNeg = neg.run(negCfg, iter = numIter)
       val selfH = tx.newHandle(self)
       var lastProg = 0
@@ -114,14 +157,14 @@ object Composition {
           val amtI = (amt * 100 + 0.5).toInt
           val amtM = amtI - (amtI % 10)
           if (amtM != lastProg) {
-            println(s"Negatum progress: $amtM %")
+            logComp(s"Negatum progress: $amtM %")
             lastProg = amtM
           }
         case Rendering.Completed(Success(_)) =>
           negatumDone(selfH)
 
         case Rendering.Completed(Failure(ex)) =>
-          println("!! Negatum failed:")
+          logCompErr("!! Negatum failed:")
           ex.printStackTrace()
       }}
     }
@@ -131,12 +174,12 @@ object Composition {
                                 (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
       val self = selfH()
       val attr = self.attr
-      println("Negatum done.")
+      logComp("Negatum done.")
 
       val Some(neg) = attr.$[Negatum] ("negatum")
       val Some(svm) = attr.$[SVMModel]("svm")
 
-      println("Starting SVM selection...")
+      logComp("Starting SVM selection...")
       val renderSVM = svm.predict(neg)
       renderSVM.reactNow { implicit tx => {
         case Rendering.Progress(amt) =>
@@ -144,7 +187,7 @@ object Composition {
           svmDone(selfH, svmNum = n)
 
         case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
-          println("!! SVM failed:")
+          logCompErr("!! SVM failed:")
           ex.printStackTrace()
       }}
     }
@@ -154,7 +197,7 @@ object Composition {
                             (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
       val self = selfH()
       val attr = self.attr
-      println(s"SVM done ($svmNum).")
+      logComp(s"SVM done ($svmNum).")
 
       val Some(neg) = attr.$[de.sciss.negatum.Negatum]("negatum")
       val Some(som) = attr.$[de.sciss.negatum.SOM    ]("som")
@@ -164,15 +207,21 @@ object Composition {
       renderSOM.reactNow { implicit tx => {
         case de.sciss.negatum.Rendering.Progress(amt) =>
         case de.sciss.negatum.Rendering.Completed(scala.util.Success(n)) =>
-          val self = selfH()
-          val attr = self.attr
-          println(s"SOM addition done ($n).")
-          println("CONTINUE HERE")
+          somDone(selfH, somNum = n)
 
         case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
-          println("!! SOM failed:")
+          logCompErr("!! SOM failed:")
           ex.printStackTrace()
       }}
+    }
+
+    // step 4
+    def somDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]], somNum: Int)
+                            (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+//      val self = selfH()
+//      val attr = self.attr
+      logComp(s"SOM addition done ($somNum).")
+      println("CONTINUE HERE")
     }
   }
 }
