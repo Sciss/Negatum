@@ -69,6 +69,7 @@ object Composition {
         case _svm: SVMModel[In] => _svm
       }   .getOrElse(sys.error(s"No SVM model found in '$svmModelSession'"))
       val svmOut = context(svmIn)
+      svmOut.name = "svm-model"
       wsOut.root.addLast(svmOut)
     }} (wsIn.cursor, wsOut.cursor)
   }

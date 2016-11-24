@@ -190,31 +190,31 @@ object DSLAux {
 
     def adjustDouble(key: String, value: Double)(implicit tx: S#Tx): DoubleObj.Var[S] = {
       val a = in.attr
-      a.$[DoubleObj](key).fold[DoubleObj.Var[S]] {
+      val vrOpt = a.$[DoubleObj](key).collect {
+        case DoubleObj.Var(vr) => vr
+      }
+      vrOpt.fold[DoubleObj.Var[S]] {
         val res = DoubleObj.newVar[S](value)
         a.put(key, res)
         res
-      } { exist =>
-        DoubleObj.Var.unapply(exist).getOrElse {
-          val res = DoubleObj.newVar[S](exist)
-          a.put(key, res)
-          res
-        }
+      } { vr =>
+        vr() = value
+        vr
       }
     }
 
     def adjustInt(key: String, value: Int)(implicit tx: S#Tx): IntObj.Var[S] = {
       val a = in.attr
-      a.$[IntObj](key).fold[IntObj.Var[S]] {
+      val vrOpt = a.$[IntObj](key).collect {
+        case IntObj.Var(vr) => vr
+      }
+      vrOpt.fold[IntObj.Var[S]] {
         val res = IntObj.newVar[S](value)
         a.put(key, res)
         res
-      } { exist =>
-        IntObj.Var.unapply(exist).getOrElse {
-          val res = IntObj.newVar[S](exist)
-          a.put(key, res)
-          res
-        }
+      } { vr =>
+        vr() = value
+        vr
       }
     }
 
