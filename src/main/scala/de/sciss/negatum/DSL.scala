@@ -179,6 +179,14 @@ object DSLAux {
   }
 
   final class ObjAttrBuilder[S <: Sys[S]](private val in: Obj[S]) extends AnyVal {
+    def addTo(ens: Ensemble[S])(implicit tx: S#Tx): Unit = addTo(ens.folder)
+
+    def addTo(f: Folder[S])(implicit tx: S#Tx): Unit = {
+      val name   = in.name
+      val exists = f.iterator.exists(_.name == name)
+      if (!exists) f.addLast(in)
+    }
+
     def update[A <: Obj[S]](key: String, value: => A)(implicit tx: S#Tx): A = {
       val a = in.attr
       a.get(key).asInstanceOf[Option[A]].getOrElse {
