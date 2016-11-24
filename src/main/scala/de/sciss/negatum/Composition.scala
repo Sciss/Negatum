@@ -20,16 +20,18 @@ import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.{BooleanObj, IntObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{NoSys, Sys}
+import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.synth.io.AudioFile
 import de.sciss.synth.ugen
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc._
+import de.sciss.synth.proc.Implicits._
 
 import scala.util.{Failure, Success}
 
 object Composition {
-  private[this] lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'proc' - ", Locale.US)
+  private[this] val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'proc' - ", Locale.US)
   var showCompLog = true
 
   def logComp(what: => String): Unit =
@@ -38,6 +40,10 @@ object Composition {
   def logCompErr(what: => String): Unit =
     Console.err.println(s"${logHeader.format(new Date())} ERROR - $what")
 
+  val fileDateFmt = new SimpleDateFormat("yyMMdd_HHmmss", Locale.US)
+
+  def mkSVM[S <: Sys[S]]()(implicit tx: S#Tx): SVMModel[S] = ???
+
   def apply[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
     val dsl = DSL[S]
     import dsl._
@@ -45,6 +51,14 @@ object Composition {
     val f = workspace.root
 
     val locImperfect = artifactLoc(userHome/"Documents"/"projects"/"Imperfect").in(f)
+
+    val svm = f.iterator.collectFirst {
+      case m: SVMModel[S] => m
+    } .getOrElse {
+      val m = mkSVM[S]()
+      f.addLast(m)
+      m
+    }
 
     val ensNegListen = ensemble("ens-negatum-listen").in(f)(initPlay = false)
 
@@ -78,19 +92,22 @@ object Composition {
       StopSelf(full)
     }
 
-//    pNegListen("bus-in")  = int(2)
-//    val artCaptureNeg = pNegListen.update("file", locImperfect / "anemone/rec/capture-negatum.aif")
-//    pNegListen("rec-dur") = double(6)
+    val fNegatum = folder("negatum").in(f)
+    val fSOM     = folder("som"    ).in(f)
 
-//    val neg = negatum("negatum").in(f)(cue = ...)
+    val aNegRec = action("negatum-rec").in(f)(ActionNegatumRec)
+    aNegRec("context")  = ensNegListen
+    aNegRec("dir")      = locImperfect
+    aNegRec("proc")     = pNegListen
 
-    val aNegRecDone = action("negatum-rec-done").at(pNegListen -> "done")(ActionNegatumRecDone)
-    aNegRecDone("context")    = ensNegListen
-    aNegRecDone("negatum")    = ??? // neg
-    aNegRecDone("file")       = ??? // artCaptureNeg
-    aNegRecDone("iterations") = int(2)
-    aNegRecDone("som")        = ???     // SOM
-    aNegRecDone("svm")        = ???     // SVMModel
+    val aNegRecDone = action("negatum-rec-done").in(f)(ActionNegatumRecDone)
+    aNegRecDone("context")        = ensNegListen
+    aNegRecDone("negatum-folder") = fNegatum
+    aNegRecDone("som-folder")     = fSOM
+    aNegRecDone("iterations")     = int(2)  // XXX TODO
+    aNegRecDone("svm")            = svm
+
+    pNegListen("done") = pNegListen
   }
 
   trait NoSys extends SSys[NoSys]
@@ -112,6 +129,7 @@ object Composition {
       val Some(ens)     = attr.$[Ensemble]        ("context")
       val Some(p)       = attr.$[Proc]            ("proc")
       val Some(dir)     = attr.$[ArtifactLocation]("dir")
+      val Some(done)    = attr.$[Action]          ("done")
 
       import Util._
       import DefaultRandom._
@@ -119,34 +137,71 @@ object Composition {
       val micBus = rrand(0, 3)
       p.adjustDouble("rec-dur", recDur)
       p.adjustInt   ("bus-in" , micBus)
+
+      val artRec = dir / s"anemone/rec/capture-negatum${fileDateFmt.format(new Date)}.aif"
+      p   .attr.put("file", artRec)
+      done.attr.put("file", artRec)
+
+      ens.play()
     }
   }
 
   object ActionNegatumRecDone extends Action.Body {
-    // step 1
     def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
-      import universe._
-      logComp("negatum-rec-done")
-      val attr          = self.attr
-      val Some(ens)     = attr.$[Ensemble]("context")
-      val Some(neg)     = attr.$[Negatum ]("negatum")
-      val Some(artObj)  = attr.$[Artifact]("file")
+      type T = NoSys
+      // yes, that's ugly
+      begin[T](universe.asInstanceOf[Universe[T]])(tx.asInstanceOf[T#Tx])
+    }
 
-      ens.playing match {
-        case BooleanObj.Var(vr) => vr() = false
-        case _ => println("Ensemble negatum listen - playing not mutable")
-      }
+    // step 1
+    def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
+      val dsl = DSL[S]
+      import dsl._
+      import Util._
+      import DefaultRandom._
+      import universe._
+
+      logComp("negatum-rec-done")
+      val attr           = self.attr
+      val Some(ens)      = attr.$[Ensemble]("context")
+      val Some(fNegatum) = attr.$[Folder  ]("negatum-folder")
+      val Some(artObj)   = attr.$[Artifact]("file")
+
+      ens.stop()
 
       val numIter = attr.$[IntObj]("iterations").map(_.value).getOrElse(10)
 
       val art        = artObj.value
-      val negCfg     = de.sciss.negatum.Negatum.attrToConfig(neg)
-      val tempSpec   = de.sciss.synth.io.AudioFile.readSpec(art)
+      val tempSpec   = AudioFile.readSpec(art)
       val tempCue    = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
       val tempCueObj = AudioCue.Obj.newConst[S](tempCue)
 
-      neg.template() = tempCueObj
-      neg.population.clear()
+      val neg: Negatum[S] = fNegatum.lastOption.collect {
+        case n: Negatum[S] if n.attrInt("count", 0) < 1000 => n
+      } .getOrElse {
+        val _neg        = Negatum(tempCueObj)
+        _neg.name = s"negatum-${fileDateFmt.format(new Date)}"
+
+        _neg.adjustInt   (Negatum.attrBreedElitism   , rrand(0, 3))
+        _neg.adjustInt   (Negatum.attrBreedGolem     , rrand(15, 25))
+        _neg.adjustInt   (Negatum.attrBreedMaxMut    , rrand(4 , 6))
+        _neg.adjustDouble(Negatum.attrBreedProbMut   , rrand(0.73, 0.76))
+
+        _neg.adjustDouble(Negatum.attrEvalMaxBoost   , rrand(11.0, 13.0))
+        _neg.adjustDouble(Negatum.attrEvalTimeWeight , rrand(0.3, 0.5))
+
+        _neg.adjustInt   (Negatum.attrGenMinVertices , rrand(8, 12))
+        _neg.adjustInt   (Negatum.attrGenMaxVertices , rrand(80, 100))
+        _neg.adjustInt   (Negatum.attrGenPopulation  , 1000)
+        _neg.adjustDouble(Negatum.attrGenProbConst   , rrand(0.4, 0.5))
+
+        fNegatum.addLast(_neg)
+        _neg
+      }
+
+      self.attr.put("negatum", neg)
+
+      val negCfg = Negatum.attrToConfig(neg)
 
       logComp("Starting Negatum rendering...")
       val renderNeg = neg.run(negCfg, iter = numIter)
@@ -170,8 +225,8 @@ object Composition {
     }
 
     // step 2
-    def negatumDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]])
-                                (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+    def negatumDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]])
+                                 (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
       val self = selfH()
       val attr = self.attr
       logComp("Negatum done.")
@@ -193,23 +248,42 @@ object Composition {
     }
 
     // step 3
-    def svmDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]], svmNum: Int)
-                            (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+    def svmDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]], svmNum: Int)
+                             (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+      val dsl = DSL[S]
+      import dsl._
+
       val self = selfH()
       val attr = self.attr
       logComp(s"SVM done ($svmNum).")
 
-      val Some(neg) = attr.$[de.sciss.negatum.Negatum]("negatum")
-      val Some(som) = attr.$[de.sciss.negatum.SOM    ]("som")
+      val Some(neg)  = attr.$[Negatum]("negatum")
+      val Some(fSOM) = attr.$[Folder ]("som-folder")
+
+      val som: SOM[S] = fSOM.lastOption.collect {
+        case _som: SOM[S] if _som.attrInt("count", 0) < 10000 => _som
+      } .getOrElse {
+        val cfg = SOM.Config()
+        cfg.numIterations = 10000
+        val _som = SOM(cfg)
+        _som.name = s"som-${fileDateFmt.format(new Date)}"
+        fSOM.addLast(_som)
+        _som
+      }
+
+      val negCount = neg.attrInt("count", 0) + svmNum
+      neg.adjustInt("count", negCount)
+      val somCount = som.attrInt("count", 0) + svmNum
+      som.adjustInt("count", somCount)
 
       println("Starting SOM addition...")
       val renderSOM = som.addAll(neg.population, selected = true)
       renderSOM.reactNow { implicit tx => {
-        case de.sciss.negatum.Rendering.Progress(amt) =>
-        case de.sciss.negatum.Rendering.Completed(scala.util.Success(n)) =>
+        case Rendering.Progress(amt) =>
+        case Rendering.Completed(scala.util.Success(n)) =>
           somDone(selfH, somNum = n)
 
-        case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
+        case Rendering.Completed(scala.util.Failure(ex)) =>
           logCompErr("!! SOM failed:")
           ex.printStackTrace()
       }}

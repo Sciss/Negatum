@@ -90,7 +90,7 @@ object DSLAux {
   }
 
   final class FolderBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
-    def in(f: Folder[S])(initPlay: Boolean)(implicit tx: S#Tx): Folder[S] = {
+    def in(f: Folder[S])(implicit tx: S#Tx): Folder[S] = {
       val exists = f.iterator.collectFirst {
         case ens: Folder[S] if ens.name == name => ens
       }
@@ -107,30 +107,34 @@ object DSLAux {
   private val registeredActions = TSet.empty[String]
 
   final class ActionBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(f: Folder[S])(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
+      val exists = f.iterator.collectFirst {
+        case a: Action[S] if a.name == name => a
+      }
+      exists.getOrElse {
+        val a = mkAction(body)
+        f.addLast(a)
+        a
+      }
+    }
+
     def at(kv: (Obj[S], String))(body: Action.Body)(implicit tx: S#Tx): Action /* .Var */ [S] = {
       val (obj, key) = kv
-      val attr       = obj.attr
-      attr.$[Action](key) match {
-        case Some(a: Action[S]) =>
-//          Action.Var.unapply(a).getOrElse {
-//            val av = Action.Var(a)
-//            attr.put(key, av)
-//            av
-//          }
-          a
-        case None =>
-          if (registeredActions.add(name)(tx.peer)) {
-            Action.registerPredef(name, body)
-          }
-          val a   = Action.predef[S](name)
-//          val av  = Action.Var(a)
-//          av.name = name
-//          attr.put(key, av)
-//          av
-          a.name = name
-          attr.put(key, a)
-          a
+      val attr = obj.attr
+      attr.$[Action](key).getOrElse {
+        val a = mkAction(body)
+        attr.put(key, a)
+        a
       }
+    }
+
+    private def mkAction(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
+      if (registeredActions.add(name)(tx.peer)) {
+        Action.registerPredef(name, body)
+      }
+      val a = Action.predef[S](name)
+      a.name = name
+      a
     }
   }
 
@@ -213,5 +217,8 @@ object DSLAux {
         }
       }
     }
+
+    def attrInt(key: String, default: => Int)(implicit tx: S#Tx): Int =
+      in.attr.$[IntObj](key).map(_.value).getOrElse(default)
   }
 }
