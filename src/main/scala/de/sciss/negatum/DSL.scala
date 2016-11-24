@@ -43,6 +43,8 @@ final class DSL[S <: SSys[S]] {
 
   def negatum(name: String)(implicit tx: S#Tx): NegatumBuilder[S] = new NegatumBuilder(name)
 
+  def timeline(name: String)(implicit tx: S#Tx): TimelineBuilder[S] = new TimelineBuilder(name)
+
   def int   (value: Int   )(implicit tx: S#Tx): IntObj   .Var[S] = IntObj   .newVar(value)
   def double(value: Double)(implicit tx: S#Tx): DoubleObj.Var[S] = DoubleObj.newVar(value)
 
@@ -90,6 +92,8 @@ object DSLAux {
   }
 
   final class FolderBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(ens: Ensemble[S])(implicit tx: S#Tx): Folder[S] = in(ens.folder)
+
     def in(f: Folder[S])(implicit tx: S#Tx): Folder[S] = {
       val exists = f.iterator.collectFirst {
         case ens: Folder[S] if ens.name == name => ens
@@ -148,6 +152,23 @@ object DSLAux {
         n.name = name
         f.addLast(n)
         n
+      }
+      res
+    }
+  }
+
+  final class TimelineBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(ens: Ensemble[S])(implicit tx: S#Tx): Timeline.Modifiable[S] = in(ens.folder)
+
+    def in(f: Folder[S])(implicit tx: S#Tx): Timeline.Modifiable[S] = {
+      val exists = f.iterator.collectFirst {
+        case tl: Timeline.Modifiable[S] if tl.name == name => tl
+      }
+      val res = exists.getOrElse {
+        val tl = Timeline[S]
+        tl.name = name
+        f.addLast(tl)
+        tl
       }
       res
     }
