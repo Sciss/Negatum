@@ -16,11 +16,14 @@ package de.sciss.negatum
 import de.sciss.file._
 import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.{BooleanObj, IntObj}
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.ugen
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc._
+
+import scala.util.{Failure, Success}
 
 object Composition {
   def apply[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
@@ -66,15 +69,16 @@ object Composition {
     pNegListen("rec-dur") = double(6)
 
     val aNegRecDone = action("negatum-rec-done").at(pNegListen -> "done")(ActionNegatumRecDone)
-    aNegRecDone("context")    = ???
-    aNegRecDone("negatum")    = ???
-    aNegRecDone("file")       = ???
-    aNegRecDone("iterations") = ???
-    aNegRecDone("som")        = ???
-    aNegRecDone("svm")        = ???
+    aNegRecDone("context")    = ???     // Ensemble
+    aNegRecDone("negatum")    = ???     // Negatum
+    aNegRecDone("file")       = ???     // capture-negatum
+    aNegRecDone("iterations") = int(2)
+    aNegRecDone("som")        = ???     // SOM
+    aNegRecDone("svm")        = ???     // SVMModel
   }
 
   object ActionNegatumRecDone extends Action.Body {
+    // step 1
     def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       import universe._
       println("rec-done")
@@ -104,57 +108,67 @@ object Composition {
       val selfH = tx.newHandle(self)
       var lastProg = 0
       renderNeg.reactNow { implicit tx => {
-        case de.sciss.negatum.Rendering.Progress(amt) =>
+        case Rendering.Progress(amt) =>
           val amtI = (amt * 100 + 0.5).toInt
           val amtM = amtI - (amtI % 10)
           if (amtM != lastProg) {
             println(s"Negatum progress: $amtM %")
             lastProg = amtM
           }
-        case de.sciss.negatum.Rendering.Completed(scala.util.Success(_)) =>
-          val self = selfH()
-          val attr = self.attr
-          println("Negatum done.")
-          for {
-            neg  <- attr.$[de.sciss.negatum.Negatum]("negatum")
-            svm  <- attr.$[de.sciss.negatum.SVMModel]("svm")
-          } {
-            println("Starting SVM selection...")
-            val renderSVM = svm.predict(neg)
-            renderSVM.reactNow { implicit tx => {
-              case de.sciss.negatum.Rendering.Progress(amt) =>
-              case de.sciss.negatum.Rendering.Completed(scala.util.Success(n)) =>
-                val self = selfH()
-                val attr = self.attr
-                println(s"SVM done ($n).")
-                for {
-                  neg  <- attr.$[de.sciss.negatum.Negatum]("negatum")
-                  som  <- attr.$[de.sciss.negatum.SOM    ]("som")
-                } {
-                  println("Starting SOM addition...")
-                  val renderSOM = som.addAll(neg.population, selected = true)
-                  renderSOM.reactNow { implicit tx => {
-                    case de.sciss.negatum.Rendering.Progress(amt) =>
-                    case de.sciss.negatum.Rendering.Completed(scala.util.Success(n)) =>
-                      val self = selfH()
-                      val attr = self.attr
-                      println(s"SOM addition done ($n).")
-                      println("CONTINUE HERE")
+        case Rendering.Completed(Success(_)) =>
+          negatumDone(selfH)
 
-                    case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
-                      println("!! SOM failed:")
-                      ex.printStackTrace()
-                  }}
-                }
+        case Rendering.Completed(Failure(ex)) =>
+          println("!! Negatum failed:")
+          ex.printStackTrace()
+      }}
+    }
 
-              case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
-                println("!! SVM failed:")
-                ex.printStackTrace()
-            }}
-          }
+    // step 2
+    def negatumDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]])
+                                (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+      val self = selfH()
+      val attr = self.attr
+      println("Negatum done.")
+
+      val Some(neg) = attr.$[Negatum] ("negatum")
+      val Some(svm) = attr.$[SVMModel]("svm")
+
+      println("Starting SVM selection...")
+      val renderSVM = svm.predict(neg)
+      renderSVM.reactNow { implicit tx => {
+        case Rendering.Progress(amt) =>
+        case Rendering.Completed(scala.util.Success(n)) =>
+          svmDone(selfH, svmNum = n)
 
         case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
-          println("!! Negatum failed:")
+          println("!! SVM failed:")
+          ex.printStackTrace()
+      }}
+    }
+
+    // step 3
+    def svmDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]], svmNum: Int)
+                            (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+      val self = selfH()
+      val attr = self.attr
+      println(s"SVM done ($svmNum).")
+
+      val Some(neg) = attr.$[de.sciss.negatum.Negatum]("negatum")
+      val Some(som) = attr.$[de.sciss.negatum.SOM    ]("som")
+
+      println("Starting SOM addition...")
+      val renderSOM = som.addAll(neg.population, selected = true)
+      renderSOM.reactNow { implicit tx => {
+        case de.sciss.negatum.Rendering.Progress(amt) =>
+        case de.sciss.negatum.Rendering.Completed(scala.util.Success(n)) =>
+          val self = selfH()
+          val attr = self.attr
+          println(s"SOM addition done ($n).")
+          println("CONTINUE HERE")
+
+        case de.sciss.negatum.Rendering.Completed(scala.util.Failure(ex)) =>
+          println("!! SOM failed:")
           ex.printStackTrace()
       }}
     }

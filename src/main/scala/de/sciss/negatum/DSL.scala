@@ -63,25 +63,29 @@ object DSLAux {
   private val registeredActions = TSet.empty[String]
 
   final class ActionBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
-    def at(kv: (Obj[S], String))(body: Action.Body)(implicit tx: S#Tx): Action.Var[S] = {
+    def at(kv: (Obj[S], String))(body: Action.Body)(implicit tx: S#Tx): Action /* .Var */ [S] = {
       val (obj, key) = kv
       val attr       = obj.attr
       attr.$[Action](key) match {
         case Some(a: Action[S]) =>
-          Action.Var.unapply(a).getOrElse {
-            val av = Action.Var(a)
-            attr.put(key, av)
-            av
-          }
+//          Action.Var.unapply(a).getOrElse {
+//            val av = Action.Var(a)
+//            attr.put(key, av)
+//            av
+//          }
+          a
         case None =>
           if (registeredActions.add(name)(tx.peer)) {
             Action.registerPredef(name, body)
           }
           val a   = Action.predef[S](name)
-          val av  = Action.Var(a)
-          av.name = name
-          attr.put(key, av)
-          av
+//          val av  = Action.Var(a)
+//          av.name = name
+//          attr.put(key, av)
+//          av
+          a.name = name
+          attr.put(key, a)
+          a
       }
     }
   }
