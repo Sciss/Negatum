@@ -18,16 +18,19 @@ import java.util.{Date, Locale}
 
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.expr.{BooleanObj, IntObj}
+import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
+import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.mellite.Mellite
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.ugen
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc._
 import de.sciss.synth.proc.Implicits._
 
+import scala.concurrent.stm.TxnExecutor
 import scala.util.{Failure, Success}
 
 object Composition {
@@ -42,23 +45,89 @@ object Composition {
 
   val fileDateFmt = new SimpleDateFormat("yyMMdd_HHmmss", Locale.US)
 
-  def mkSVM[S <: Sys[S]]()(implicit tx: S#Tx): SVMModel[S] = ???
+  val baseDir         = userHome / "Documents" / "projects" / "Imperfect"
+  val mainSession     = baseDir / "anemone" / "main.mllt"
+  val svmModelSession = baseDir / "anemone" / "svm-model.mllt"
 
-  def apply[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
+  def readWorkspace(dir: File): Workspace.Durable = {
+    val wsl = Workspace.read(dir, BerkeleyDB.factory(dir))
+    wsl match {
+      case d: Workspace.Durable => d
+      case _ => sys.error(s"Expected durable workspace for '$dir', but got $wsl")
+    }
+  }
+
+  def mkSVM[S <: Sys[S]](wsOut: Workspace[S]): Unit = {
+    val wsIn  = readWorkspace(svmModelSession)
+    type In   = Durable
+
+    Txn.copy[In, S, Unit] { (_txIn: In#Tx, _txOut: S#Tx) => {
+      implicit val txIn  = _txIn
+      implicit val txOut = _txOut
+      val context = Copy[In, S]
+      val svmIn = wsIn.root.iterator.collectFirst {
+        case _svm: SVMModel[In] => _svm
+      }   .getOrElse(sys.error(s"No SVM model found in '$svmModelSession'"))
+      val svmOut = context(svmIn)
+      wsOut.root.addLast(svmOut)
+    }} (wsIn.cursor, wsOut.cursor)
+  }
+
+  def main(args: Array[String]): Unit = {
+    Mellite.initTypes()
+    Negatum.init()
+    registerActions()
+    run()
+  }
+
+  def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
+    implicit val tx = TxnLike.wrap(itx)
+    actions.foreach { a =>
+      Action.registerPredef(a.name, a)
+    }
+  }
+
+  def run(): Unit = {
+    type S = Durable
+    val ws: Workspace[S] = if (mainSession.exists()) {
+      val _ws = readWorkspace(mainSession)
+      val hasSVM = _ws.cursor.step { implicit tx =>
+        _ws.root.iterator.collectFirst {
+          case m: SVMModel[S] => true
+        } .getOrElse(false)
+      }
+      if (!hasSVM) mkSVM(_ws)
+      _ws
+
+    } else {
+      val _ws = Workspace.Durable.empty(mainSession, BerkeleyDB.factory(mainSession))
+      mkSVM(_ws)
+      _ws
+    }
+
+    ws.cursor.step { implicit tx =>
+      build(ws)
+    }
+
+    println("Yo chuck.")
+    ws.close()
+  }
+
+  val actions: Seq[NamedAction] = Seq(
+    ActionNegatumRec, ActionNegatumRecDone
+  )
+
+  def build[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
     val dsl = DSL[S]
     import dsl._
 
     val f = workspace.root
 
-    val locImperfect = artifactLoc(userHome/"Documents"/"projects"/"Imperfect").in(f)
+    val locImperfect = artifactLoc(baseDir).in(f)
 
     val svm = f.iterator.collectFirst {
       case m: SVMModel[S] => m
-    } .getOrElse {
-      val m = mkSVM[S]()
-      f.addLast(m)
-      m
-    }
+    } .getOrElse (sys.error(s"SVM model not found in workspace"))
 
     val ensNegListen = ensemble("ens-negatum-listen").in(f)(initPlay = false)
 
@@ -107,12 +176,13 @@ object Composition {
     aNegRecDone("iterations")     = int(2)  // XXX TODO
     aNegRecDone("svm")            = svm
 
-    pNegListen("done") = pNegListen
+    aNegRec   ("done")            = aNegRecDone
+    pNegListen("done")            = aNegRecDone
   }
 
   trait NoSys extends SSys[NoSys]
 
-  object ActionNegatumRec extends Action.Body {
+  object ActionNegatumRec extends NamedAction("negatum-rec") {
     def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       type T = NoSys
       // yes, that's ugly
@@ -146,7 +216,7 @@ object Composition {
     }
   }
 
-  object ActionNegatumRecDone extends Action.Body {
+  object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       type T = NoSys
       // yes, that's ugly

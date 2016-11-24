@@ -104,7 +104,7 @@ object DSLAux {
     }
   }
 
-  private val registeredActions = TSet.empty[String]
+//  private val registeredActions = TSet.empty[String]
 
   final class ActionBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
     def in(f: Folder[S])(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
@@ -129,9 +129,9 @@ object DSLAux {
     }
 
     private def mkAction(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
-      if (registeredActions.add(name)(tx.peer)) {
-        Action.registerPredef(name, body)
-      }
+//      if (registeredActions.add(name)(tx.peer)) {
+//        Action.registerPredef(name, body)
+//      }
       val a = Action.predef[S](name)
       a.name = name
       a

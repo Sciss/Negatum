@@ -75,6 +75,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     Mellite.initTypes()
     Negatum.init()
     NegatumObjView.init()
+    Composition.registerActions()
 
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
