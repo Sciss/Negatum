@@ -13,11 +13,11 @@
 
 package de.sciss.negatum
 
-import de.sciss.synth.proc.{Action, Folder, Implicits, Proc}
+import de.sciss.synth.proc._
 import Implicits._
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.expr.{DoubleObj, IntObj}
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.SynthGraph
@@ -32,6 +32,8 @@ final class DSL[S <: SSys[S]] {
   import DSLAux._
 
   def proc(name: String)(implicit tx: S#Tx): ProcBuilder[S] = new ProcBuilder(name)
+  
+  def ensemble(name: String)(implicit tx: S#Tx): EnsembleBuilder[S] = new EnsembleBuilder(name)
 
   def action(name: String)(implicit tx: S#Tx): ActionBuilder[S] = new ActionBuilder(name)
 
@@ -46,6 +48,8 @@ final class DSL[S <: SSys[S]] {
 }
 object DSLAux {
   final class ProcBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(ens: Ensemble[S])(thunk: => Unit)(implicit tx: S#Tx): Proc[S] = in(ens.folder)(thunk)
+
     def in(f: Folder[S])(thunk: => Unit)(implicit tx: S#Tx): Proc[S] = {
       val exists = f.iterator.collectFirst {
         case p: Proc[S] if p.name == name => p
@@ -57,6 +61,25 @@ object DSLAux {
         p.name = name
         p
       }
+    }
+  }
+
+  final class EnsembleBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(f: Folder[S])(initPlay: Boolean)(implicit tx: S#Tx): Ensemble[S] = {
+      val exists = f.iterator.collectFirst {
+        case ens: Ensemble[S] if ens.name == name => ens
+      }
+      val res = exists.fold {
+        val ens = Ensemble[S](Folder[S], LongObj.newVar[S](0L), BooleanObj.newVar[S](initPlay))
+        ens.name = name
+        ens
+      } { ens =>
+        if (ens.isPlaying != initPlay) {
+          if (initPlay) ens.play() else ens.stop()
+        }
+        ens
+      }
+      res
     }
   }
 

@@ -34,7 +34,9 @@ object Composition {
 
     val locImperfect = artifactLoc(userHome/"Documents"/"projects"/"Imperfect").in(f)
 
-    val pNegListen = proc("negatum-listen").in(f) {
+    val ensNegListen = ensemble("ens-negatum-listen").in(f)(initPlay = false)
+
+    val pNegListen = proc("negatum-listen").in(ensNegListen) {
       import ugen._
       import graph._
       import Ops._
@@ -65,13 +67,13 @@ object Composition {
     }
 
     pNegListen("bus-in")  = int(2)
-    pNegListen("file")    = locImperfect / "anemone/rec/capture-negatum.aif"
+    val artCaptureNeg = pNegListen.update("file", locImperfect / "anemone/rec/capture-negatum.aif")
     pNegListen("rec-dur") = double(6)
 
     val aNegRecDone = action("negatum-rec-done").at(pNegListen -> "done")(ActionNegatumRecDone)
-    aNegRecDone("context")    = ???     // Ensemble
+    aNegRecDone("context")    = ensNegListen
     aNegRecDone("negatum")    = ???     // Negatum
-    aNegRecDone("file")       = ???     // capture-negatum
+    aNegRecDone("file")       = artCaptureNeg
     aNegRecDone("iterations") = int(2)
     aNegRecDone("som")        = ???     // SOM
     aNegRecDone("svm")        = ???     // SVMModel
