@@ -111,10 +111,11 @@ object Composition {
 
     println("Yo chuck.")
     ws.close()
+    sys.exit()
   }
 
   val actions: Seq[NamedAction] = Seq(
-    ActionNegatumRec, ActionNegatumRecDone
+    ActionNegatumStart, ActionNegatumRec, ActionNegatumRecDone
   )
 
   def build[S <: SSys[S]](workspace: Workspace[S])(implicit tx: S#Tx): Unit = {
@@ -164,10 +165,14 @@ object Composition {
     val fNegatum = folder("negatum").in(f)
     val fSOM     = folder("som"    ).in(f)
 
+    val aNegStart = action("negatum-start").in(f)(ActionNegatumStart)
+    aNegStart("negatum-folder") = fNegatum
+
     val aNegRec = action("negatum-rec").in(f)(ActionNegatumRec)
     aNegRec("context")  = ensNegListen
     aNegRec("dir")      = locImperfect
     aNegRec("proc")     = pNegListen
+    aNegStart("rec")    = aNegRec
 
     val aNegRecDone = action("negatum-rec-done").in(f)(ActionNegatumRecDone)
     aNegRecDone("context")        = ensNegListen
@@ -176,19 +181,39 @@ object Composition {
     aNegRecDone("iterations")     = int(2)  // XXX TODO
     aNegRecDone("svm")            = svm
 
+    aNegStart ("done")            = aNegRecDone
     aNegRec   ("done")            = aNegRecDone
     pNegListen("done")            = aNegRecDone
   }
 
   trait NoSys extends SSys[NoSys]
 
-  object ActionNegatumRec extends NamedAction("negatum-rec") {
-    def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
-      type T = NoSys
-      // yes, that's ugly
-      begin[T](universe.asInstanceOf[Universe[T]])(tx.asInstanceOf[T#Tx])
+  object ActionNegatumStart extends NamedAction("negatum-start") {
+    def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
+      val dsl = DSL[S]
+      import dsl._
+      import universe._
+      val attr            = self.attr
+      val Some(fNegatum)  = attr.$[Folder]("negatum-folder")
+      val Some(rec)       = attr.$[Action]("rec")
+      val Some(done)      = attr.$[Action]("done")
+      val hasOpenNeg = fNegatum.lastOption.exists {
+        case n: Negatum[S] if n.attrInt("count", 0) < 1000 => true
+        case _ => false
+      }
+      if (hasOpenNeg) {
+        logComp("Continuing with Negatum evolution")
+        val univ1 = Action.Universe(done, universe.workspace)
+        done.execute(univ1)
+      } else {
+        logComp("Starting new Negatum analysis")
+        val univ1 = Action.Universe(rec, universe.workspace)
+        rec.execute(univ1)
+      }
     }
+  }
 
+  object ActionNegatumRec extends NamedAction("negatum-rec") {
     def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       val dsl = DSL[S]
       import dsl._
@@ -217,12 +242,6 @@ object Composition {
   }
 
   object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
-    def apply[S <: Sys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
-      type T = NoSys
-      // yes, that's ugly
-      begin[T](universe.asInstanceOf[Universe[T]])(tx.asInstanceOf[T#Tx])
-    }
-
     // step 1
     def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
       val dsl = DSL[S]
@@ -241,14 +260,15 @@ object Composition {
 
       val numIter = attr.$[IntObj]("iterations").map(_.value).getOrElse(10)
 
-      val art        = artObj.value
-      val tempSpec   = AudioFile.readSpec(art)
-      val tempCue    = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
-      val tempCueObj = AudioCue.Obj.newConst[S](tempCue)
-
       val neg: Negatum[S] = fNegatum.lastOption.collect {
         case n: Negatum[S] if n.attrInt("count", 0) < 1000 => n
       } .getOrElse {
+
+        val art        = artObj.value
+        val tempSpec   = AudioFile.readSpec(art)
+        val tempCue    = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
+        val tempCueObj = AudioCue.Obj.newConst[S](tempCue)
+
         val _neg        = Negatum(tempCueObj)
         _neg.name = s"negatum-${fileDateFmt.format(new Date)}"
 
@@ -306,8 +326,15 @@ object Composition {
 
       logComp("Starting SVM selection...")
       val renderSVM = svm.predict(neg)
+      var lastProg = 0
       renderSVM.reactNow { implicit tx => {
         case Rendering.Progress(amt) =>
+          val amtI = (amt * 100 + 0.5).toInt
+          val amtM = amtI - (amtI % 10)
+          if (amtM != lastProg) {
+            logComp(s"SVM progress: $amtM %")
+            lastProg = amtM
+          }
         case Rendering.Completed(scala.util.Success(n)) =>
           svmDone(selfH, svmNum = n)
 
