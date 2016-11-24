@@ -13,12 +13,11 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.event.{Observable, Publisher}
+import de.sciss.lucre.event.Publisher
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
-import de.sciss.processor.Processor
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc.{AudioCue, Folder, WorkspaceHandle}
 
@@ -36,6 +35,8 @@ object Negatum extends Obj.Type {
 
   def apply[S <: Sys[S]](template: AudioCue.Obj[S]   )(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
   def read [S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Negatum[S] = Impl.read(in, access)
+
+  def attrToConfig[S <: Sys[S]](obj: Obj[S])(implicit tx: S#Tx): Config = Impl.attrToConfig(obj)
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Negatum[S]] = Impl.serializer[S]
 

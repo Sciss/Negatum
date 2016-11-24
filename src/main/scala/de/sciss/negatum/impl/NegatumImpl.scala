@@ -15,7 +15,7 @@ package de.sciss.negatum
 package impl
 
 import de.sciss.lucre.event.Targets
-import de.sciss.lucre.expr.DoubleObj
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{stm, event => evt}
@@ -32,6 +32,40 @@ object NegatumImpl {
     serializer[S].read(in, access)
 
   def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Negatum[S]] = anySer.asInstanceOf[Ser[S]]
+
+  def attrToConfig[S <: Sys[S]](obj: Obj[S])(implicit tx: S#Tx): Config = {
+    val attr  = obj.attr
+    import Negatum.Config.default._
+    import Negatum._
+    val seed      = attr.$[IntObj](attrSeed).map(_.value.toLong).getOrElse(System.currentTimeMillis())
+
+    val cGen      = Negatum.Generation(
+      population  = attr.$[IntObj    ](attrGenPopulation  ).map(_.value).getOrElse(gen.population),
+      probConst   = attr.$[DoubleObj ](attrGenProbConst   ).map(_.value).getOrElse(gen.probConst),
+      minVertices = attr.$[IntObj    ](attrGenMinVertices ).map(_.value).getOrElse(gen.minVertices),
+      maxVertices = attr.$[IntObj    ](attrGenMaxVertices ).map(_.value).getOrElse(gen.maxVertices),
+      probDefault = attr.$[DoubleObj ](attrGenProbDefault ).map(_.value).getOrElse(gen.probDefault)
+      // allowedUGens
+    )
+    val cBreed    = Negatum.Breeding(
+      selectFrac  = attr.$[DoubleObj ](attrBreedSelectFrac).map(_.value).getOrElse(breed.selectFrac),
+      elitism     = attr.$[IntObj    ](attrBreedElitism   ).map(_.value).getOrElse(breed.elitism),
+      minMut      = attr.$[IntObj    ](attrBreedMinMut    ).map(_.value).getOrElse(breed.minMut),
+      maxMut      = attr.$[IntObj    ](attrBreedMaxMut    ).map(_.value).getOrElse(breed.maxMut),
+      probMut     = attr.$[DoubleObj ](attrBreedProbMut   ).map(_.value).getOrElse(breed.probMut),
+      golem       = attr.$[IntObj    ](attrBreedGolem     ).map(_.value).getOrElse(breed.golem)
+    )
+    val cEval     = Negatum.Evaluation(
+      numMFCC     = attr.$[IntObj    ](attrEvalNumMFCC    ).map(_.value).getOrElse(eval.numMFCC),
+      normMFCC    = attr.$[BooleanObj](attrEvalNormMFCC   ).map(_.value).getOrElse(eval.normMFCC),
+      maxBoost    = attr.$[DoubleObj ](attrEvalMaxBoost   ).map(_.value).getOrElse(eval.maxBoost),
+      timeWeight  = attr.$[DoubleObj ](attrEvalTimeWeight ).map(_.value).getOrElse(eval.timeWeight)
+    )
+    val cPenalty  = Negatum.Penalty()
+    val config    = Negatum.Config(seed = seed, generation = cGen, breeding = cBreed, evaluation = cEval,
+      penalty = cPenalty)
+    config
+  }
 
   private val anySer = new Ser[NoSys]
 
