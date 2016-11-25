@@ -190,10 +190,12 @@ object Composition {
     aNegStart ("done")            = aNegRecDone
     aNegRec   ("done")            = aNegRecDone
     pNegListen("done")            = aNegRecDone
+    aNegRecDone("restart")        = aNegStart
 
     val aSOMTimeline = action("som-timeline").in(f)(ActionSOMTimeline)
     aSOMTimeline("som-folder")    = fSOM
     aSOMTimeline("som-play")      = fSOMPlay
+    aNegRecDone("som-timeline")   = aSOMTimeline
   }
 
   trait NoSys extends SSys[NoSys]

@@ -20,13 +20,15 @@ import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.negatum.Composition.NoSys
 import de.sciss.synth.SynthGraph
 
-import scala.concurrent.stm.TSet
 import scala.language.implicitConversions
 
 object DSL {
-  def apply[S <: SSys[S]]: DSL[S] = new DSL
+  def apply[S <: SSys[S]]: DSL[S] = anyDSL.asInstanceOf[DSL[S]] // new DSL
+
+  private[this] val anyDSL = new DSL[NoSys]
 }
 final class DSL[S <: SSys[S]] {
   import DSLAux._

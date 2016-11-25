@@ -20,7 +20,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, AudioCue, Ensemble, Folder}
+import de.sciss.synth.proc._
 import Composition.{logComp, logCompErr, mkDateString}
 import de.sciss.synth.proc.Implicits._
 
@@ -101,7 +101,7 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
 
   // step 2
   def negatumDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]])
-                               (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+                               (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Unit = {
     val self = selfH()
     val attr = self.attr
     logComp("Negatum done.")
@@ -131,7 +131,7 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
 
   // step 3
   def svmDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]], svmNum: Int)
-                           (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+                           (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Unit = {
     val dsl = DSL[S]
     import dsl._
 
@@ -152,18 +152,19 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
       fSOM.addLast(_som)
       _som
     }
+    val somH = tx.newHandle(som)
 
     val negCount = neg.attrInt("count", 0) + svmNum
     neg.adjustInt("count", negCount)
-    val somCount = som.attrInt("count", 0) + svmNum
-    som.adjustInt("count", somCount)
+//    val somCount = som.attrInt("count", 0) + svmNum
+//    som.adjustInt("count", somCount)
 
     println("Starting SOM addition...")
     val renderSOM = som.addAll(neg.population, selected = true)
     renderSOM.reactNow { implicit tx => {
       case Rendering.Progress(amt) =>
       case Rendering.Completed(scala.util.Success(n)) =>
-        somDone(selfH, somNum = n)
+        somDone(selfH, som = somH(), somNum = n)
 
       case Rendering.Completed(scala.util.Failure(ex)) =>
         logCompErr("!! SOM failed:")
@@ -172,11 +173,29 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
   }
 
   // step 4
-  def somDone[S <: Sys[S]](selfH: stm.Source[S#Tx, Action[S]], somNum: Int)
-                          (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
-    //      val self = selfH()
-    //      val attr = self.attr
-    logComp(s"SOM addition done ($somNum).")
-    println("CONTINUE HERE")
+  def somDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]], som: SOM[S], somNum: Int)
+                          (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Unit = {
+    val dsl = DSL[S]
+    import dsl._
+    val self = selfH()
+    val attr = self.attr
+
+    val somCount = som.attrInt("count", 0) + somNum
+    logComp(s"SOM addition done (+$somNum = $somCount).")
+
+    som.adjustInt("count", somCount)
+
+    val Some(fSOMPlay) = attr.$[Folder]("som-play")
+    if (fSOMPlay.isEmpty && somCount >= 100) {
+      logComp(s"SOM addition sufficient to start timeline creation")
+      val Some(aSOMTimeline) = attr.$[Action]("som-timeline")
+      val univ1 = Action.Universe(aSOMTimeline, workspace)
+      aSOMTimeline.execute(univ1)
+    }
+
+    logComp("Restarting negatum process")
+    val Some(aNegStart) = attr.$[Action]("restart")
+    val univ1 = Action.Universe(aNegStart, workspace)
+    aNegStart.execute(univ1)
   }
 }
