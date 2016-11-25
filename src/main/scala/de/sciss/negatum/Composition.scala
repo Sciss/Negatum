@@ -134,7 +134,8 @@ object Composition {
 
 //    val tlSOM = timeline("tl-som").in(ensMain)
 
-    val fSOMPlay = folder("som-play").in(ensMain)
+//    val fSOMPlay = folder("som-play").in(ensMain)
+    val ensSOMPlay = ensemble("som-play").in(ensMain)(initPlay = false)
 
     val pNegListen = proc("negatum-listen").in(ensNegListen) {
       import graph._
@@ -185,7 +186,7 @@ object Composition {
     aNegRecDone("som-folder")     = fSOM
     aNegRecDone("iterations")     = int(2)  // XXX TODO
     aNegRecDone("svm")            = svm
-    aNegRecDone("som-play")       = fSOMPlay
+    aNegRecDone("som-play")       = ensSOMPlay
 
     aNegStart ("done")            = aNegRecDone
     aNegRec   ("done")            = aNegRecDone
@@ -194,7 +195,7 @@ object Composition {
 
     val aSOMTimeline = action("som-timeline").in(f)(ActionSOMTimeline)
     aSOMTimeline("som-folder")    = fSOM
-    aSOMTimeline("som-play")      = fSOMPlay
+    aSOMTimeline("som-play")      = ensSOMPlay
     aNegRecDone("som-timeline")   = aSOMTimeline
   }
 

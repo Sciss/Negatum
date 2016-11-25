@@ -74,6 +74,8 @@ object DSLAux {
   }
 
   final class EnsembleBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(ens: Ensemble[S])(initPlay: Boolean)(implicit tx: S#Tx): Ensemble[S] = in(ens.folder)(initPlay)
+
     def in(f: Folder[S])(initPlay: Boolean)(implicit tx: S#Tx): Ensemble[S] = {
       val exists = f.iterator.collectFirst {
         case ens: Ensemble[S] if ens.name == name => ens

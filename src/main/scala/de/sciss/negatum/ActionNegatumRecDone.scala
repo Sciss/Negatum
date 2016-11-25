@@ -39,7 +39,6 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     val attr           = self.attr
     val Some(ens)      = attr.$[Ensemble]("context")
     val Some(fNegatum) = attr.$[Folder  ]("negatum-folder")
-    val Some(artObj)   = attr.$[Artifact]("file")
 
     ens.stop()
 
@@ -49,12 +48,13 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
       case n: Negatum[S] if n.attrInt("count", 0) < 1000 => n
     } .getOrElse {
 
-      val art        = artObj.value
-      val tempSpec   = AudioFile.readSpec(art)
-      val tempCue    = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
-      val tempCueObj = AudioCue.Obj.newConst[S](tempCue)
+      val Some(artObj)  = attr.$[Artifact]("file")
+      val art           = artObj.value
+      val tempSpec      = AudioFile.readSpec(art)
+      val tempCue       = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
+      val tempCueObj    = AudioCue.Obj.newConst[S](tempCue)
 
-      val _neg        = Negatum(tempCueObj)
+      val _neg          = Negatum(tempCueObj)
       _neg.name = s"negatum-${mkDateString()}"
 
       _neg.adjustInt   (Negatum.attrBreedElitism   , rrand(0, 3))
@@ -185,8 +185,8 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
 
     som.adjustInt("count", somCount)
 
-    val Some(fSOMPlay) = attr.$[Folder]("som-play")
-    if (fSOMPlay.isEmpty && somCount >= 100) {
+    val Some(ensSOMPlay) = attr.$[Ensemble]("som-play")
+    if (ensSOMPlay.folder.isEmpty && somCount >= 100) {
       logComp(s"SOM addition sufficient to start timeline creation")
       val Some(aSOMTimeline) = attr.$[Action]("som-timeline")
       val univ1 = Action.Universe(aSOMTimeline, workspace)

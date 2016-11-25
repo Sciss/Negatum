@@ -30,9 +30,9 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     import universe._
     val attr = self.attr
 
-    val Some(fSOMPlay) = attr.$[Folder]("som-play")
-    val Some(fSOM)     = attr.$[Folder]("som-folder")
-    fSOMPlay.clear()
+    val Some(ensSOMPlay)  = attr.$[Ensemble]("som-play")
+    val Some(fSOM)        = attr.$[Folder]("som-folder")
+    ensSOMPlay.folder.clear()
 
     import Util._
     import DefaultRandom._
@@ -177,6 +177,8 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     logComp("Adding SOM timeline...")
     tl.add(Span.all, pBus)
 
-    fSOMPlay.addLast(tl)
+    ensSOMPlay.folder.addLast(tl)
+    ensSOMPlay.stop()
+    ensSOMPlay.play()
   }
 }
