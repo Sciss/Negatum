@@ -28,7 +28,7 @@ import de.sciss.synth.ugen
 import scala.concurrent.stm.TxnExecutor
 
 object Composition {
-  final val MaxNegatum = 1000
+  final val MaxNegatum =  500
   final val MaxSOM     = 5000
 
   private[this] val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'proc' - ", Locale.US)
@@ -153,8 +153,8 @@ object Composition {
       val fft         = FFT(buf = fftBuf, in = in, hop = 0.5, winType = 1)
       val loudness    = Loudness(fft)
       val threshStart = "thresh-start".ir( 10f)
-      val threshEnd   = "thresh-end"  .ir(  3f)
-      val threshDur   = "thresh-dur"  .ir(120f)
+      val threshEnd   = "thresh-end"  .ir(  1f)
+      val threshDur   = "thresh-dur"  .ir(180f)
       val thresh      = Line.kr(threshStart, threshEnd, threshDur)
       val isLoud      = loudness > thresh
       val run         = SetResetFF.kr(trig = isLoud, reset = 0)
