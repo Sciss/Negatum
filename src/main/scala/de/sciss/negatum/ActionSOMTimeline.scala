@@ -13,14 +13,13 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.expr.{DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.gui.TimelineObjView
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
 import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.graph.{FadeInOut, Ops, ScanInFix, ScanOut}
 import de.sciss.synth.proc._
 import de.sciss.synth.proc.Implicits._
 import Composition.{logComp, mkDateString}
@@ -48,8 +47,9 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     val tl    = Timeline[S]
     tl.name   = s"timeline-${mkDateString()}"
     val cfg   = ScanSOM.Config()
-    val start = (  1.0 * TimeRef.SampleRate).toLong
-    val stop  = (181.0 * TimeRef.SampleRate).toLong
+    val dur   = 180.0
+    val start = ( 1.0        * TimeRef.SampleRate).toLong
+    val stop  = ((1.0 + dur) * TimeRef.SampleRate).toLong
     val dim   = som.config.dimensions
     assert(dim == 2, s"SOM does not have two dimensions: $dim")
 
@@ -61,19 +61,6 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     logComp("Generating TL...")
 
     val pBus = Proc[S]
-    //     val gBus = SynthGraph {
-    //       import proc.graph._
-    //       import Ops._
-    //       import ugen._
-    //       val bus   = ObjKeys.attrBus .kr(0f)
-    //       val gain  = ObjKeys.attrGain.kr(1f)
-    //       val in    = ScanInFix(numChannels = 1)
-    //       val px    = "traj-x".kr(0f)
-    //       val py    = "traj-y".kr(0f)
-    //       val amp   = NegatumDelaunay(px, py)
-    //       val sig   = in * gain * amp
-    //       PhysicalOut.ar(indices = bus, in = sig)
-    //     }
     val gBus = SynthGraph {
       import proc.graph._
       import Ops._
@@ -82,13 +69,26 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
       val gain  = ObjKeys.attrGain.kr(1f)
       val in    = ScanInFix(numChannels = 1)
       // proc.graph.Buffer.kr("traj")
-      val px    = "traj-x".kr(0f)
-      val py    = "traj-y".kr(0f)
+      val bufX  = graph.Buffer("traj-x")
+      val bufY  = graph.Buffer("traj-y")
+      val trajDur  = "dur".kr
+      val trajSize = BufFrames.kr(bufX) - 1
+      val phasFreq = trajSize / (ControlRate.ir * trajDur)
+      val bufPos = Phasor.kr(speed = phasFreq, lo = 0, hi = trajSize)
+//      val px    = "traj-x".kr(0f)
+//      val py    = "traj-y".kr(0f)
+      val px    = BufRd.kr(numChannels = 1, buf = bufX, index = bufPos, loop = 1, interp = 2)
+      val py    = BufRd.kr(numChannels = 1, buf = bufY, index = bufPos, loop = 1, interp = 2)
       val amp   = NegatumDelaunay(px, py)
-      val sig   = in * gain * amp
+      val ampL  = Lag.kr(amp, time = 1f)
+      val sig   = in * gain * ampL
       PhysicalOut.ar(indices = bus, in = sig)
     }
     pBus.graph() = gBus
+    val attrBus = pBus.attr
+    attrBus.put("traj-x", DoubleVector.newVar(Vector(0.0, 1.0)))
+    attrBus.put("traj-y", DoubleVector.newVar(Vector(0.0, 1.0)))
+    attrBus.put("dur"   , DoubleObj.newVar(dur))
     val fBus = Folder[S]
     import proc.Implicits._
     pBus.attr.put(Proc.mainIn, fBus)
@@ -171,9 +171,11 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
       pPrev.attr.put(ObjKeys.attrFadeOut, fadeOutObj)
     }
 
+    val timeNext = tl.lastEvent.getOrElse(0L) + (TimeRef.SampleRate * rrand(10, 20)).toLong
+    tl.add(Span(timeNext, timeNext + TimeRef.SampleRate.toLong), self)
+
     logComp("Adding SOM timeline...")
     tl.add(Span.all, pBus)
-    tl.name = "Timeline"
 
     fSOMPlay.addLast(tl)
   }

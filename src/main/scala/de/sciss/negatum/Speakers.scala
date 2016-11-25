@@ -47,6 +47,13 @@ object Speakers {
     Vector2(131.320f, 804.081f),
     Vector2(0.00000f, 670.068f)  )
 
+  val evenCorners: Vec[Vector2] = Vector(
+    Vector2(   0.00f,   0.000f),
+    Vector2(   0.00f, 804.081f),
+    Vector2(1383.19f, 804.081f),
+    Vector2(1383.19f,   0.000f)
+  )
+
   val odd: Vec[Vector2] = Vector(
     Vector2(0.00000f, 0f),
     Vector2(214.887f, 0f),
@@ -75,7 +82,7 @@ object Speakers {
   )
 
   /** Speakers selected for the projection. */
-  val select : Vec[Vector2]        = even
+  val select : Vec[Vector2]        = even ++ evenCorners
   /** Delaunay triangulation indices. */
   val tri    : Vec[TriangleIndex]  = Delaunay(select)
 
