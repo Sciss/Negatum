@@ -28,7 +28,7 @@ object ActionNegatumStart extends NamedAction("negatum-start") {
     val Some(rec)       = attr.$[Action]("rec")
     val Some(done)      = attr.$[Action]("done")
     val hasOpenNeg = fNegatum.lastOption.exists {
-      case n: Negatum[S] if n.attrInt("count", 0) < 1000 => true
+      case n: Negatum[S] if n.attrInt("count", 0) < Composition.MaxNegatum => true
       case _ => false
     }
     if (hasOpenNeg) {

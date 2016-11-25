@@ -45,7 +45,7 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     val numIter = attr.$[IntObj]("iterations").map(_.value).getOrElse(10)
 
     val neg: Negatum[S] = fNegatum.lastOption.collect {
-      case n: Negatum[S] if n.attrInt("count", 0) < 1000 => n
+      case n: Negatum[S] if n.attrInt("count", 0) < Composition.MaxNegatum => n
     } .getOrElse {
 
       val Some(artObj)  = attr.$[Artifact]("file")
@@ -143,10 +143,10 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     val Some(fSOM) = attr.$[Folder ]("som-folder")
 
     val som: SOM[S] = fSOM.lastOption.collect {
-      case _som: SOM[S] if _som.attrInt("count", 0) < 10000 => _som
+      case _som: SOM[S] if _som.attrInt("count", 0) < Composition.MaxSOM => _som
     } .getOrElse {
       val cfg = SOM.Config()
-      cfg.numIterations = 10000
+      cfg.numIterations = Composition.MaxSOM
       val _som = SOM(cfg)
       _som.name = s"som-${mkDateString()}"
       fSOM.addLast(_som)

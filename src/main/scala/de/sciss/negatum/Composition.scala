@@ -28,6 +28,9 @@ import de.sciss.synth.ugen
 import scala.concurrent.stm.TxnExecutor
 
 object Composition {
+  final val MaxNegatum = 1000
+  final val MaxSOM     = 5000
+
   private[this] val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'proc' - ", Locale.US)
   var showCompLog = true
 
