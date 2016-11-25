@@ -47,16 +47,17 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     val tl    = Timeline[S]
     tl.name   = s"timeline-${mkDateString()}"
     val cfg   = ScanSOM.Config()
-    val dur   = 180.0
+//    val dur   = 180.0
+    val dur   = rrand(150.0, 210.0)
     val start = ( 1.0        * TimeRef.SampleRate).toLong
     val stop  = ((1.0 + dur) * TimeRef.SampleRate).toLong
     val dim   = som.config.dimensions
     assert(dim == 2, s"SOM does not have two dimensions: $dim")
 
-    val pt1   = List(0.0, 0.0)
-    //      val pt2   = List(1.0, 0.0)
-    val pt2   = List(0.0, 1.0)
-    val trj   = Vector(pt1, pt2)
+//    val pt1   = List(0.0, 0.0)
+//    val pt2   = List(0.0, 1.0)
+//      val trj   = Vector(pt1, pt2)
+    val trajSOM = randomRectSides(3).map { v2 => List(v2.x.toDouble, v2.y.toDouble) }
 
     logComp("Generating TL...")
 
@@ -86,8 +87,11 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     }
     pBus.graph() = gBus
     val attrBus = pBus.attr
-    attrBus.put("traj-x", DoubleVector.newVar(Vector(0.0, 1.0)))
-    attrBus.put("traj-y", DoubleVector.newVar(Vector(0.0, 1.0)))
+    val trajSpat  = randomRectSides(3)
+    val trajSpatX = trajSpat.map(_.x.toDouble)
+    val trajSpatY = trajSpat.map(_.y.toDouble)
+    attrBus.put("traj-x", DoubleVector.newVar(trajSpatX))
+    attrBus.put("traj-y", DoubleVector.newVar(trajSpatY))
     attrBus.put("dur"   , DoubleObj.newVar(dur))
     val fBus = Folder[S]
     import proc.Implicits._
@@ -100,7 +104,7 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
     val trkIdx    = (0 until 4).map(i => IntObj.newConst[S](i * 2))
     val trkHeight = IntObj.newConst[S](2)
 
-    ScanSOM(som, tl, Span(start, stop), trj, cfg) {
+    ScanSOM(som, tl, Span(start, stop), trajSOM, cfg) {
       case Input(pIn: Proc[S], pSpan, idx) =>
         //          val cpy   = Copy[S, S]
         //          val pOut  = cpy(pIn)

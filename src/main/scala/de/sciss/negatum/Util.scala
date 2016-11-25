@@ -1,5 +1,22 @@
+/*
+ *  Util.scala
+ *  (Negatum)
+ *
+ *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.negatum
 
+import de.sciss.kollflitz.Vec
+import de.sciss.negatum.Delaunay.Vector2
+
+import scala.annotation.switch
 import scala.util.Random
 
 object Util {
@@ -32,4 +49,17 @@ object Util {
 
   def choose[A](seq: Seq[A])(implicit random: Random): A =
     seq(random.nextInt(seq.size))
+
+  def randomRectSides(n: Int)(implicit random: Random): Vec[Vector2] = {
+    val sides = random.shuffle(0 until 4: Vec[Int]).take(n)
+    sides.map { si =>
+      val r = random.nextFloat()
+      (si: @switch) match {
+        case 0 => Vector2(0f, r) // left
+        case 1 => Vector2(r, 0f)  // top
+        case 2 => Vector2(r, 1f)  // bottom
+        case 3 => Vector2(1f, r)  // right
+      }
+    }
+  }
 }
