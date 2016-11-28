@@ -26,6 +26,7 @@ import de.sciss.mellite
 import de.sciss.mellite.gui.{LogFrame, MenuBar}
 import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
 import de.sciss.mellite.{Application, Mellite, Prefs}
+import de.sciss.negatum.Composition.NoSys
 import de.sciss.synth.proc.SynthGraphObj
 
 import scala.collection.immutable.{Seq => ISeq}
@@ -83,6 +84,8 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     if (LOG_FRAME) LogFrame.instance    // init
 
     new mellite.gui.MainFrame
+
+    new ImperfectFrame
   }
 
   lazy val menuFactory: Menu.Root = {

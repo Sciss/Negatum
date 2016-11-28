@@ -44,18 +44,27 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
 
     val numIter = attr.$[IntObj]("iterations").map(_.value).getOrElse(10)
 
-    val neg: Negatum[S] = fNegatum.lastOption.collect {
-      case n: Negatum[S] if n.attrInt("count", 0) < Composition.MaxNegatum => n
+    val fLastOpt = fNegatum.lastOption
+    val neg: Negatum[S] = fLastOpt.collect {
+      case n: Negatum[S] if {
+        val count = n.attrInt("count", 0)
+        val res = count < Composition.MaxNegatum
+        res
+      } => n
     } .getOrElse {
 
+      println("----1")
       val Some(artObj)  = attr.$[Artifact]("file")
       val art           = artObj.value
+      println(s"----2 $art")
       val tempSpec      = AudioFile.readSpec(art)
+      println(s"----3 $tempSpec")
       val tempCue       = AudioCue(art, tempSpec, offset = 0L, gain = 1.0)
       val tempCueObj    = AudioCue.Obj.newConst[S](tempCue)
 
       val _neg          = Negatum(tempCueObj)
       _neg.name = s"negatum-${mkDateString()}"
+      println(s"----4 ${_neg.name}")
 
       _neg.adjustInt   (Negatum.attrBreedElitism   , rrand(0, 3))
       _neg.adjustInt   (Negatum.attrBreedGolem     , rrand(15, 25))
@@ -70,7 +79,9 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
       _neg.adjustInt   (Negatum.attrGenPopulation  , 1000)
       _neg.adjustDouble(Negatum.attrGenProbConst   , rrand(0.4, 0.5))
 
+      println(s"----5")
       fNegatum.addLast(_neg)
+      println(s"----6")
       _neg
     }
 

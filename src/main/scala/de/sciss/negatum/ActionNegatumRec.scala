@@ -37,10 +37,14 @@ object ActionNegatumRec extends NamedAction("negatum-rec") {
     import DefaultRandom._
     val recDur = rrand(5.0, 7.0)
     val micBus = rrand(0, 3)
+    ens.stop()
+
     p.adjustDouble("rec-dur", recDur)
     p.adjustInt   ("bus-in" , micBus)
 
-    val artRec = dir / s"anemone/rec/capture-negatum${mkDateString()}.aif"
+    val artName = s"anemone/rec/capture-negatum${mkDateString()}.aif"
+    val artRec  = dir / artName
+    println(s"----X $artRec")
     p   .attr.put("file", artRec)
     done.attr.put("file", artRec)
 
