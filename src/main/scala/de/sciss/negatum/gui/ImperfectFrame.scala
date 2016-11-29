@@ -15,7 +15,7 @@ package de.sciss.negatum
 package gui
 
 import java.awt.Font
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 
 import de.sciss.desktop.Window.{CloseIgnore, CloseOperation, Style}
 import de.sciss.desktop.{Desktop, DialogSource, Window, WindowHandler}
@@ -40,7 +40,9 @@ final class ImperfectFrame extends desktop.impl.WindowImpl { me =>
 
   private[this] val t = {
     val config = UDP.Config()
+//    config.localAddress = InetAddress.getLocalHost
     config.localSocketAddress = negatumSocket
+    println(s"Local OSC address is ${config.localAddress}")
     UDP.Transmitter(config)
   }
 
