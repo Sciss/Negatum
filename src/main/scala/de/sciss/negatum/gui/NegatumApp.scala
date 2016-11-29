@@ -34,6 +34,7 @@ import scala.collection.immutable.{Seq => ISeq}
 import scala.language.existentials
 import scala.swing.Action
 import scala.util.control.NonFatal
+import de.sciss.numbers.Implicits._
 
 /** The main entry point for the desktop Swing application.
   * Please note that this should _not_ be the main class of the project,
@@ -51,7 +52,24 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     override def usesNativeDecoration: Boolean = Prefs.nativeWindowDecoration.getOrElse(true)
   }
 
+  private final case class Config(
+                                 rattleVolume: Double = 1f, negatumVolume: Double = -9f.dbamp
+                                 )
+
   override def init(): Unit = {
+    val defaultConfig = Config()
+    val p = new scopt.OptionParser[Config]("Negatum") {
+      opt[Double]("rattle-volume")
+        .text(s"Initial rattle volume (linear from zero to one; default: ${defaultConfig.rattleVolume})")
+        .action { (v, c) => c.copy(rattleVolume = v) }
+
+      opt[Double]("negatum-volume")
+        .text(s"Initial Negatum volume (linear from zero to one; default: ${defaultConfig.negatumVolume})")
+        .action { (v, c) => c.copy(rattleVolume = v) }
+    }
+
+    val config = p.parse(args, defaultConfig).getOrElse(defaultConfig)
+
     Locale.setDefault(Locale.US)    // (untested) make sure number formatting is consistent, while we do not have i18
     Application.init(this)
 
@@ -91,7 +109,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
 
     val mf = new mellite.gui.MainFrame
     startEnsemble(ws)
-    new ImperfectFrame(mf)
+    new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume, defaultNegatumVolume = config.negatumVolume)
   }
 
   def startEnsemble[S <: Sys[S]](ws: Workspace[S]): Unit = {

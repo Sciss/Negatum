@@ -31,15 +31,18 @@ import scala.swing.event.ValueChanged
 import scala.swing.{BorderPanel, Button, Component, FlowPanel, GridPanel, Label, Point, Slider, Swing}
 import scala.util.control.NonFatal
 
-final class ImperfectFrame(mainFrame: MainFrame) extends desktop.impl.WindowImpl { me =>
+final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, defaultNegatumVolume: Double)
+  extends desktop.impl.WindowImpl { me =>
+
+  def this(mainFrame: MainFrame) = this(mainFrame, 1.0, -9.0.dbamp)
 
   private[this] val rattleSocket  = new InetSocketAddress("192.168.0.21", 7771)
   private[this] val raspiSocket   = new InetSocketAddress("192.168.0.11", 57110)
   private[this] val houghSocket   = new InetSocketAddress("192.168.0.20", 57110)
   private[this] val negatumSocket = new InetSocketAddress("192.168.0.66", 57120)
 
-  final val DEFAULT_RATTLE  = (0.8 * 200).toInt
-  final val DEFAULT_NEGATUM = (0.2 * 200).toInt
+  private[this] final val DEFAULT_RATTLE  = (defaultRattleVolume  * 200).toInt
+  private[this] final val DEFAULT_NEGATUM = (defaultNegatumVolume * 200).toInt
 
   private[this] var _t: UDP.Transmitter.Undirected = _
 

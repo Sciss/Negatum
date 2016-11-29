@@ -63,6 +63,7 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
 
     val pBus = Proc[S]
     val gBus = SynthGraph {
+      import de.sciss.numbers.Implicits._
       import proc.graph._
       import Ops._
       import ugen._
@@ -82,7 +83,10 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
       val py    = BufRd.kr(numChannels = 1, buf = bufY, index = bufPos, loop = 1, interp = 2)
       val amp   = NegatumDelaunay(px, py)
       val ampL  = Lag.kr(amp, time = 1f)
-      val sig   = in * gain * ampL
+      val compThresh = -15.dbamp
+      val expanderRatio = 0.5f
+      val inComp = Compander.ar(in, in, thresh = compThresh, ratioBelow = expanderRatio, ratioAbove = 1.0f)
+      val sig   = inComp * gain * ampL
       PhysicalOut.ar(indices = bus, in = sig)
     }
     pBus.graph() = gBus
