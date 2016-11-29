@@ -19,15 +19,16 @@ import java.util.Locale
 import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
 
-import de.sciss.desktop.Menu.Root
 import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
+import de.sciss.lucre.stm
+import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
-import de.sciss.mellite.gui.{LogFrame, MenuBar}
+import de.sciss.mellite.gui._
 import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
 import de.sciss.mellite.{Application, Mellite, Prefs}
-import de.sciss.negatum.Composition.NoSys
-import de.sciss.synth.proc.SynthGraphObj
+import de.sciss.synth.proc
+import de.sciss.synth.proc.{Ensemble, SynthGraphObj, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.language.existentials
@@ -40,7 +41,7 @@ import scala.util.control.NonFatal
   * initializes some type extensions that would be missing otherwise.
   */
 object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Application {
-  def LOG_FRAME: Boolean = true
+  def LOG_FRAME: Boolean = false // true
 
   override lazy val windowHandler: WindowHandler = new WindowHandlerImpl(this, menuFactory) {
     override lazy val usesInternalFrames = {
@@ -81,11 +82,45 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
 
+    print("Creating fresh workspace...")
+    val ws = Composition.createFreshWorkspace()
+    println(" ok.")
+    ActionOpenWorkspace.openGUI(ws)
+
     if (LOG_FRAME) LogFrame.instance    // init
 
-    new mellite.gui.MainFrame
+    val mf = new mellite.gui.MainFrame
+    startEnsemble(ws)
+    new ImperfectFrame(mf)
+  }
 
-    new ImperfectFrame
+  def startEnsemble[S <: Sys[S]](ws: Workspace[S]): Unit = {
+    import proc.Implicits._
+    implicit val _ws    : Workspace [S] = ws
+    implicit val cursor : stm.Cursor[S] = ws.cursor
+    GUI.atomic[S, Unit]("Main Ensemble ", s"Opening main ensemble elements window for '${ws.name}'") {
+      implicit tx =>
+        val ensMap = ws.root.iterator.collect {
+          case ens: Ensemble[S] => ens.name -> ens
+        }.toMap
+
+        ensMap.get("ens-negatum-listen").fold[Unit] {
+          Console.err.println("WARNING: ens-negatum-listen not found!")
+        } { ens =>
+          ens.stop()
+        }
+        ensMap.get("main").fold[Unit] {
+          Console.err.println("WARNING: main ensemble not found!")
+        } { ens =>
+          ens.play()
+          val ensFrame = EnsembleFrame[S](ens)
+          val ensView  = ensFrame.ensembleView
+          val ensT     = ensView.transport
+          ensT.stop()
+          ensT.seek(0L)
+          ensT.play()
+        }
+    }
   }
 
   lazy val menuFactory: Menu.Root = {

@@ -18,14 +18,14 @@ import java.util.{Date, Locale}
 
 import de.sciss.file._
 import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
+import de.sciss.lucre.stm.{Durable => _, _}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc._
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
+import scala.util.control.NonFatal
 
 object Composition {
   final val MaxNegatum =  500
@@ -44,9 +44,52 @@ object Composition {
 
   def mkDateString(): String = fileDateFmt.format(new Date)
 
-  val baseDir         = userHome / "Documents" / "projects" / "Imperfect"
-  val mainSession     = baseDir / "anemone" / "main.mllt"
-  val svmModelSession = baseDir / "anemone" / "svm-model.mllt"
+  lazy val baseDir         = userHome / "Documents" / "projects" / "Imperfect"
+  lazy val sessionsDir     = baseDir / "anemone"
+  lazy val mainSession     = sessionsDir / "main.mllt"
+  lazy val svmModelSession = sessionsDir / "svm-model.mllt"
+
+  def createFreshWorkspace(): Workspace.Durable = {
+    val sessions = sessionsDir.children { f =>
+      val n = f.name
+      n.startsWith("main_") && n.endsWith(".mllt")
+    }
+    val thisSessionF = sessionsDir / s"main_${mkDateString()}.mllt"
+
+    sessions.sortBy(_.name).lastOption.fold[Workspace.Durable] {
+      run(thisSessionF)
+      readWorkspace(thisSessionF)
+    } { lastSessionF =>
+      try {
+        val res  = emptyWorkspace(thisSessionF)
+        val prev = readWorkspace(lastSessionF)
+        try {
+          copyWorkspace(wsIn = prev, wsOut = res)
+        } finally {
+          try {
+            prev.close()
+          } catch {
+            case NonFatal(ex) =>
+              Console.err.println("While closing previous session:")
+              ex.printStackTrace()
+          }
+        }
+        res
+      } catch {
+        case ex: Exception =>
+          Console.err.println(s"ERROR: Cannot copy session $lastSessionF:")
+          ex.printStackTrace()
+          Console.err.println("Using fallback session!")
+          thisSessionF.renameTo(thisSessionF.replaceExt("BROKEN"))
+          val fallbackF = sessionsDir / "main_161129_121420.mllt"
+          val res       = emptyWorkspace(thisSessionF)
+          val prev      = readWorkspace(fallbackF)
+          copyWorkspace(wsIn = prev, wsOut = res)
+          prev.close()
+          res
+      }
+    }
+  }
 
   def readWorkspace(dir: File): Workspace.Durable = {
     val wsl = Workspace.read(dir, BerkeleyDB.factory(dir))
@@ -54,6 +97,24 @@ object Composition {
       case d: Workspace.Durable => d
       case _ => sys.error(s"Expected durable workspace for '$dir', but got $wsl")
     }
+  }
+
+  def emptyWorkspace(dir: File): Workspace.Durable =
+    Workspace.Durable.empty(dir, BerkeleyDB.factory(dir))
+
+  def copyWorkspace[In <: Sys[In], Out <: Sys[Out]](wsIn: Workspace[In], wsOut: Workspace[Out]): Unit = {
+    Txn.copy[In, Out, Unit] { (_txIn: In#Tx, _txOut: Out#Tx) => {
+      implicit val txIn  = _txIn
+      implicit val txOut = _txOut
+      val context = Copy[In, Out]
+      val rootIn  = wsIn .root
+      val rootOut = wsOut.root
+      rootIn.iterator.foreach { objIn =>
+        val objOut = context(objIn)
+        rootOut.addLast(objOut)
+      }
+      context.finish()
+    }} (wsIn.cursor, wsOut.cursor)
   }
 
   def mkSVM[S <: Sys[S]](wsOut: Workspace[S]): Unit = {
@@ -64,12 +125,15 @@ object Composition {
       implicit val txIn  = _txIn
       implicit val txOut = _txOut
       val context = Copy[In, S]
-      val svmIn = wsIn.root.iterator.collectFirst {
+      val rootIn  = wsIn .root
+      val rootOut = wsOut.root
+      val svmIn = rootIn.iterator.collectFirst {
         case _svm: SVMModel[In] => _svm
       }   .getOrElse(sys.error(s"No SVM model found in '$svmModelSession'"))
       val svmOut = context(svmIn)
-      svmOut.name = "svm-model"
-      wsOut.root.addLast(svmOut)
+      // svmOut.name = "svm-model"
+      context.finish()
+      rootOut.addLast(svmOut)
     }} (wsIn.cursor, wsOut.cursor)
   }
 
@@ -77,7 +141,8 @@ object Composition {
     Mellite.initTypes()
     Negatum.init()
     registerActions()
-    run()
+    run(mainSession)
+    sys.exit()
   }
 
   def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
@@ -87,10 +152,10 @@ object Composition {
     }
   }
 
-  def run(): Unit = {
+  def run(dir: File): Unit = {
     type S = Durable
-    val ws: Workspace[S] = if (mainSession.exists()) {
-      val _ws = readWorkspace(mainSession)
+    val ws: Workspace[S] = if (dir.exists()) {
+      val _ws = readWorkspace(dir)
       val hasSVM = _ws.cursor.step { implicit tx =>
         _ws.root.iterator.collectFirst {
           case m: SVMModel[S] => true
@@ -100,7 +165,7 @@ object Composition {
       _ws
 
     } else {
-      val _ws = Workspace.Durable.empty(mainSession, BerkeleyDB.factory(mainSession))
+      val _ws = emptyWorkspace(dir)
       mkSVM(_ws)
       _ws
     }
@@ -109,9 +174,8 @@ object Composition {
       build(ws)
     }
 
-    println("Yo chuck.")
+    println("Created/updated workspace.")
     ws.close()
-    sys.exit()
   }
 
   val actions: Seq[NamedAction] = Seq(

@@ -1,7 +1,7 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.1.0-SNAPSHOT"
+version            := "0.1.0"
 organization       := "de.sciss"
 scalaVersion       := "2.11.8"
 crossScalaVersions := Seq("2.11.8", "2.10.6")
@@ -13,8 +13,8 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.8.0-SNAPSHOT"
-lazy val soundProcessesVersion  = "3.10.0-SNAPSHOT"
+lazy val melliteVersion         = "2.8.0"
+lazy val soundProcessesVersion  = "3.10.0"
 lazy val scalaColliderVersion   = "1.22.1"
 lazy val ugensVersion           = "1.16.2"
 lazy val dspVersion             = "1.2.2"
