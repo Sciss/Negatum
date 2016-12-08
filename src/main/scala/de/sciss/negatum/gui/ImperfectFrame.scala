@@ -16,6 +16,7 @@ package gui
 
 import java.awt.Font
 import java.net.InetSocketAddress
+import javax.swing.Timer
 
 import de.sciss.desktop.{DialogSource, Window, WindowHandler}
 import de.sciss.lucre.synth.Txn
@@ -209,6 +210,13 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
     }
 
     updateVolumes()
+    // david's computer occasionally crashes and then comes back with full
+    // volume; so if stuff had master turned down, this results in people
+    // believing the sound is on, when only half of it is audible. We simply
+    // resend the fader positions once every minute.
+    val timer = new Timer(60 * 1000, Swing.ActionListener(_ => updateVolumes()))
+    timer.setRepeats(true)
+    timer.restart()
 
     new BorderPanel {
       add(new FlowPanel(new Label("Main Volume:"), ggMainVolume), BorderPanel.Position.North)

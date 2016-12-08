@@ -22,19 +22,22 @@ import javax.swing.plaf.ColorUIResource
 import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
 import de.sciss.lucre.stm
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Server, Sys, Txn}
+import de.sciss.lucre.swing.defer
 import de.sciss.mellite
 import de.sciss.mellite.gui._
 import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
 import de.sciss.mellite.{Application, Mellite, Prefs}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Ensemble, SynthGraphObj, Workspace}
+import de.sciss.synth.proc.{AuralSystem, Ensemble, SynthGraphObj, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.language.existentials
 import scala.swing.Action
 import scala.util.control.NonFatal
 import de.sciss.numbers.Implicits._
+
+import scala.concurrent.stm.TxnExecutor
 
 /** The main entry point for the desktop Swing application.
   * Please note that this should _not_ be the main class of the project,
@@ -109,7 +112,20 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
 
     val mf = new mellite.gui.MainFrame
     startEnsemble(ws)
+
+    // lazy val impFrame =
     new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume, defaultNegatumVolume = config.negatumVolume)
+
+//    def whenStarted(s: Server): Unit = defer {
+//      impFrame
+//    }
+//
+//    val as = Mellite.auralSystem
+//    TxnExecutor.defaultAtomic { itx =>
+//      implicit val tx = Txn.wrap(itx)
+//      as.whenStarted(whenStarted(_))
+//      as.serverOption.foreach(whenStarted(_))
+//    }
   }
 
   def startEnsemble[S <: Sys[S]](ws: Workspace[S]): Unit = {

@@ -56,10 +56,13 @@ object Composition {
     }
     val thisSessionF = sessionsDir / s"main_${mkDateString()}.mllt"
 
-    sessions.sortBy(_.name).lastOption.fold[Workspace.Durable] {
+    val sessionsFound  = sessions.sortBy(_.name)
+    val sessionLastOpt = sessionsFound.lastOption
+    sessionLastOpt.fold[Workspace.Durable] {
       run(thisSessionF)
       readWorkspace(thisSessionF)
     } { lastSessionF =>
+      print(s" continuing from ${lastSessionF.name}... ")
       try {
         val res  = emptyWorkspace(thisSessionF)
         val prev = readWorkspace(lastSessionF)

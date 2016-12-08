@@ -126,13 +126,14 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
               val sig0  = Mix.mono(in)
               val isOk  = CheckBadValues.ar(sig0, post = 0) sig_== 0
               val sig1  = Gate.ar(sig0, isOk)
-              val sig2  = sig1.clip2(1)
+              val sig2  = sig1.max(-1).min(1) // .clip2(1)
               val sig3  = LeakDC.ar(sig2) * 0.47
+              val sig4  = sig3.max(-1).min(1) // .clip2(1)
               val fade  = FadeInOut.ar
               val gain  = ObjKeys.attrGain.ar(1f)
               val mute  = ObjKeys.attrMute.ar(0f)
               val amp   = fade * gain * (1 - mute)
-              val sig   = sig3 * amp
+              val sig   = sig4 * amp
               ScanOut(sig)
 
             case other =>
