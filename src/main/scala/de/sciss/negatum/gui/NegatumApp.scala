@@ -19,25 +19,22 @@ import java.util.Locale
 import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
 
-import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
+import de.sciss.desktop.{Menu, WindowHandler}
 import de.sciss.lucre.stm
-import de.sciss.lucre.synth.{Server, Sys, Txn}
-import de.sciss.lucre.swing.defer
+import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
 import de.sciss.mellite.gui._
 import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
 import de.sciss.mellite.{Application, Mellite, Prefs}
+import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralSystem, Ensemble, SynthGraphObj, Workspace}
+import de.sciss.synth.proc.{Ensemble, SynthGraphObj, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.language.existentials
 import scala.swing.Action
 import scala.util.control.NonFatal
-import de.sciss.numbers.Implicits._
-
-import scala.concurrent.stm.TxnExecutor
 
 /** The main entry point for the desktop Swing application.
   * Please note that this should _not_ be the main class of the project,
@@ -56,8 +53,12 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
   }
 
   private final case class Config(
-                                 rattleVolume: Double = 1f, negatumVolume: Double = -9f.dbamp
-                                 )
+    rattleVolume  : Double   = 1f,
+    negatumVolume : Double   = -9f.dbamp,
+    openWorkspace : Boolean  = true,
+    playEnsemble  : Boolean  = true,
+    imperfectFrame: Boolean  = true
+  )
 
   override def init(): Unit = {
     val defaultConfig = Config()
@@ -69,6 +70,18 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
       opt[Double]("negatum-volume")
         .text(s"Initial Negatum volume (linear from zero to one; default: ${defaultConfig.negatumVolume})")
         .action { (v, c) => c.copy(rattleVolume = v) }
+
+      opt[Unit]("no-workspace")
+        .text("Do not open workspace upon start")
+        .action { (_, c) => c.copy(openWorkspace = false) }
+
+      opt[Unit]("no-autoplay")
+        .text("Do not play ensemble upon start")
+        .action { (_, c) => c.copy(playEnsemble = false) }
+
+      opt[Unit]("no-imperfect")
+        .text("Do not create Imperfect Reconstruction control frame")
+        .action { (_, c) => c.copy(imperfectFrame = false) }
     }
 
     val config = p.parse(args, defaultConfig).getOrElse(defaultConfig)
@@ -103,29 +116,25 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
 
-    print("Creating fresh workspace...")
-    val ws = Composition.createFreshWorkspace()
-    println(" ok.")
-    ActionOpenWorkspace.openGUI(ws)
+    val wsOpt = if (!config.openWorkspace) None else {
+      print("Creating fresh workspace...")
+      val ws = Composition.createFreshWorkspace()
+      println(" ok.")
+      ActionOpenWorkspace.openGUI(ws)
+      Some(ws)
+    }
 
     if (LOG_FRAME) LogFrame.instance    // init
 
     val mf = new mellite.gui.MainFrame
-    startEnsemble(ws)
 
-    // lazy val impFrame =
-    new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume, defaultNegatumVolume = config.negatumVolume)
+    if (config.playEnsemble) wsOpt.foreach { ws =>
+      startEnsemble(ws)
+    }
 
-//    def whenStarted(s: Server): Unit = defer {
-//      impFrame
-//    }
-//
-//    val as = Mellite.auralSystem
-//    TxnExecutor.defaultAtomic { itx =>
-//      implicit val tx = Txn.wrap(itx)
-//      as.whenStarted(whenStarted(_))
-//      as.serverOption.foreach(whenStarted(_))
-//    }
+    if (config.imperfectFrame) {
+      new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume, defaultNegatumVolume = config.negatumVolume)
+    }
   }
 
   def startEnsemble[S <: Sys[S]](ws: Workspace[S]): Unit = {
@@ -168,22 +177,6 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
   private[this] lazy val _binaural = DelaunaySpace.mkGUI(exitOnClose = false, videoOption = false)
 
   def openBinaural(): Unit = _binaural.open()
-
-//  def analyzeFeatures(): Unit = {
-//    def invoke[S <: Sys[S]](implicit workspace: Workspace[S]): Unit = {
-//      implicit val cursor: stm.Cursor[S] = workspace.cursor
-//      cursor.step { implicit tx =>
-//        FeatureAnalysisFrame[S]
-//      }
-//    }
-//
-//    documentHandler.activeDocument.foreach { ws =>
-//      val wst = ws.asInstanceOf[Workspace[~] forSome { type ~ <: Sys[~]}]
-//      invoke(wst)
-//    }
-//  }
-
-//  protected def menuFactory: Root = MenuBar.instance
 
   override lazy val documentHandler: DocumentHandler = new DocumentHandlerImpl
 

@@ -83,9 +83,18 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
       val py    = BufRd.kr(numChannels = 1, buf = bufY, index = bufPos, loop = 1, interp = 2)
       val amp   = NegatumDelaunay(px, py)
       val ampL  = Lag.kr(amp, time = 1f)
-      val compThresh = -15.dbamp
-      val expanderRatio = 0.5f
-      val inComp = Compander.ar(in, in, thresh = compThresh, ratioBelow = expanderRatio, ratioAbove = 1.0f)
+//      val compThresh = -60.dbamp // -15.dbamp
+      val compThresh = -40.dbamp // -15.dbamp
+      val expanderRatio = 1.0f // 0.5f
+      val compressor = 3.0f / 1 // 1.0f
+      // val inComp = Compander.ar(in, in, thresh = compThresh, ratioBelow = expanderRatio, ratioAbove = compressorRatio)
+
+//      val inComp   = Compander.ar(in, in, thresh = compThresh, ratioBelow = expanderRatio,
+//        ratioAbove = compressorRatio) * 2
+
+      val inComp   = Compander.ar(in, in, thresh = compThresh, ratioBelow = expanderRatio,
+        ratioAbove = compressor.reciprocal) * compressor
+
       val sig   = inComp * gain * ampL
       PhysicalOut.ar(indices = bus, in = sig)
     }

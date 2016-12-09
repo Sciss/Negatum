@@ -14,7 +14,8 @@ import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 object MakeModel extends App {
-  val sessionF = userHome / "mellite" / "sessions" / "Negatum-forModelBuilding.mllt"
+  // val sessionF = userHome / "mellite" / "sessions" / "Negatum-forModelBuilding.mllt"
+  val sessionF = userHome / "Documents" / "projects" / "Imperfect" / "anemone" / "Negatum-forModelBuilding2.mllt"
 
   Mellite.initTypes()
   Negatum.init()

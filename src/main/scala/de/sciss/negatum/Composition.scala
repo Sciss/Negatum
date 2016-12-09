@@ -84,7 +84,7 @@ object Composition {
           ex.printStackTrace()
           Console.err.println("Using fallback session!")
           thisSessionF.renameTo(thisSessionF.replaceExt("BROKEN"))
-          val fallbackF = sessionsDir / "main_161129_121420.mllt"
+          val fallbackF = sessionsDir / "main_161209_233713.mllt" // "main_161129_121420.mllt"
           val res       = emptyWorkspace(thisSessionF)
           val prev      = readWorkspace(fallbackF)
           copyWorkspace(wsIn = prev, wsOut = res)
