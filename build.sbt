@@ -1,7 +1,7 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.1.2"
+version            := "0.2.0"
 organization       := "de.sciss"
 scalaVersion       := "2.11.8"
 // crossScalaVersions := Seq("2.11.8", "2.10.6")

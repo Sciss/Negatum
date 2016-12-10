@@ -53,11 +53,11 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
   }
 
   private final case class Config(
-    rattleVolume  : Double   = 1f,
-    negatumVolume : Double   = -9f.dbamp,
-    openWorkspace : Boolean  = true,
-    playEnsemble  : Boolean  = true,
-    imperfectFrame: Boolean  = true
+    rattleVolume  : Double   =  0.0.dbamp,
+    negatumVolume : Double   = -2.5.dbamp,
+    openWorkspace : Boolean  = false,
+    playEnsemble  : Boolean  = false,
+    imperfectFrame: Boolean  = false
   )
 
   override def init(): Unit = {
@@ -68,20 +68,20 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
         .action { (v, c) => c.copy(rattleVolume = v) }
 
       opt[Double]("negatum-volume")
-        .text(s"Initial Negatum volume (linear from zero to one; default: ${defaultConfig.negatumVolume})")
-        .action { (v, c) => c.copy(rattleVolume = v) }
+        .text(s"Initial Negatum volume (linsear from zero to one; default: ${defaultConfig.negatumVolume})")
+        .action { (v, c) => c.copy(negatumVolume = v) }
 
-      opt[Unit]("no-workspace")
-        .text("Do not open workspace upon start")
-        .action { (_, c) => c.copy(openWorkspace = false) }
+      opt[Unit]("workspace")
+        .text("Create Negatum workspace upon start")
+        .action { (_, c) => c.copy(openWorkspace = true) }
 
-      opt[Unit]("no-autoplay")
-        .text("Do not play ensemble upon start")
-        .action { (_, c) => c.copy(playEnsemble = false) }
+      opt[Unit]("autoplay")
+        .text("Play Negatum ensemble upon start")
+        .action { (_, c) => c.copy(playEnsemble = true) }
 
-      opt[Unit]("no-imperfect")
-        .text("Do not create Imperfect Reconstruction control frame")
-        .action { (_, c) => c.copy(imperfectFrame = false) }
+      opt[Unit]("imperfect")
+        .text("Create Imperfect Reconstruction control frame")
+        .action { (_, c) => c.copy(imperfectFrame = true) }
     }
 
     val config = p.parse(args, defaultConfig).getOrElse(defaultConfig)
