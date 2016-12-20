@@ -16,7 +16,6 @@ package de.sciss.negatum
 import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
@@ -173,7 +172,7 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     println("Starting SOM addition...")
     val renderSOM = som.addAll(neg.population, selected = true)
     renderSOM.reactNow { implicit tx => {
-      case Rendering.Progress(amt) =>
+      case Rendering.Progress(_) =>
       case Rendering.Completed(scala.util.Success(n)) =>
         somDone(selfH, som = somH(), somNum = n)
 

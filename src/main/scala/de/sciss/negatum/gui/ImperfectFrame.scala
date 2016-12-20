@@ -32,10 +32,11 @@ import scala.swing.event.ValueChanged
 import scala.swing.{BorderPanel, Button, Component, FlowPanel, GridPanel, Label, Point, Slider, Swing}
 import scala.util.control.NonFatal
 
-final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, defaultNegatumVolume: Double)
+final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, defaultNegatumVolume: Double,
+                           hibernation: Boolean)
   extends desktop.impl.WindowImpl { me =>
 
-  def this(mainFrame: MainFrame) = this(mainFrame, 1.0, -9.0.dbamp)
+//  def this(mainFrame: MainFrame) = this(mainFrame, 1.0, -9.0.dbamp)
 
   private[this] val rattleSocket  = new InetSocketAddress("192.168.0.21", 7771)
   private[this] val raspiSocket   = new InetSocketAddress("192.168.0.11", 57110)

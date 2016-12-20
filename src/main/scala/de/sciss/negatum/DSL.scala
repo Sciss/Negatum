@@ -13,15 +13,17 @@
 
 package de.sciss.negatum
 
-import de.sciss.synth.proc._
-import Implicits._
 import de.sciss.file._
+import de.sciss.fscape.Graph
+import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.NoSys
 import de.sciss.synth.SynthGraph
+import de.sciss.synth.proc.Implicits._
+import de.sciss.synth.proc._
 
 import scala.language.implicitConversions
 
@@ -33,22 +35,19 @@ object DSL {
 final class DSL[S <: SSys[S]] {
   import DSLAux._
 
-  def proc(name: String)(implicit tx: S#Tx): ProcBuilder[S] = new ProcBuilder(name)
+  def proc    (name: String)(implicit tx: S#Tx): ProcBuilder    [S] = new ProcBuilder    [S](name)
+  def ensemble(name: String)(implicit tx: S#Tx): EnsembleBuilder[S] = new EnsembleBuilder[S](name)
+  def folder  (name: String)(implicit tx: S#Tx): FolderBuilder  [S] = new FolderBuilder  [S](name)
+  def action  (name: String)(implicit tx: S#Tx): ActionBuilder  [S] = new ActionBuilder  [S](name)
+  def negatum (name: String)(implicit tx: S#Tx): NegatumBuilder [S] = new NegatumBuilder [S](name)
+  def fscape  (name: String)(implicit tx: S#Tx): FScapeBuilder  [S] = new FScapeBuilder  [S](name)
+  def timeline(name: String)(implicit tx: S#Tx): TimelineBuilder[S] = new TimelineBuilder[S](name)
 
-  def ensemble(name: String)(implicit tx: S#Tx): EnsembleBuilder[S] = new EnsembleBuilder(name)
+  def artifactLoc(dir: File)(implicit tx: S#Tx): ArtifactLocBuilder[S] = new ArtifactLocBuilder[S](dir)
 
-  def folder(name: String)(implicit tx: S#Tx): FolderBuilder[S] = new FolderBuilder(name)
-
-  def action(name: String)(implicit tx: S#Tx): ActionBuilder[S] = new ActionBuilder(name)
-
-  def artifactLoc(dir: File)(implicit tx: S#Tx): ArtifactLocBuilder[S] = new ArtifactLocBuilder(dir)
-
-  def negatum(name: String)(implicit tx: S#Tx): NegatumBuilder[S] = new NegatumBuilder(name)
-
-  def timeline(name: String)(implicit tx: S#Tx): TimelineBuilder[S] = new TimelineBuilder(name)
-
-  def int   (value: Int   )(implicit tx: S#Tx): IntObj   .Var[S] = IntObj   .newVar(value)
-  def double(value: Double)(implicit tx: S#Tx): DoubleObj.Var[S] = DoubleObj.newVar(value)
+  def boolean(value: Boolean)(implicit tx: S#Tx): BooleanObj.Var[S] = BooleanObj.newVar(value)
+  def int    (value: Int    )(implicit tx: S#Tx): IntObj    .Var[S] = IntObj    .newVar(value)
+  def double (value: Double )(implicit tx: S#Tx): DoubleObj .Var[S] = DoubleObj .newVar(value)
 
   implicit def ObjAttrBuilder(in: Obj[S]): ObjAttrBuilder[S] = new ObjAttrBuilder(in)
 
@@ -158,6 +157,24 @@ object DSLAux {
         n
       }
       res
+    }
+  }
+
+  final class FScapeBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
+    def in(ens: Ensemble[S])(thunk: => Unit)(implicit tx: S#Tx): FScape[S] = in(ens.folder)(thunk)
+
+    def in(f: Folder[S])(thunk: => Unit)(implicit tx: S#Tx): FScape[S] = {
+      val exists = f.iterator.collectFirst {
+        case p: FScape[S] if p.name == name => p
+      }
+      exists.getOrElse {
+        val p = FScape[S]
+        val g = Graph(thunk)
+        p.graph() = g
+        p.name = name
+        f.addLast(p)
+        p
+      }
     }
   }
 

@@ -57,7 +57,8 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     negatumVolume : Double   = -2.5.dbamp,
     openWorkspace : Boolean  = false,
     playEnsemble  : Boolean  = false,
-    imperfectFrame: Boolean  = false
+    imperfectFrame: Boolean  = false,
+    hibernation   : Boolean  = false
   )
 
   override def init(): Unit = {
@@ -82,9 +83,13 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
       opt[Unit]("imperfect")
         .text("Create Imperfect Reconstruction control frame")
         .action { (_, c) => c.copy(imperfectFrame = true) }
+
+      opt[Unit]("hibernation")
+        .text("Enable hibernation mode")
+        .action { (_, c) => c.copy(hibernation = true) }
     }
 
-    val config = p.parse(args, defaultConfig).getOrElse(defaultConfig)
+    val config = p.parse(args, defaultConfig).getOrElse(sys.exit(1))
 
     Locale.setDefault(Locale.US)    // (untested) make sure number formatting is consistent, while we do not have i18
     Application.init(this)
@@ -111,14 +116,23 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     Mellite.initTypes()
     Negatum.init()
     NegatumObjView.init()
-    Composition.registerActions()
+
+    if (config.hibernation) {
+      Hibernation.registerActions()
+    } else {
+      Composition.registerActions()
+    }
 
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
 
     val wsOpt = if (!config.openWorkspace) None else {
-      print("Creating fresh workspace...")
-      val ws = Composition.createFreshWorkspace()
+      print("Creating workspace...")
+      val ws = if (config.hibernation) {
+        Hibernation.createWorkspace()
+      } else {
+        Composition.createFreshWorkspace()
+      }
       println(" ok.")
       ActionOpenWorkspace.openGUI(ws)
       Some(ws)
@@ -129,15 +143,16 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
     val mf = new mellite.gui.MainFrame
 
     if (config.playEnsemble) wsOpt.foreach { ws =>
-      startEnsemble(ws)
+      startEnsemble(ws, hibernation = config.hibernation)
     }
 
     if (config.imperfectFrame) {
-      new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume, defaultNegatumVolume = config.negatumVolume)
+      new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume,
+        defaultNegatumVolume = config.negatumVolume, hibernation = config.hibernation)
     }
   }
 
-  def startEnsemble[S <: Sys[S]](ws: Workspace[S]): Unit = {
+  def startEnsemble[S <: Sys[S]](ws: Workspace[S], hibernation: Boolean): Unit = {
     import proc.Implicits._
     implicit val _ws    : Workspace [S] = ws
     implicit val cursor : stm.Cursor[S] = ws.cursor
@@ -147,8 +162,10 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
           case ens: Ensemble[S] => ens.name -> ens
         }.toMap
 
-        ensMap.get("ens-negatum-listen").fold[Unit] {
-          Console.err.println("WARNING: ens-negatum-listen not found!")
+        val ensName = if (hibernation) "ens-hibernate-listen" else "ens-negatum-listen"
+
+        ensMap.get(ensName).fold[Unit] {
+          Console.err.println(s"WARNING: $ensName not found!")
         } { ens =>
           ens.stop()
         }

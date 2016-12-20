@@ -44,10 +44,10 @@ object Composition {
 
   def mkDateString(): String = fileDateFmt.format(new Date)
 
-  lazy val baseDir         = userHome / "Documents" / "projects" / "Imperfect"
-  lazy val sessionsDir     = baseDir / "anemone"
-  lazy val mainSession     = sessionsDir / "main.mllt"
-  lazy val svmModelSession = sessionsDir / "svm-model.mllt"
+  lazy val baseDir        : File = userHome / "Documents" / "projects" / "Imperfect"
+  lazy val sessionsDir    : File = baseDir / "anemone"
+  lazy val mainSession    : File = sessionsDir / "main.mllt"
+  lazy val svmModelSession: File = sessionsDir / "svm-model.mllt"
 
   def createFreshWorkspace(): Workspace.Durable = {
     val sessions = sessionsDir.children { f =>
@@ -161,7 +161,7 @@ object Composition {
       val _ws = readWorkspace(dir)
       val hasSVM = _ws.cursor.step { implicit tx =>
         _ws.root.iterator.collectFirst {
-          case m: SVMModel[S] => true
+          case _: SVMModel[S] => true
         } .getOrElse(false)
       }
       if (!hasSVM) mkSVM(_ws)
