@@ -69,7 +69,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
         .action { (v, c) => c.copy(rattleVolume = v) }
 
       opt[Double]("negatum-volume")
-        .text(s"Initial Negatum volume (linsear from zero to one; default: ${defaultConfig.negatumVolume})")
+        .text(s"Initial Negatum volume (linear from zero to one; default: ${defaultConfig.negatumVolume})")
         .action { (v, c) => c.copy(negatumVolume = v) }
 
       opt[Unit]("workspace")

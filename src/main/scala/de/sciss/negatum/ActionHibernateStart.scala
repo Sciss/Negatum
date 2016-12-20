@@ -36,12 +36,12 @@ object ActionHibernateStart extends NamedAction("hibernate-start") {
 //    val Some(ensPlay) = attr.$[Ensemble]        ("ens-play")
 
     val sideVal = side.value
-    // val recDur  = 60.0 // rrand(5.0, 7.0)
+    val recDur  = 90.0 // 60.0 // rrand(5.0, 7.0)
     val micBus  = if (sideVal) 1 else 0
     ensList.stop()
 //    ensPlay.stop()
 
-    // p.adjustDouble("rec-dur", recDur)
+    p.adjustDouble("rec-dur", recDur)
     p.adjustInt   ("bus-in" , micBus)
 
     val artName = s"anemone/rec/capture-hibernate${mkDateString()}.aif"
