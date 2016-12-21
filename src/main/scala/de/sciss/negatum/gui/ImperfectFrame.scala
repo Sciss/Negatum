@@ -160,10 +160,10 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
       val mainVolume: Float = if (!hibernation) mainVolume0 else {
         val c     = Calendar.getInstance()
         val hour  = c.get(Calendar.HOUR_OF_DAY)
-        val range = if (silentStartHour < silentStopHour)
+        val range: Seq[Int] = if (silentStartHour < silentStopHour)
           silentStartHour until silentStopHour
         else
-          silentStartHour until silentStopHour by -1
+          (silentStartHour to 24) ++ (0 until silentStopHour)
 
         val silent = range.contains(hour)
         if (silent) println("(silent)")
@@ -257,8 +257,10 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
   if (rebootMinutes > 0) {
     val rebootTimer = new java.util.Timer
     val rebootDelay: Long = rebootMinutes.toLong * 60 * 1000
+    println(s"Reboot after $rebootDelay ms.")
     rebootTimer.schedule(new TimerTask {
       def run(): Unit = Swing.onEDT {
+        println("Rebooting...")
         rebootHough()
         rebootRaspi()
         Thread.sleep(2000)
