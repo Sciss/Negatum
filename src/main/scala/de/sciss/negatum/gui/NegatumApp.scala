@@ -53,12 +53,15 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
   }
 
   private final case class Config(
-    rattleVolume  : Double   =  0.0.dbamp,
-    negatumVolume : Double   = -2.5.dbamp,
-    openWorkspace : Boolean  = false,
-    playEnsemble  : Boolean  = false,
-    imperfectFrame: Boolean  = false,
-    hibernation   : Boolean  = false
+    rattleVolume    : Double  =  0.0.dbamp,
+    negatumVolume   : Double  = -2.5.dbamp,
+    openWorkspace   : Boolean = false,
+    playEnsemble    : Boolean = false,
+    imperfectFrame  : Boolean = false,
+    hibernation     : Boolean = false,
+    silentStartHour : Int     = 22,
+    silentStopHour  : Int     =  8,
+    rebootMinutes   : Int     =  0
   )
 
   override def init(): Unit = {
@@ -87,6 +90,18 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
       opt[Unit]("hibernation")
         .text("Enable hibernation mode")
         .action { (_, c) => c.copy(hibernation = true) }
+
+      opt[Int]("silent-start")
+        .text(s"Silent start hour during hibernation (0 to 24; default: ${defaultConfig.silentStartHour})")
+        .action { (v, c) => c.copy(silentStartHour = v) }
+
+      opt[Int]("silent-stop")
+        .text(s"Silent stop hour during hibernation (0 to 24; default: ${defaultConfig.silentStopHour})")
+        .action { (v, c) => c.copy(silentStopHour = v) }
+
+      opt[Int]("reboot-minutes")
+        .text(s"Reboot raspi, hough, negatum after X minutes (0 for no reboot; default: ${defaultConfig.rebootMinutes})")
+        .action { (v, c) => c.copy(rebootMinutes = v) }
     }
 
     val config = p.parse(args, defaultConfig).getOrElse(sys.exit(1))
@@ -148,7 +163,9 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
 
     if (config.imperfectFrame) {
       new ImperfectFrame(mf, defaultRattleVolume = config.rattleVolume,
-        defaultNegatumVolume = config.negatumVolume, hibernation = config.hibernation)
+        defaultNegatumVolume = config.negatumVolume, hibernation = config.hibernation,
+        silentStartHour = config.silentStartHour, silentStopHour = config.silentStopHour,
+        rebootMinutes = config.rebootMinutes)
     }
   }
 

@@ -16,6 +16,7 @@ package gui
 
 import java.awt.Font
 import java.net.InetSocketAddress
+import java.util.{Calendar, TimerTask}
 import javax.swing.Timer
 
 import de.sciss.desktop.{DialogSource, Window, WindowHandler}
@@ -33,7 +34,8 @@ import scala.swing.{BorderPanel, Button, Component, FlowPanel, GridPanel, Label,
 import scala.util.control.NonFatal
 
 final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, defaultNegatumVolume: Double,
-                           hibernation: Boolean)
+                           hibernation: Boolean, silentStartHour: Int, silentStopHour: Int,
+                           rebootMinutes: Int)
   extends desktop.impl.WindowImpl { me =>
 
 //  def this(mainFrame: MainFrame) = this(mainFrame, 1.0, -9.0.dbamp)
@@ -62,6 +64,18 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
   override def handler: WindowHandler = NegatumApp.windowHandler
 
   override protected def style: Window.Style = Window.Auxiliary
+
+  def rebootRaspi(): Unit =
+    trySend(raspiSocket, osc.Message("/forward", "/reboot"))
+
+  def rebootHough(): Unit =
+    trySend(houghSocket, osc.Message("/reboot"))
+
+  def rebootNegatum(): Unit =
+    Future {
+      import sys.process._
+      Seq("sudo", "reboot", "now").!
+    } (SoundProcesses.executionContext)
 
   private def trySend(socket: InetSocketAddress, message: osc.Message): Unit = try {
     t.send(message, socket)
@@ -106,25 +120,17 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
       res
     }
 
-    val ggRaspiReboot = button("Reboot") {
-      trySend(raspiSocket, osc.Message("/forward", "/reboot"))
-    }
+    val ggRaspiReboot = button("Reboot")(rebootRaspi())
+
     val ggRaspiShutdown = button("Shutdown") {
       shutdownRaspi()
     }
-    val ggHoughReboot = button("Reboot") {
-      trySend(houghSocket, osc.Message("/reboot"))
-    }
+    val ggHoughReboot = button("Reboot")(rebootHough())
     val ggHoughShutdown = button("Shutdown") {
       shutdownHough()
     }
 
-    val ggNegatumReboot = button("Reboot") {
-      Future {
-        import sys.process._
-        Seq("sudo", "reboot", "now").!
-      } (SoundProcesses.executionContext)
-    }
+    val ggNegatumReboot = button("Reboot")(rebootNegatum())
     val ggNegatumShutdown = button("Shutdown") {
       shutdownNegatum()
     }
@@ -145,11 +151,25 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
     }
 
     def updateVolumes(): Unit = {
-      val mainVolume = {
+      val mainVolume0 = {
         import ggMainVolume.{min, max, value}
         val v = value.linlin(min, max, 0f, 1f)
         v
       }
+
+      val mainVolume: Float = if (!hibernation) mainVolume0 else {
+        val c     = Calendar.getInstance()
+        val hour  = c.get(Calendar.HOUR_OF_DAY)
+        val range = if (silentStartHour < silentStopHour)
+          silentStartHour until silentStopHour
+        else
+          silentStartHour until silentStopHour by -1
+
+        val silent = range.contains(hour)
+        if (silent) println("(silent)")
+        if (silent) 0f else mainVolume0
+      }
+
       sendRattleVolume (mainVolume)
       sendNegatumVolume(mainVolume)
     }
@@ -233,6 +253,19 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
   pack()
   front()
   alwaysOnTop = true
+
+  if (rebootMinutes > 0) {
+    val rebootTimer = new java.util.Timer
+    val rebootDelay: Long = rebootMinutes.toLong * 60 * 1000
+    rebootTimer.schedule(new TimerTask {
+      def run(): Unit = Swing.onEDT {
+        rebootHough()
+        rebootRaspi()
+        Thread.sleep(2000)
+        rebootNegatum()
+      }
+    }, rebootDelay)
+  }
 
   //  override protected def checkClose(): Boolean = false
 }
