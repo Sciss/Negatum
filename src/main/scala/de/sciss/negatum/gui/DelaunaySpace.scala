@@ -26,6 +26,7 @@ import de.sciss.negatum.Binaural.{Person, Radians}
 import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 import de.sciss.negatum.Speakers._
 import de.sciss.numbers.Implicits._
+import de.sciss.pdflitz.SaveAction
 import de.sciss.synth
 import de.sciss.synth.proc.AuralSystem
 import de.sciss.synth.proc.AuralSystem.Client
@@ -358,6 +359,9 @@ object DelaunaySpace {
         add(view, BorderPanel.Position.Center)
         if (videoOption) add(ggMakeVideo, BorderPanel.Position.South )
       }
+
+      new SaveAction(view :: Nil).setupMenu(this)
+
       pack().centerOnScreen()
       open()
 

@@ -39,6 +39,7 @@ libraryDependencies ++= Seq(
   "de.sciss"        %% "kollflitz"                  % kollFlitzVersion,
 //  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion,
   "com.datumbox"    %  "libsvm"                     % libSVMVersion,
+  "de.sciss" %% "pdflitz" % "1.2.2",
   "at.iem"          %% "scalacollider-trace"        % traceVersion % "test"
 )
 
