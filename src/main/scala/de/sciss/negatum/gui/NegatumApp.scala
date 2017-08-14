@@ -19,20 +19,18 @@ import java.util.Locale
 import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
 
-import de.sciss.desktop.impl.{SwingApplicationImpl, WindowHandlerImpl}
-import de.sciss.desktop.{Menu, WindowHandler}
+import de.sciss.desktop.Menu
+import de.sciss.desktop.impl.SwingApplicationImpl
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
 import de.sciss.mellite.gui._
-import de.sciss.mellite.gui.impl.document.DocumentHandlerImpl
 import de.sciss.mellite.{Application, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{Ensemble, SynthGraphObj, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
-import scala.language.existentials
 import scala.swing.Action
 import scala.util.control.NonFatal
 
@@ -41,16 +39,16 @@ import scala.util.control.NonFatal
   * but you should always invoke `at.iem.sysson.Main`, because it first
   * initializes some type extensions that would be missing otherwise.
   */
-object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Application {
+object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") with mellite.Application {
   def LOG_FRAME: Boolean = false // true
 
-  override lazy val windowHandler: WindowHandler = new WindowHandlerImpl(this, menuFactory) {
-    override lazy val usesInternalFrames = {
-      false // XXX TODO: eventually a preferences entry
-    }
-
-    override def usesNativeDecoration: Boolean = Prefs.nativeWindowDecoration.getOrElse(true)
-  }
+//  override lazy val windowHandler: WindowHandler = new WindowHandlerImpl(this, menuFactory) {
+//    override lazy val usesInternalFrames: Boolean = {
+//      false // XXX TODO: eventually a preferences entry
+//    }
+//
+//    override def usesNativeDecoration: Boolean = Prefs.nativeWindowDecoration.getOrElse(true)
+//  }
 
   private final case class Config(
     rattleVolume    : Double  =  0.0.dbamp,
@@ -212,7 +210,7 @@ object NegatumApp extends SwingApplicationImpl("Negatum") with mellite.Applicati
 
   def openBinaural(): Unit = _binaural.open()
 
-  override lazy val documentHandler: DocumentHandler = new DocumentHandlerImpl
+//  override lazy val documentHandler: DocumentHandler = new DocumentHandlerImpl
 
   // ---- Application trait ----
 

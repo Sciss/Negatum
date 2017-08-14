@@ -31,7 +31,6 @@ import de.sciss.synth.proc.{Folder, SoundProcesses}
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
-import scala.language.existentials
 
 object SOMImpl {
   private object Node {

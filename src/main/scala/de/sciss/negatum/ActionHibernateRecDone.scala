@@ -23,7 +23,7 @@ import de.sciss.synth.proc._
 
 object ActionHibernateRecDone extends NamedAction("hibernate-rec-done") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
-    val dsl = DSL[S]
+//    val dsl = DSL[S]
     import universe._
 
     logComp("hibernate-rec-done")
@@ -64,6 +64,8 @@ object ActionHibernateRecDone extends NamedAction("hibernate-rec-done") {
     val config = de.sciss.fscape.stream.Control.Config()
     config.useAsync = false
     logComp("Starting FScape rendering...")
+
+    implicit val ctx = GenContext[S]
 
     /* val renderFSc = */ fsc.run(config)
 //    val selfH     = tx.newHandle(self)

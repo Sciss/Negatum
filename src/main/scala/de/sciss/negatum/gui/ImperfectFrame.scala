@@ -106,7 +106,7 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
       } (SoundProcesses.executionContext)
 
     val fontMachine = new Font(Font.SANS_SERIF, Font.BOLD , 36)
-    val fontButton  = new Font(Font.SANS_SERIF, Font.PLAIN, 24)
+//    val fontButton  = new Font(Font.SANS_SERIF, Font.PLAIN, 24)
 
     def lbMachine(name: String): Label = {
       val res = new Label(name)

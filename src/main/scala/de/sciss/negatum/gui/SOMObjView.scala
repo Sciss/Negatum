@@ -14,41 +14,32 @@
 package de.sciss.negatum
 package gui
 
-import javax.swing.TransferHandler.TransferSupport
-import javax.swing.{SpinnerNumberModel, TransferHandler}
+import javax.swing.{Icon, SpinnerNumberModel}
 
 import de.sciss.desktop
 import de.sciss.icons.raphael
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{CellView, Window, defer, deferTx}
+import de.sciss.lucre.swing.{CellView, View, Window, deferTx}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
 import de.sciss.mellite.gui.{AttrCellView, GUI, ListObjView, ObjView, ViewHasWorkspace}
-import de.sciss.negatum.SVMConfig.{Kernel, Type}
-import de.sciss.processor.Processor
-import de.sciss.swingplus.{ComboBox, GroupPanel, ListView, Separator, Spinner}
+import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Folder, Workspace}
+import de.sciss.synth.proc.Workspace
 
-import scala.collection.breakOut
-import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.ExecutionContext
-import scala.concurrent.stm.Ref
-import scala.swing.event.SelectionChanged
-import scala.swing.{Action, BorderPanel, BoxPanel, CheckBox, Component, FlowPanel, Label, Orientation, ProgressBar, ScrollPane, TextField}
-import scala.util.{Failure, Success}
+import scala.swing.{Action, BorderPanel, Component, FlowPanel, Label, TextField}
 
 object SOMObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = SOM[~]
-  val icon          = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
-  val prefix        = "SOM"
-  def humanName     = "Self Organizing Map"
-  def tpe           = SOM
-  def category      = ObjView.categComposition
-  def hasMakeDialog = true
+  val icon: Icon        = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
+  val prefix            = "SOM"
+  def humanName         = "Self Organizing Map"
+  def tpe               = SOM
+  def category: String  = ObjView.categComposition
+  def hasMakeDialog     = true
 
   private[this] lazy val _init: Unit = ListObjView.addFactory(this)
 
@@ -66,7 +57,7 @@ object SOMObjView extends ListObjView.Factory {
       implicit val ws: Workspace[S] = workspace
       val _view = new MakeViewImpl[S](ok)
       val frame = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
-        val view = _view
+        val view: View[S] = _view
       }
       _view.init(frame)
       frame.init()
@@ -88,7 +79,7 @@ object SOMObjView extends ListObjView.Factory {
       with NonEditable[S]
       /* with NonViewable[S] */ {
 
-    override def obj(implicit tx: S#Tx) = objH()
+    override def obj(implicit tx: S#Tx): SOM[S] = objH()
 
     type E[~ <: stm.Sys[~]] = SOM[~]
 
@@ -102,7 +93,7 @@ object SOMObjView extends ListObjView.Factory {
       val title     = AttrCellView.name(_obj)
       val _view     = SOMView(_obj)
       val frame     = new WindowImpl[S](title) {
-        val view = _view
+        val view: SOMView[S] = _view
       }
       frame.init()
       Some(frame)
@@ -123,9 +114,9 @@ object SOMObjView extends ListObjView.Factory {
 
     def close()(implicit tx: S#Tx): Unit = _frame.dispose()
 
-    private final class ListEntry(val name: String, val folderH: stm.Source[S#Tx, Folder[S]]) {
-      override def toString = name
-    }
+//    private final class ListEntry(val name: String, val folderH: stm.Source[S#Tx, Folder[S]]) {
+//      override def toString: String = name
+//    }
 
     private def guiInit(): Unit = {
       val builder           = SOM.Config()
@@ -165,8 +156,8 @@ object SOMObjView extends ListObjView.Factory {
       mSeed.setMinimum(Long.MaxValue)
       mSeed.setValue(0L)
       mSeed.setStepSize(1L)
-      val ggSeed            = new Spinner(mSeed)
-      val lbSeed            = new Label("RNG Seed:")
+//      val ggSeed            = new Spinner(mSeed)
+//      val lbSeed            = new Label("RNG Seed:")
 
       val lbName = new Label("Name:")
       val ggName = new TextField("SOM", 12)

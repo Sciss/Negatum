@@ -14,7 +14,6 @@
 package de.sciss.negatum
 
 import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
-import de.sciss.synth.{UGenSpec, UndefinedRate}
 import de.sciss.topology.Topology
 
 package object impl {

@@ -38,7 +38,7 @@ import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{AudioCue, Proc, Workspace}
 import de.sciss.synth.{SynthGraph, proc}
-import de.sciss.{numbers, sonogram}
+import de.sciss.{desktop, numbers, sonogram}
 
 import scala.annotation.switch
 import scala.collection.{breakOut, mutable}
@@ -600,7 +600,7 @@ object FeatureAnalysisViewImpl {
       val ggStop = ggTransport.button(Transport.Stop).get
       val ggPlay = ggTransport.button(Transport.Play).get
 
-      GUI.addGlobalKey(ggToggleSel, KeyStrokes.plain + 't')
+      desktop.Util.addGlobalKey(ggToggleSel, KeyStrokes.plain + 't')
       ggStop.peer.getActionMap.put("click", Action(null) {
         val isPlaying = synthRef.single.get.isDefined
         (if (isPlaying) ggStop else ggPlay).doClick()

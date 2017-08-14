@@ -15,29 +15,22 @@ package de.sciss.negatum
 package impl
 
 import java.io.FileOutputStream
-import java.util.concurrent.{TimeoutException, TimeUnit}
+import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import de.sciss.file._
-import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
-import de.sciss.negatum.Rendering.State
+import de.sciss.lucre.stm.Sys
 import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util._
-import de.sciss.processor.Processor
-import de.sciss.processor.impl.ProcessorImpl
-import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc
-import de.sciss.synth.proc.{AudioCue, Folder, Proc, SynthGraphObj, WorkspaceHandle}
+import de.sciss.synth.{SynthGraph, proc}
 import de.sciss.synth.proc.impl.MkSynthGraphSource
+import de.sciss.synth.proc.{AudioCue, Folder, Proc, SynthGraphObj}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.stm.Ref
-import scala.concurrent.{Await, ExecutionContext, blocking}
-import scala.language.higherKinds
+import scala.concurrent.{Await, blocking}
+import scala.util.Random
 import scala.util.control.NonFatal
-import scala.util.{Failure, Random, Success, Try}
 
 //object NegatumRenderingImpl {
 //  /** DEBUGGING*/

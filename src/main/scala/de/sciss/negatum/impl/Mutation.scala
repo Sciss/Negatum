@@ -112,7 +112,7 @@ object Mutation {
             println(TopologyDOT(next))
             println(ex)
             random.setSeed(TEST)
-            val again: SynthGraphT = (tpe: @switch) match {
+            /* val again: SynthGraphT = */ (tpe: @switch) match {
               case 0 => addVertex   (config, pred)
               case 1 => removeVertex(config, pred)
               case 2 => changeVertex(config, pred)

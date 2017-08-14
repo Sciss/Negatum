@@ -20,10 +20,9 @@ import de.sciss.file._
 import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.synth
-import de.sciss.synth.proc.{Action, Durable, Workspace, graph}
-import de.sciss.synth.ugen
 import de.sciss.numbers.Implicits._
+import de.sciss.synth.proc.{Action, Workspace, graph}
+import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
 
@@ -96,7 +95,7 @@ object Hibernation {
     folder("pool-1").in(fPool)
     folder("pool-2").in(fPool)
 
-    val bSide   = boolean(false)
+    val bSide   = boolean(value = false)
 
     val ensHibListen = ensemble("ens-hibernate-listen").in(f)(initPlay = false)
     ensHibListen.addTo(ensMain)
@@ -182,10 +181,10 @@ object Hibernation {
       val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep)
 
       def mkLoop(fadeLen: Int, in: GE, inLen: GE): GE = {
-        val fadeIn  = in.take(fadeLen) * Line(0, 1, len = fadeLen).sqrt
+        val fadeIn  = in.take(fadeLen) * Line(0, 1, length = fadeLen).sqrt
         val susLen  = inLen - 2 * fadeLen
         val fadeOut = in.drop(fadeLen) *
-          (DC(1).take(susLen) ++ Line(1, 0, len = fadeLen).sqrt)
+          (DC(1).take(susLen) ++ Line(1, 0, length = fadeLen).sqrt)
         val out     = fadeOut + (DC(0).take(susLen) ++ BufferDisk(fadeIn))
         out
       }

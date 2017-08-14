@@ -26,7 +26,7 @@ import Composition.{logComp, mkDateString}
 
 object ActionSOMTimeline extends NamedAction("som-timeline") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
-    val dsl = DSL[S]
+//    val dsl = DSL[S]
     import universe._
     val attr = self.attr
 

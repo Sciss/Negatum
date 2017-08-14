@@ -18,7 +18,6 @@ package impl
 import javax.swing.TransferHandler
 import javax.swing.TransferHandler.TransferSupport
 
-import de.sciss.desktop.impl.UndoManagerImpl
 import de.sciss.icons.raphael
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
@@ -29,12 +28,12 @@ import de.sciss.synth.proc.Workspace
 
 import scala.concurrent.stm.Ref
 import scala.swing.{Action, Alignment, BorderPanel, Component, FlowPanel, Label, ProgressBar, Swing}
-import scala.util.{Success, Failure}
+import scala.util.{Failure, Success}
 
 object SVMModelViewImpl {
   def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                         workspace: Workspace[S]): SVMModelView[S] = {
-    implicit val undo = new UndoManagerImpl
+//    implicit val undo = new UndoManagerImpl
     val res = new Impl[S](tx.newHandle(m))
     res.init(m)
   }

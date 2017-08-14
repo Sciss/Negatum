@@ -17,13 +17,11 @@ package impl
 import java.util.concurrent.TimeUnit
 
 import de.sciss.lucre.event.impl.ConstObjImpl
-import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.expr.{BooleanObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.negatum.SVMConfig.{Type, Weight}
-import de.sciss.negatum.Rendering.State
 import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -34,10 +32,8 @@ import libsvm.{svm, svm_model, svm_node, svm_problem}
 import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.concurrent.duration.Duration
-import scala.concurrent.stm.Ref
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 
 object SVMModelImpl {
   def train[S <: Sys[S]](n: ISeq[Negatum[S]], config: SVMConfig, numCoeff: Int)

@@ -17,14 +17,6 @@ package impl
 import java.text.NumberFormat
 import java.util.Locale
 
-import de.sciss.synth.UGenSpec.{Argument, ArgumentType, Input, Output, SignalShape}
-import de.sciss.synth.ugen.{BinaryOpUGen, Constant, UnaryOpUGen}
-import de.sciss.synth.{UGenGraph, UGenSpec, UndefinedRate, audio, control, scalar, demand}
-
-import scala.collection.{breakOut, SortedMap}
-import scala.language.implicitConversions
-import scala.util.control.NonFatal
-
 object TopologyDOT  {
   private val nameBoldFont: Boolean   = true
   private val nameFontSize: Int       = 16

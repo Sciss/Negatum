@@ -13,9 +13,8 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.event.Observable
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.negatum.SVMModel.Stats
 import de.sciss.negatum.impl.{SVMModelImpl => Impl}
 import de.sciss.processor.Processor
