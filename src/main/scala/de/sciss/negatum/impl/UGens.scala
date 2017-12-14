@@ -64,7 +64,7 @@ object UGens {
       val in2   = in1.copy(arg = "b")
       val out   = UGenSpec.Output(name = None, shape = UGenSpec.SignalShape.Generic, variadic = None)
       UGenSpec(name = name, attr = Set.empty, rates = rates, args = Vector(arg1, arg2),
-        inputs = Vector(in1, in2), outputs = Vector(out), doc = None)
+        inputs = Vector(in1, in2), outputs = Vector(out), doc = None, elemOption = None)
     }
   }
 
@@ -81,7 +81,7 @@ object UGens {
       val in1   = UGenSpec.Input(arg = "a", tpe = UGenSpec.Input.Single)
       val out   = UGenSpec.Output(name = None, shape = UGenSpec.SignalShape.Generic, variadic = None)
       UGenSpec(name = name, attr = Set.empty, rates = rates, args = Vector(arg1),
-        inputs = Vector(in1), outputs = Vector(out), doc = None)
+        inputs = Vector(in1), outputs = Vector(out), doc = None, elemOption = None)
     }
   }
 
@@ -107,7 +107,7 @@ object UGens {
 
       UGenSpec(name = c.productPrefix, attr = Set.empty,
         rates = UGenSpec.Rates.Implied(audio, UGenSpec.RateMethod.Custom("apply")),
-        args = args, inputs = inputs, outputs = Vector(out), doc = None)
+        args = args, inputs = inputs, outputs = Vector(out), doc = None, elemOption = None)
     }
   }
 
@@ -120,14 +120,14 @@ object UGens {
     val inputs = args.map(a => UGenSpec.Input(arg = a.name, tpe = UGenSpec.Input.Single))
     UGenSpec(name = s"Sum$n", attr = Set.empty,
       rates = UGenSpec.Rates.Implied(audio, UGenSpec.RateMethod.Custom("apply")),
-      args = args, inputs = inputs, outputs = Vector(out), doc = None)
+      args = args, inputs = inputs, outputs = Vector(out), doc = None, elemOption = None)
   }
 
   private val moreUGens: Vec[UGenSpec] = {
     val out   = UGenSpec.Output(name = None, shape = UGenSpec.SignalShape.Generic, variadic = None)
     val rate  = UGenSpec.Rates.Implied(scalar, UGenSpec.RateMethod.Custom("apply"))
     val spec  = UGenSpec(name = "Nyquist", attr = Set.empty, rates = rate, inputs = Vector.empty,
-      outputs = Vector(out), doc = None, args = Vector.empty)
+      outputs = Vector(out), doc = None, args = Vector.empty, elemOption = None)
     Vector(spec)
   }
 

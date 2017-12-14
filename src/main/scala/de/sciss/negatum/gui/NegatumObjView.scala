@@ -21,7 +21,8 @@ import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.Window
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
-import de.sciss.mellite.gui.impl.{AudioCueObjView, ListObjViewImpl, ObjViewImpl, WindowImpl}
+import de.sciss.mellite.gui.impl.audiocue.AudioCueObjView
+import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
 import de.sciss.mellite.gui.{AttrCellView, ListObjView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.synth.proc.{AudioCue, Workspace}

@@ -1,9 +1,9 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.4.0-SNAPSHOT"
+version            := "0.4.0"
 organization       := "de.sciss"
-scalaVersion       := "2.12.3"
+scalaVersion       := "2.12.4"
 description        := "Genetic Algorithms"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
 licenses           := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
@@ -12,12 +12,12 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.16.0"
-lazy val soundProcessesVersion  = "3.13.0"
-lazy val scalaColliderVersion   = "1.22.4"
-lazy val ugensVersion           = "1.16.4"
+lazy val melliteVersion         = "2.19.0"
+lazy val soundProcessesVersion  = "3.16.1"
+lazy val scalaColliderVersion   = "1.23.0"
+lazy val ugensVersion           = "1.17.1"
 lazy val dspVersion             = "1.2.3"
-lazy val strugatzkiVersion      = "2.15.0"
+lazy val strugatzkiVersion      = "2.17.0"
 lazy val fileCacheVersion       = "0.3.4"
 lazy val fileUtilVersion        = "1.1.3"
 lazy val kollFlitzVersion       = "0.2.1"
@@ -25,7 +25,7 @@ lazy val libSVMVersion          = "3.22"
 
 // ---- test dependencies ----
 
-lazy val traceVersion           = "0.2.1"
+lazy val traceVersion           = "0.3.0"
 
 libraryDependencies ++= Seq(
   "de.sciss"        %% "mellite"                    % melliteVersion,
