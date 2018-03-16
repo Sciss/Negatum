@@ -1,7 +1,7 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.4.0"
+version            := "0.5.0"
 organization       := "de.sciss"
 scalaVersion       := "2.12.4"
 description        := "Genetic Algorithms"
@@ -12,8 +12,8 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.19.0"
-lazy val soundProcessesVersion  = "3.16.1"
+lazy val melliteVersion         = "2.21.0"
+lazy val soundProcessesVersion  = "3.17.0"
 lazy val scalaColliderVersion   = "1.23.0"
 lazy val ugensVersion           = "1.17.1"
 lazy val dspVersion             = "1.2.3"

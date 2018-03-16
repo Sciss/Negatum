@@ -14,9 +14,9 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.topology.Topology
+import de.sciss.topology
 
 /** The edge points from '''consuming''' (source) element to '''input''' element (target).
   * Therefore, the `sourceVertex`'s `inlet` will be occupied by `targetVertex`
   */
-case class Edge(sourceVertex: Vertex, targetVertex: Vertex, inlet: String) extends Topology.Edge[Vertex]
+case class Edge(sourceVertex: Vertex, targetVertex: Vertex, inlet: String) extends topology.Edge[Vertex]
