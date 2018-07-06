@@ -189,7 +189,7 @@ object SOMImpl {
 
   private object SpaceHelper {
     implicit object TwoDim extends SpaceHelper[IntSpace.TwoDim] {
-      def space = IntSpace.TwoDim
+      def space: IntSpace.TwoDim = IntSpace.TwoDim
 
       def toPoint(index: Int, config: Config): IntPoint2D = {
         val ext         = config.extent
@@ -214,18 +214,18 @@ object SOMImpl {
     }
 
     implicit object ThreeDim extends SpaceHelper[IntSpace.ThreeDim] {
-      def space = IntSpace.ThreeDim
+      def space: IntSpace.ThreeDim = IntSpace.ThreeDim
 
       def toPoint(index: Int, config: Config): IntPoint3D = {
         val ext         = config.extent
         val grid        = config.gridStep
         val ext2        = ext << 1
         val numLatSide  = ext2 / grid
-        val x           = ((index % numLatSide) * grid) // - ext
+        val x           = (index % numLatSide) * grid // - ext
         val dec1        = index / numLatSide
-        val y           = ((dec1  % numLatSide) * grid) // - ext
+        val y           = (dec1  % numLatSide) * grid // - ext
         val dec2        = dec1 / numLatSide
-        val z           = ( dec2                * grid) // - ext
+        val z           = dec2                * grid // - ext
         IntPoint3D(x = x, y = y, z = z)
       }
 
@@ -253,7 +253,7 @@ object SOMImpl {
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = {
     import config.{extent, gridStep, seed}
 
-    val random      = new util.Random(seed)
+    val random      = new scala.util.Random(seed)
     val dim         = config.dimensions
     val feat        = config.features
     require (dim > 0 && extent > 1 && gridStep > 0 && gridStep <= extent)
@@ -294,11 +294,11 @@ object SOMImpl {
     if (dim == 2) {
       val quad  = IntSquare(extent, extent, extent)
       val map   = SkipOctree.empty[S, TwoDim, Node[S, TwoDim]](quad)
-      new Impl(id, config, lattice = lattice, map = map, list = list)
+      new Impl[S, TwoDim](id, config, lattice = lattice, map = map, list = list)
     } else if (dim == 3) {
       val cube  = IntCube(extent, extent, extent, extent)
       val map   = SkipOctree.empty[S, ThreeDim, Node[S, ThreeDim]](cube)
-      new Impl(id, config, lattice = lattice, map = map, list = list)
+      new Impl[S, ThreeDim](id, config, lattice = lattice, map = map, list = list)
     } else {
       ???
     }
@@ -334,10 +334,10 @@ object SOMImpl {
     import config.{dimensions => dim}
     if (dim == 2) {
       val map = SkipOctree.read  [S, TwoDim, Node[S, TwoDim]](in, access)
-      new Impl(id, config, lattice = lattice, map = map, list = list)
+      new Impl[S, TwoDim](id, config, lattice = lattice, map = map, list = list)
     } else if (dim == 3) {
       val map = SkipOctree.read[S, ThreeDim, Node[S, ThreeDim]](in, access)
-      new Impl(id, config, lattice = lattice, map = map, list = list)
+      new Impl[S, ThreeDim](id, config, lattice = lattice, map = map, list = list)
     } else {
       ???
     }
@@ -521,7 +521,7 @@ object SOMImpl {
   private def log(what: => String): Unit = if (DEBUG) println(what)
 
   private final class Run(val features: Array[Float], val folderIdx: Int) {
-    @volatile var index = -1
+    @volatile var index: Int = -1
   }
 
   private final class AddAllImpl[S <: Sys[S], D <: Space[D]](somH: stm.Source[S#Tx, Impl[S, D]],
@@ -791,7 +791,7 @@ object SOMImpl {
       val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
       import spaceHelper.space
       val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
-      val out         = new Impl(id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
+      val out         = new Impl[Out, D](id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
       context.defer(this, out) {
         copyList(list, listOut, out)
         copyTree(map , mapOut , out)

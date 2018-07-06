@@ -1,9 +1,9 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.5.0"
+version            := "0.5.1-SNAPSHOT"
 organization       := "de.sciss"
-scalaVersion       := "2.12.4"
+scalaVersion       := "2.12.6"
 description        := "Genetic Algorithms"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
 licenses           := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
@@ -20,7 +20,7 @@ lazy val dspVersion             = "1.2.3"
 lazy val strugatzkiVersion      = "2.17.0"
 lazy val fileCacheVersion       = "0.3.4"
 lazy val fileUtilVersion        = "1.1.3"
-lazy val kollFlitzVersion       = "0.2.1"
+lazy val kollFlitzVersion       = "0.2.2"
 lazy val libSVMVersion          = "3.22"
 
 // ---- test dependencies ----

@@ -19,7 +19,7 @@ object SOMBatchTest extends App {
   val factory = BerkeleyDB.factory(dir)
   implicit val cursor = Durable(BerkeleyDB.tmp())
 
-  val r  = new util.Random(1L)
+  val r  = new scala.util.Random(1L)
   val t1 = System.currentTimeMillis()
   val somH = cursor.root { implicit tx =>
     val config = SOM.Config()
