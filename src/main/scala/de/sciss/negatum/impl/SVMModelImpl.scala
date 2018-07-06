@@ -2,7 +2,7 @@
  *  SVMModelImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -204,7 +204,7 @@ object SVMModelImpl {
       checkAborted()
 
       val futRes = SoundProcesses.atomic[S, Trained[S]] { implicit tx =>
-        val id    = tx.newID()
+        val id    = tx.newId()
         val model = new Impl[S](id, config, svmModel, stats): SVMModel[S]
         tx.newHandle(model)
       }
@@ -221,13 +221,13 @@ object SVMModelImpl {
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): SVMModel[S] = {
     val constCookie = in.readByte()
     if (constCookie != 3) sys.error(s"Expected constant (3) identifier, found $constCookie")
-    val id        = tx.readID(in, access)
+    val id        = tx.readId(in, access)
     val ver       = in.readByte()
     if (ver != SER_VERSION) sys.error(s"Unsupported serialized version $ver (expectd $SER_VERSION)")
     val config    = SVMConfig.serializer.read(in)
     val m         = readModel(in, config)
     val stats     = Stats.serializer    .read(in)
-    new Impl(id, config, m, stats)
+    new Impl[S](id, config, m, stats)
   }
 
   private def readDoubleArray(in: DataInput): Array[Double] = {
@@ -444,7 +444,7 @@ object SVMModelImpl {
     }
   }
 
-  private final class Impl[S <: Sys[S]](val id: S#ID, val config: SVMConfig, peer: svm_model,
+  private final class Impl[S <: Sys[S]](val id: S#Id, val config: SVMConfig, peer: svm_model,
                                         val stats: Stats)
     extends SVMModel[S] with ConstObjImpl[S, Any] {
 
@@ -477,6 +477,6 @@ object SVMModelImpl {
     }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
-      new Impl[Out](txOut.newID(), config = config, peer = peer, stats = stats)
+      new Impl[Out](txOut.newId(), config = config, peer = peer, stats = stats)
   }
 }

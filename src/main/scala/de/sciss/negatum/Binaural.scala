@@ -2,7 +2,7 @@
  *  Binaural.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -55,7 +55,7 @@ object Binaural {
 
   final case class Spk(num: Int) extends AnyVal {
     /** Zero-based channel offset */
-    def toIndex = num - 1
+    def toIndex: Int = num - 1
   }
 
   final val Channels: Vec[Spk] = ChannelToMatrixMap.keysIterator.toVector.sortBy(_.num)
@@ -75,7 +75,7 @@ object Binaural {
     require(t % 15 == 0 && t >= 0 && t < 360)
     require(p % 15 == 0 && ((p >= 0 && p <= 90) || (p >= 315 && p < 360)))
 
-    val angleRadians = t.toRadians
+    val angleRadians: Float = t.toRadians
 
 //    def toPolar: Polar = LatLon(lat = if (p < 90) p else p - 360, lon = t).toPolar
 //    def toCartesian: Pt3 = toPolar.toCartesian
@@ -122,7 +122,7 @@ object Binaural {
       import numbers.Implicits._
       val d = distance.clip(1.5, 5.8)
       val decibels = 1.1034 * d.squared - 12.6433 * d + 14.3775
-      (decibels + 1.2).dbamp
+      (decibels + 1.2).dbAmp
     }
 
     override def toString = f"Position(${Samples(index)}, distance = $distance%1.2f meters"

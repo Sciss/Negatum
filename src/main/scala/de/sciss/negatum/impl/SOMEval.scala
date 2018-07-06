@@ -2,7 +2,7 @@
  *  SOMEval.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -19,7 +19,7 @@ import de.sciss.synth.io.AudioFile
 
 object SOMEval {
   final class Weight(val spectral: Array[Double], val temporal: Array[Double]) {
-    override def toString = spectral.map(d => f"$d%1.3f").mkString("[", ", ", "]")
+    override def toString: String = spectral.map(d => f"$d%1.3f").mkString("[", ", ", "]")
   }
 
   def dct(in: Array[Double], off: Int, len: Int, numCoeff: Int): Array[Double] = {

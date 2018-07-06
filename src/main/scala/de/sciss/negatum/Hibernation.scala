@@ -2,7 +2,7 @@
  *  Hibernation.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -49,7 +49,7 @@ object Hibernation {
   )
 
   def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
-    implicit val tx = TxnLike.wrap(itx)
+    implicit val tx: TxnLike = TxnLike.wrap(itx)
     actions.foreach { a =>
       Action.registerPredef(a.name, a)
     }
@@ -110,7 +110,7 @@ object Hibernation {
 
       val indexIn     = "bus-in".ir
       val numCh       = 1 // NumChannels(indicesIn)
-      val in          = PhysicalIn.ar(indices = indexIn) \ 0
+      val in          = PhysicalIn.ar(indices = indexIn).out(0)
       val isLoud      = Impulse.kr(0)
       val run         = SetResetFF.kr(trig = isLoud, reset = 0)
       val inDly       = in // DelayN.ar(in, maxDelayTime = 0.5, delayTime = 0.5)
@@ -201,9 +201,9 @@ object Hibernation {
       def normalize(in: GE): GE = {
         val abs       = in.abs
         val run       = RunningMax(abs)
-        val minAmp    = -60f.dbamp: GE    // bloody IntelliJ highlight bug
+        val minAmp    = -60.0.dbAmp: GE
         val max       = run.last.max(minAmp)
-        val headroom  = -0.2.dbamp
+        val headroom  = -0.2.dbAmp
         val gain      = max.reciprocal * headroom
         val buf       = BufferDisk(in)
         val sig       = buf * gain

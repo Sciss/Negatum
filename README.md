@@ -10,7 +10,7 @@ the same name that was part of the exhibition "Imperfect Reconstruction".
 In the future, its extensions to SoundProcesses will become part of
 SoundProcesses/Mellite.
 
-This project is (C)opyright 2016 by Hanns Holger Rutz. All rights reserved.
+This project is (C)opyright 2016&ndash;2018 by Hanns Holger Rutz. All rights reserved.
 It is released under the [GNU General Public License](https://raw.github.com/Sciss/Negatum/master/LICENSE) v3+ and comes with absolutely no warranties. 
 To contact the author, send an email to `contact at sciss.de`
 

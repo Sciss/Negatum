@@ -2,7 +2,7 @@
  *  SOMViewImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -17,9 +17,10 @@ package impl
 
 import java.awt.{Color, RenderingHints}
 import java.awt.datatransfer.Transferable
+import java.awt.geom.Path2D
+
 import javax.swing.TransferHandler
 import javax.swing.TransferHandler.TransferSupport
-
 import de.sciss.icons.raphael
 import de.sciss.lucre.geom.IntPoint2D
 import de.sciss.lucre.stm
@@ -82,13 +83,13 @@ object SOMViewImpl {
       val actionDragPicked = Action(null) {}
       actionDragPicked.enabled = false
 
-      val ggDragPicked  = new Button(actionDragPicked) with ButtonCanDrag {
-        val iconFun   = raphael.Shapes.View _
+      val ggDragPicked: Button = new Button(actionDragPicked) with ButtonCanDrag {
+        val iconFun: Path2D => Unit = raphael.Shapes.View
         peer.putClientProperty("styleId", "icon-space")
         icon          = GUI.iconNormal  (iconFun)
         disabledIcon  = GUI.iconDisabled(iconFun)
 
-        val sourceActions = TransferHandler.COPY | TransferHandler.LINK
+        val sourceActions: Int = TransferHandler.COPY | TransferHandler.LINK
 
         protected def sourceAction(modifiers: Int): Int = TransferHandler.LINK
 
@@ -100,7 +101,7 @@ object SOMViewImpl {
           }
       }
 
-      val ggPick = new Component {
+      val ggPick: Component = new Component {
 
         private var dragPt      = Option.empty[Point]
         private var dndStarted  = false
@@ -129,8 +130,8 @@ object SOMViewImpl {
           pointsDiscovered.foreach { pt =>
             import numbers.Implicits._
             val side1 = (extent << 1) - 1
-            val x     = (pt.x.clip(0, w1).linlin(0, side1, 0, w1) + 0.5).toInt
-            val y     = (pt.y.clip(0, h1).linlin(0, side1, 0, h1) + 0.5).toInt
+            val x     = (pt.x.clip(0, w1).linLin(0, side1, 0, w1) + 0.5).toInt
+            val y     = (pt.y.clip(0, h1).linLin(0, side1, 0, h1) + 0.5).toInt
             g.fillOval(x - 3, y - 3, 6, 6)
           }
         }
@@ -149,10 +150,10 @@ object SOMViewImpl {
         reactions += {
           case e @ MouseMoved  (_, pt, mod) => drag(e, pt, mod)
           case e @ MouseDragged(_, pt, mod) => drag(e, pt, mod)
-          case MouseReleased(_, pt, mod, _, _) =>
+          case MouseReleased(_, _, _, _, _) =>
             dragPt      = None
             dndStarted  = false
-          case MousePressed(_, pt, mod, _, false) =>
+          case MousePressed(_, pt, _, _, false) =>
             dragPt      = Some(pt)
             dndStarted  = false
 
@@ -162,8 +163,8 @@ object SOMViewImpl {
               val h1    = peer.getHeight - 1
               val side1 = (extent << 1) - 1
               import numbers.Implicits._
-              val x   = (pt.x.clip(0, w1).linlin(0, w1, 0, side1) + 0.5).toInt
-              val y   = (pt.y.clip(0, h1).linlin(0, h1, 0, side1) + 0.5).toInt
+              val x   = (pt.x.clip(0, w1).linLin(0, w1, 0, side1) + 0.5).toInt
+              val y   = (pt.y.clip(0, h1).linLin(0, h1, 0, side1) + 0.5).toInt
               val qp  = Vector.tabulate(som.config.dimensions) { d =>
                 if (d == 0) x else if (d == 1) y else 0
               }

@@ -2,7 +2,7 @@
  *  SOMImpl.scala
  *  (SVMModel)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -285,7 +285,7 @@ object SOMImpl {
         j += 1
       }
     }
-    val id          = tx.newID()
+    val id          = tx.newId()
     val occSz       = (latSz + 31) >>> 5
     val occupied0   = new Array[Int](occSz) // all zero which is non-occupied
     val lattice     = tx.newVar[Lattice](id, new Lattice(iter = 0, data = lattice0, occupied = occupied0))
@@ -326,7 +326,7 @@ object SOMImpl {
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): SOM[S] = {
     val ver     = in.readByte()
     if (ver != SER_VERSION) sys.error(s"Unexpected version $ver -- expected $SER_VERSION")
-    val id      = tx.readID(in, access)
+    val id      = tx.readId(in, access)
     val config  = Config.serializer.read(in)
     val lattice = tx.readVar[Lattice](id, in)
     val list    = SkipList.Map.read[S, Int, Value[S]](in, access)
@@ -367,7 +367,7 @@ object SOMImpl {
     in.iterator.foreach { case (index, valueIn) =>
       val objOut    = context(valueIn.obj)
       val valueOut  = new Value(features = valueIn.features, obj = objOut)
-      out.add(index -> valueOut)
+      out.put(index, valueOut)
     }
   }
 
@@ -624,7 +624,7 @@ object SOMImpl {
     }
   }
 
-  private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#ID, val config: Config,
+  private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#Id, val config: Config,
                                                        lattice: S#Var[Lattice],
                                                        list: ListImpl[S], map: TreeImpl[S, D])
                                                       (implicit spaceHelper: SpaceHelper[D])
@@ -670,7 +670,7 @@ object SOMImpl {
 //      }
 
       val newNode   = Node(newPoint, obj)
-      /* val newInList = */ list.add(newIndex -> newValue) // .forall(_ != newValue)
+      /* val newInList = */ list.put(newIndex, newValue) // .forall(_ != newValue)
       /* val newInMap  = */ map .add(newNode)
       // assert(map.isDefinedAt(newPoint))
 
@@ -691,7 +691,7 @@ object SOMImpl {
       log(f"-- will add    $obj%3s at index $index%6d / $newPoint")
       val newNode   = Node(newPoint, obj)
       val newValue  = new Value(features, obj)
-      /* val newInList = */ list.add(index -> newValue) // .forall(_ != newValue)
+      /* val newInList = */ list.put(index, newValue) // .forall(_ != newValue)
       /* val newInMap  = */ map .add(newNode)
     }
 
@@ -721,7 +721,7 @@ object SOMImpl {
           val newIndex  = indexed.index
           val newPoint  = spaceHelper.toPoint(newIndex, config)
           val newNode   = Node(newPoint, obj)
-          /* val newInList = */ list.add(newIndex -> value) // .forall(_ != value)
+          /* val newInList = */ list.put(newIndex, value) // .forall(_ != value)
           /* val newInMap = */ map .add(newNode)
           // assert(map.isDefinedAt(newPoint))
           lat.setOccupied(newIndex, state = true)
@@ -769,7 +769,7 @@ object SOMImpl {
     def changed: EventLike[S, Any] = Dummy[S, Any]
 
     def write(out: DataOutput): Unit = {
-      out.writeInt(tpe.typeID)
+      out.writeInt(tpe.typeId)
       out.writeByte(SER_VERSION)
       id     .write(out)
       Config.serializer.write(config, out)
@@ -786,7 +786,7 @@ object SOMImpl {
     }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
-      val idOut       = txOut.newID()
+      val idOut       = txOut.newId()
       val latticeOut  = txOut.newVar(idOut, lattice())
       val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
       import spaceHelper.space

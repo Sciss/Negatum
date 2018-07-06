@@ -2,7 +2,7 @@
  *  Evaluation.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -47,7 +47,7 @@ object Evaluation {
       //        println(s"DEBUG $audioF")
       //      }
       val sim = if (pen <= 0 || minVertices == maxVertices) sim0 else
-        sim0 - numVertices.clip(minVertices, maxVertices).linlin(minVertices, maxVertices, 0, pen)
+        sim0 - numVertices.clip(minVertices, maxVertices).linLin(minVertices, maxVertices, 0, pen)
       sim.toFloat // new Evaluated(cH, sim)
     }
     res.onComplete(_ =>
@@ -90,7 +90,7 @@ object Evaluation {
   private def bounce2(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
                      (implicit exec: ExecutionContext): Processor[Any] = {
     type I  = InMemory
-    implicit val iCursor = inMemory
+    implicit val iCursor: I = inMemory
 
     // val exp = ExprImplicits[I]
 

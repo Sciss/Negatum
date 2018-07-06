@@ -90,9 +90,9 @@ object MorassTest {
       //   /  \    /          \
       //  /    \  /            \
       //
-      val len  = (synthesizeWinAmt * inputWinSize + 0.5).toInt
-      val lenH = len >> 1
-      val arr = GenWindow(size = len, shape = synthesizeWinType)
+//      val len  = (synthesizeWinAmt * inputWinSize + 0.5).toInt
+//      val lenH = len >> 1
+//      val arr = GenWindow(size = len, shape = synthesizeWinType)
       // GenWindow.Rectangle.fill(arr, lenH, inputWinSize - len)
       ???
     }
@@ -155,7 +155,7 @@ object MorassTest {
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val shiftX    = prod.translate
     //    RepeatWindow(shiftX).poll(0.5, "shift-x")
-    val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
+    val amp       = (ampModulation: GE).linLin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = inputWinSize /* winSize */)
     val shiftXPad = RepeatWindow(in = shiftX, num = inputWinSize /* winSize */)
 
@@ -175,8 +175,8 @@ object MorassTest {
   import numbers.Implicits._
 
   object Gain {
-    val immediate  = Gain( 0.0.dbamp, normalized = false)
-    val normalized = Gain(-0.2.dbamp, normalized = true )
+    val immediate  = Gain( 0.0.dbAmp, normalized = false)
+    val normalized = Gain(-0.2.dbAmp, normalized = true )
   }
 
   object OutputSpec {

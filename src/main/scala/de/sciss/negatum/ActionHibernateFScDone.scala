@@ -2,7 +2,7 @@
  *  ActionHibernateFScDone.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -17,15 +17,15 @@ import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.{BooleanObj, IntObj, StringObj}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.mellite.gui.TimelineObjView
+import de.sciss.negatum.Hibernation.logComp
+import de.sciss.numbers.Implicits._
+import de.sciss.span.Span
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Action, AudioCue, Ensemble, FadeSpec, Folder, ObjKeys, Proc, TimeRef, Timeline, graph}
-import Hibernation.logComp
-import de.sciss.mellite.gui.TimelineObjView
-import de.sciss.span.Span
 import de.sciss.synth.{Curve, SynthGraph}
-import de.sciss.numbers.Implicits._
 
 object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
@@ -33,7 +33,7 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
     import universe._
 
     value match {
-      case util.Success(_) =>
+      case scala.util.Success(_) =>
         logComp("FScape Rendering success.")
         val attr = self.attr
         val Some(pool)      = attr.$[Folder]    ("pool")
@@ -101,9 +101,9 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         // it won't reset play position for the timeline to zero!
         ensPlay.play()
 
-      case util.Failure(FScape.Rendering.Cancelled()) =>
+      case scala.util.Failure(FScape.Rendering.Cancelled()) =>
         println("Cancelled.")
-      case util.Failure(ex) =>
+      case scala.util.Failure(ex) =>
         println("FScape Rendering failed:")
         ex.printStackTrace()
       case other =>
@@ -123,8 +123,8 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         proc.outputs.add(Proc.mainOut)
         val procG = SynthGraph {
           import de.sciss.synth._
-          import ugen.Out
           import graph.Ops._
+          import ugen.Out
           val sig   = graph.VDiskIn  .ar(Proc.graphAudio)
           val gain  = 1.0 // ObjKeys.attrGain.kr(1.0)
           // val mute  = ObjKeys.attrMute.kr(0.0)
@@ -146,8 +146,8 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         val fadeOutLen  = math.min(tlFrames/2, (20 * TimeRef.SampleRate).toLong)
 //        val fadeInVal   = FadeSpec(numFrames = fadeInLen , curve = Curve.welch)
 //        val fadeOutVal  = FadeSpec(numFrames = fadeOutLen, curve = Curve.welch)
-        val fadeInVal   = FadeSpec(numFrames = fadeInLen , curve = Curve.exp, floor = -40.dbamp)
-        val fadeOutVal  = FadeSpec(numFrames = fadeOutLen, curve = Curve.exp, floor = -40.dbamp)
+        val fadeInVal   = FadeSpec(numFrames = fadeInLen , curve = Curve.exp, floor = -40.dbAmp)
+        val fadeOutVal  = FadeSpec(numFrames = fadeOutLen, curve = Curve.exp, floor = -40.dbAmp)
 
         pAttr.put(Proc.graphAudio     , c)
         pAttr.put(ObjKeys.attrFadeIn  , FadeSpec.Obj.newVar[S](fadeInVal ))

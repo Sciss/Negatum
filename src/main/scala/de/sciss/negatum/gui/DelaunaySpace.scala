@@ -2,7 +2,7 @@
  *  DelaunaySpace.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -52,12 +52,12 @@ object DelaunaySpace {
     cfg.audioBusChannels  = 512
     cfg.deviceName        = Some("Negatum")
     atomic { itx =>
-      implicit val tx = Txn.wrap(itx)
+      implicit val tx: Txn = Txn.wrap(itx)
       as.addClient(new Client {
         def auralStarted(s: Server)(implicit tx: Txn): Unit = {
           import TxnLike.peer
-          s.nextNodeID()  // XXX TODO -- ugly
-          s.nextNodeID()
+          s.nextNodeId()  // XXX TODO -- ugly
+          s.nextNodeId()
           synthOpt() = Some(mkSynth(s))
           import synth.swing.Implicits._
           Swing.onEDT {
@@ -151,11 +151,11 @@ object DelaunaySpace {
           repaint()
         case e: MousePressed =>
           ptBin1 = e.point
-        case e: MouseDragged =>
+        case _: MouseDragged =>
         case e: MouseReleased =>
 //          synthOpt.single().foreach(x => println(x.peer.server.counts))
           atomic { itx =>
-            implicit val tx = Txn.wrap(itx)
+            implicit val tx: Txn = Txn.wrap(itx)
             as.serverOption.foreach { s =>
               val w     = peer.getWidth
               val h     = peer.getHeight
@@ -241,11 +241,11 @@ object DelaunaySpace {
         if (ptMouse.x >= 0) {
           val px = (ptMouse.x - pad) / scale + minX
           val py = (ptMouse.y - pad) / scale + minY
-          val nx = px.linlin(minX, maxX, 0, 1)
-          val ny = py.linlin(minY, maxY, 0, 1)
+          val nx = px.linLin(minX, maxX, 0, 1)
+          val ny = py.linLin(minY, maxY, 0, 1)
 
           stm.atomic { itx =>
-            implicit val tx = Txn.wrap(itx)
+            implicit val tx: Txn = Txn.wrap(itx)
             synthOpt.get(itx).foreach { n =>
               n.set("x" -> nx, "y" -> ny)
             }
@@ -344,8 +344,8 @@ object DelaunaySpace {
       val b = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
       val g = b.createGraphics()
       for (i <- 1 to 100) {
-        val px = (i.linlin(1, 100, pad, pad + wi) + 0.5).toInt
-        val py = (i.linlin(100, 1, pad, pad + hi) + 0.5).toInt
+        val px = (i.linLin(1, 100, pad, pad + wi) + 0.5).toInt
+        val py = (i.linLin(100, 1, pad, pad + hi) + 0.5).toInt
         view.ptMouse = new Point(px, py)
         view.paintComponent(g)
         ImageIO.write(b, "png", dir / s"frame-$i.png")
@@ -365,7 +365,7 @@ object DelaunaySpace {
         if (exitOnClose) sys.exit()
         else {
           atomic { itx =>
-            implicit val tx = Txn.wrap(itx)
+            implicit val tx: Txn = Txn.wrap(itx)
             binOpt.get(itx).foreach(_.free())
           }
         }

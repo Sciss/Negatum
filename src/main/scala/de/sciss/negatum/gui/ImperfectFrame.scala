@@ -2,7 +2,7 @@
  *  ImperfectFrame.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -137,15 +137,15 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
 
     def sendRattleVolume(mul: Float): Unit = {
       import ggRattleVolume.{value, min, max}
-      val v = value.linlin(min, max, 0f, mul)
+      val v = value.linLin(min, max, 0f, mul)
       trySend(rattleSocket, osc.Message("/ampImp", v))
     }
 
     def sendNegatumVolume(mul: Float): Unit = {
       import ggNegatumVolume.{value, min, max}
-      val v = value.linlin(min, max, 0f, mul)
+      val v = value.linLin(min, max, 0f, mul)
       TxnExecutor.defaultAtomic { itx =>
-        implicit val tx = Txn.wrap(itx)
+        implicit val tx: Txn = Txn.wrap(itx)
         mainFrame.setMainVolume(v)
       }
     }
@@ -153,7 +153,7 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
     def updateVolumes(): Unit = {
       val mainVolume0 = {
         import ggMainVolume.{min, max, value}
-        val v = value.linlin(min, max, 0f, 1f)
+        val v = value.linLin(min, max, 0f, 1f)
         v
       }
 

@@ -2,7 +2,7 @@
  *  NegatumOut.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -35,7 +35,7 @@ final case class NegatumOut(in: GE) extends Lazy.Expander[Unit] {
     val sig1  = Gate.ar(sig0, isOk)
     val sig2  = if (!CLIP     ) sig1 else sig1.clip2(1)
     val sig3  = if (!LEAK_DC  ) sig2 else LeakDC.ar(sig2) * 0.47
-    val sig4  = if (!LIMITER  ) sig3 else Limiter.ar(sig3, -0.2.dbamp)
+    val sig4  = if (!LIMITER  ) sig3 else Limiter.ar(sig3, -0.2.dbAmp)
     val sig5  = if (!HIGH_PASS) sig4 else HPF.ar(sig4, 20)
     val sig6  = if (!NORMALIZE) sig5 else {
       val env = EnvGen.ar(Env.asr, gate = "gate".kr(1f), doneAction = doNothing /* freeSelf */)
@@ -43,7 +43,7 @@ final case class NegatumOut(in: GE) extends Lazy.Expander[Unit] {
       val normDur = 2.0
       val tFree = TDelay.kr(doneEnv, normDur)
       FreeSelf.kr(tFree)
-      Normalizer.ar(sig5, level = -0.2.dbamp, dur = normDur) * DelayN.ar(env, normDur, normDur)
+      Normalizer.ar(sig5, level = -0.2.dbAmp, dur = normDur) * DelayN.ar(env, normDur, normDur)
     }
     val bus = "out".kr(0f)
     val sig7 = if (!PAN2  ) sig6 else Pan2.ar(sig6)

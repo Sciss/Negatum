@@ -2,7 +2,7 @@
  *  NegatumApp.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -51,8 +51,8 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
 //  }
 
   private final case class Config(
-    rattleVolume    : Double  =  0.0.dbamp,
-    negatumVolume   : Double  = -2.5.dbamp,
+    rattleVolume    : Double  =  0.0.dbAmp,
+    negatumVolume   : Double  = -2.5.dbAmp,
     openWorkspace   : Boolean = false,
     playEnsemble    : Boolean = false,
     imperfectFrame  : Boolean = false,

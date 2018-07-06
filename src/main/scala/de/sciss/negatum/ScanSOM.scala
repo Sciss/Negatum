@@ -2,7 +2,7 @@
  *  ScanSOM.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -128,7 +128,7 @@ object ScanSOM {
     var count = 0
     while (time < span.stop) {
       import numbers.Implicits._
-      val dist   = time.linlin(span.start, span.stop, 0.0, totalLen)
+      val dist   = time.linLin(span.start, span.stop, 0.0, totalLen)
       // if not found, returned value is `(-insertion_point - 1)`
       // insertion_point = -(result + 1)
       val trjIdx  = util.Arrays.binarySearch(lensInt, dist)
@@ -141,7 +141,7 @@ object ScanSOM {
         val idxF  = idxC - 1
         val ptF   = trajectory(idxF)
         val ptC   = trajectory(idxC)
-        val wC    = dist.linlin(lensInt(idxF), lensInt(idxC), 0, 1)
+        val wC    = dist.linLin(lensInt(idxF), lensInt(idxC), 0, 1)
         val wF    = 1 - wC
         Seq.tabulate(dim) { i =>
           val d = ptF(i) * wF + ptC(i) * wC

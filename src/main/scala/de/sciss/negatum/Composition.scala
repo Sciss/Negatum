@@ -2,7 +2,7 @@
  *  Composition.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -107,8 +107,8 @@ object Composition {
 
   def copyWorkspace[In <: Sys[In], Out <: Sys[Out]](wsIn: Workspace[In], wsOut: Workspace[Out]): Unit = {
     Txn.copy[In, Out, Unit] { (_txIn: In#Tx, _txOut: Out#Tx) => {
-      implicit val txIn  = _txIn
-      implicit val txOut = _txOut
+      implicit val txIn : In#Tx   = _txIn
+      implicit val txOut: Out#Tx  = _txOut
       val context = Copy[In, Out]
       val rootIn  = wsIn .root
       val rootOut = wsOut.root
@@ -125,8 +125,8 @@ object Composition {
     type In   = Durable
 
     Txn.copy[In, S, Unit] { (_txIn: In#Tx, _txOut: S#Tx) => {
-      implicit val txIn  = _txIn
-      implicit val txOut = _txOut
+      implicit val txIn : In#Tx = _txIn
+      implicit val txOut: S#Tx  = _txOut
       val context = Copy[In, S]
       val rootIn  = wsIn .root
       val rootOut = wsOut.root
@@ -149,7 +149,7 @@ object Composition {
   }
 
   def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
-    implicit val tx = TxnLike.wrap(itx)
+    implicit val tx: TxnLike = TxnLike.wrap(itx)
     actions.foreach { a =>
       Action.registerPredef(a.name, a)
     }
@@ -214,7 +214,7 @@ object Composition {
 
       val indexIn     = "bus-in".ir
       val numCh       = 1 // NumChannels(indicesIn)
-      val in          = PhysicalIn.ar(indices = indexIn) \ 0
+      val in          = PhysicalIn.ar(indices = indexIn).out(0)
       val fftSize     = 1024
       val fftBuf      = LocalBuf(numFrames = fftSize, numChannels = numCh)
       val fft         = FFT(buf = fftBuf, in = in, hop = 0.5, winType = 1)

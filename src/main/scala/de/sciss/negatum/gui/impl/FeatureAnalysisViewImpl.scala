@@ -2,7 +2,7 @@
  *  FeatureAnalysisViewImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -18,9 +18,9 @@ package impl
 import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
+
 import javax.swing.{JComponent, JTable, TransferHandler}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
-
 import de.sciss.audiowidgets.Transport
 import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
@@ -46,6 +46,7 @@ import scala.concurrent.stm.{Ref, atomic}
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.swing.Table.IntervalMode
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Graphics2D, ProgressBar, ScrollPane, Table}
+import scala.util.Failure
 
 object FeatureAnalysisViewImpl {
   def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -140,7 +141,7 @@ object FeatureAnalysisViewImpl {
               rowOpt.foreach(mTable.insert(ins, _))
             }
 
-          case expr.List.Removed(fIdx, elem) =>
+          case expr.List.Removed(fIdx, _) =>
             deferTx {
               val d     = mTable.data
               val mIdx  = binarySearch(d)(_.folderIdx.compareTo(fIdx))
@@ -265,7 +266,7 @@ object FeatureAnalysisViewImpl {
         }
         import numbers.Implicits._
         val fit = if (fit0.isNaN) 0.0 else fit0
-        comp.value  = (fit.clip(0, 1). linlin(0, 1, 0, 90) + 0.5).toInt
+        comp.value  = (fit.clip(0, 1). linLin(0, 1, 0, 90) + 0.5).toInt
         comp.label  = f"$fit0%g"
         comp.peer
       }
@@ -289,7 +290,7 @@ object FeatureAnalysisViewImpl {
       private[this] var features  = Option.empty[SOMEval.Weight]
       private[this] val minMaxS   = mutable.Map.empty[Int, (Double, Double)]
       private[this] val minMaxT   = mutable.Map.empty[Int, (Double, Double)]
-      private[this] val comp      = new Component {
+      private[this] val comp: Component = new Component {
         private[this] val ln        = new Line2D.Double
         private[this] val strkFeat  = new BasicStroke(3f)
         private[this] val strkDiv   = new BasicStroke(1f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 10.0f,
@@ -322,8 +323,8 @@ object FeatureAnalysisViewImpl {
                   m.update(i, (min, max))
                 }
                 if (max > min) {
-                  val y   = j.linlin(0, num - 1, 4, w - 4)
-                  val xw  = x.linlin(min, max, h - 4, 4)
+                  val y   = j.linLin(0, num - 1, 4, w - 4)
+                  val xw  = x.linLin(min, max, h - 4, 4)
 //                  ln.setLine(4, y, xw, y)
                   ln.setLine(y, h - 4, y, xw)
                   g.draw(ln)
@@ -335,7 +336,7 @@ object FeatureAnalysisViewImpl {
             }
 
             val j1    = drawFeatures(vec.spectral, 0, minMaxS)
-            val yDiv  = j1.linlin(0, num - 1, 4, w - 4)
+            val yDiv  = j1.linLin(0, num - 1, 4, w - 4)
 //            ln.setLine(4, yDiv, w - 8, yDiv)
             ln.setLine(yDiv, h - 4, yDiv, 4)
             g.setStroke(strkDiv)
@@ -472,14 +473,14 @@ object FeatureAnalysisViewImpl {
 
       def actionStop(): Unit =
         atomic { implicit itx =>
-          implicit val tx = Txn.wrap(itx)
+          implicit val tx: Txn = Txn.wrap(itx)
           synthRef.swap(None).foreach(_.dispose())
         }
 
       def actionPlay(): Unit =
         selectedRow.foreach { r =>
           atomic { implicit itx =>
-            implicit val tx = Txn.wrap(itx)
+            implicit val tx: Txn = Txn.wrap(itx)
             Mellite.auralSystem.serverOption.foreach { s =>
               synthRef.swap(None).foreach(_.dispose())
               val syn = Synth.play(r.graph, nameHint = Some(r.name))(s.defaultGroup)
@@ -527,9 +528,10 @@ object FeatureAnalysisViewImpl {
             if (_disposedGUI) Future.successful(cue) else {
               val sonJob    = sonogram.OverviewManager.Job(file = audioF)
               val overview  = sonMgr.acquire(sonJob)
-              overview.onFailure {
-                case ex => println("Sonogram failed:")
+              overview.onComplete {
+                case Failure(ex) => println("Sonogram failed:")
                   ex.printStackTrace()
+                case _ =>
               }
               overview.map { _ =>
                 defer {
@@ -552,9 +554,10 @@ object FeatureAnalysisViewImpl {
           val fut2: Future[AudioCue] = fut1.flatMap { cue =>
             if (_disposedGUI) Future.successful(cue) else {
               val futFeat = Future(blocking(SOMEval(audioF)))
-              futFeat.onFailure {
-                case ex => println("Features failed:")
+              futFeat.onComplete {
+                case Failure(ex) => println("Features failed:")
                   ex.printStackTrace()
+                case _ =>
               }
               futFeat.map { vecOpt =>
                 defer {

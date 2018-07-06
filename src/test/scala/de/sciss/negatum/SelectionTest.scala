@@ -2,13 +2,12 @@ package de.sciss.negatum
 
 import de.sciss.file._
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Copy, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.lucre.stm.{Copy, Sys}
 import de.sciss.mellite.Mellite
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{Folder, Workspace}
 
-import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 /** Uses the first `Negatum` and first `SVMModel` found in the session
@@ -29,7 +28,7 @@ object SelectionTest extends App {
   def run[S <: Sys[S]](workspace: Workspace[S]): Unit = {
     implicit val cursor: stm.Cursor[S] = workspace.cursor
 
-    val prediction = cursor.step { implicit tx =>
+    /* val prediction = */ cursor.step { implicit tx =>
       val negIn: Negatum[S] = workspace.collectObjects {
         case f: Folder[S] => f.iterator.collectFirst {
           case n: Negatum[S] => n
@@ -67,7 +66,7 @@ object SelectionTest extends App {
       }}
     }
 
-    import ExecutionContext.Implicits.global
+//    import ExecutionContext.Implicits.global
 //    println("_" * 33)
 //    prediction.monitor(printResult = true)
 

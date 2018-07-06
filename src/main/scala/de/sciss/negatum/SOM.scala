@@ -2,7 +2,7 @@
  *  SOM.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -23,7 +23,7 @@ import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.language.implicitConversions
 
 object SOM extends Obj.Type {
-  final val typeID = 0x40002
+  final val typeId = 0x40002
 
   def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx): SOM[S] = Impl(config)
 

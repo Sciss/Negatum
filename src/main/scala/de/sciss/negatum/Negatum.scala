@@ -2,7 +2,7 @@
  *  Negatum.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -24,7 +24,7 @@ import de.sciss.synth.proc.{AudioCue, Folder, WorkspaceHandle}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Negatum extends Obj.Type {
-  final val typeID = 0x40000
+  final val typeId = 0x40000
 
   /** Initializes this type and other related type such as `SVMModel`. */
   override def init(): Unit = {

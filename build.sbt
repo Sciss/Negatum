@@ -1,7 +1,7 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.5.1-SNAPSHOT"
+version            := "0.6.0-SNAPSHOT"
 organization       := "de.sciss"
 scalaVersion       := "2.12.6"
 description        := "Genetic Algorithms"
@@ -12,13 +12,13 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.21.0"
-lazy val soundProcessesVersion  = "3.17.0"
-lazy val scalaColliderVersion   = "1.23.0"
-lazy val ugensVersion           = "1.17.1"
-lazy val dspVersion             = "1.2.3"
-lazy val strugatzkiVersion      = "2.17.0"
-lazy val fileCacheVersion       = "0.3.4"
+lazy val melliteVersion         = "2.24.0"
+lazy val soundProcessesVersion  = "3.20.2"
+lazy val scalaColliderVersion   = "1.27.0"
+lazy val ugensVersion           = "1.19.1"
+lazy val dspVersion             = "1.3.0"
+lazy val strugatzkiVersion      = "2.18.0-SNAPSHOT"
+lazy val fileCacheVersion       = "0.4.0"
 lazy val fileUtilVersion        = "1.1.3"
 lazy val kollFlitzVersion       = "0.2.2"
 lazy val libSVMVersion          = "3.22"
