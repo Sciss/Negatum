@@ -13,8 +13,11 @@
 
 package de.sciss.negatum
 
+import de.sciss.lucre.data.SkipOctree
+import de.sciss.lucre.geom.Space
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.negatum.SOM.Node
 import de.sciss.synth.proc.Folder
 import de.sciss.negatum.impl.{SOMImpl => Impl}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
@@ -112,6 +115,33 @@ object SOM extends Obj.Type {
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
     Impl.readIdentifiedObj(in, access)
+
+  // --- Node ---
+
+  object Node {
+    implicit def serializer[S <: Sys[S], D <: Space[D]](implicit space: D): Serializer[S#Tx, S#Acc, Node[S, D]] =
+      new Ser[S, D]
+
+    private final class Ser[S <: Sys[S], D <: Space[D]](implicit space: D)
+      extends Serializer[S#Tx, S#Acc, Node[S, D]] {
+
+      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Node[S, D] = {
+        // val index = in.readInt()
+        val key   = space.pointSerializer.read(in)
+        val value = Obj.read(in, access)
+        Node(/* index = index, */ key = key, value = value)
+      }
+
+      def write(p: Node[S, D], out: DataOutput): Unit = {
+        // out.writeInt(p.index)
+        space.pointSerializer.write(p.key, out)
+        p.value.write(out)
+      }
+    }
+
+    implicit def view[S <: Sys[S], D <: Space[D]]: (Node[S, D], S#Tx) => D#PointLike = (p, _ /* tx */) => p.key
+  }
+  final case class Node[S <: Sys[S], D <: Space[D]](/* index: Int, */ key: D#Point, value: Obj[S])
 }
 trait SOM[S <: Sys[S]] extends Obj[S] {
   def config: SOM.Config
@@ -143,4 +173,10 @@ trait SOM[S <: Sys[S]] extends Obj[S] {
 
   /** Number of objects in the map */
   def size(implicit tx: S#Tx): Int
+
+  type D <: Space[D]
+
+  def space: D
+
+  def tree: SkipOctree[S, D, Node[S, D]]
 }

@@ -105,7 +105,8 @@ object SOMEval {
       val numFrames = af.numFrames
       var remain  = numFrames
       val mean    = new Array[Double](numCoeff)
-      val enBuf   = new Array[Double](fftSize)
+      val enSize  = math.max(0, ((remain - fftSize) / fftSizeH).toInt + 2)
+      val enBuf   = new Array[Double](enSize)
       var count   = 0
       while (remain > 0) {
         val chunk = math.min(remain, fftSize - off).toInt
@@ -114,11 +115,11 @@ object SOMEval {
         System.arraycopy(inBuf(0), 0, winBuf, 0, off1)
         if (off1 < fftSize) java.util.Arrays.fill(winBuf, off1, fftSize, 0f)
         mul(winBuf, 0, win, 0, off1)
-        if (count < fftSize) {
+        // if (count < fftSize) {
           val e = energy(winBuf, 0, off1)
           enBuf(count) = e
           // println(s"---- ENERGY: $e")
-        }
+        // }
         val coeff = mfcc.process(winBuf, 0, off1)
         add(mean, 0, coeff, 0, numCoeff)
         remain -= chunk

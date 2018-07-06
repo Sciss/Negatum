@@ -24,7 +24,7 @@ import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntD
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
-import de.sciss.negatum.SOM.Config
+import de.sciss.negatum.SOM.{Config, Node}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 import de.sciss.synth.proc.{Folder, SoundProcesses}
 
@@ -33,31 +33,6 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
 
 object SOMImpl {
-  private object Node {
-    implicit def serializer[S <: Sys[S], D <: Space[D]](implicit space: D): Serializer[S#Tx, S#Acc, Node[S, D]] =
-      new Ser[S, D]
-
-    private final class Ser[S <: Sys[S], D <: Space[D]](implicit space: D)
-      extends Serializer[S#Tx, S#Acc, Node[S, D]] {
-
-      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Node[S, D] = {
-        // val index = in.readInt()
-        val key   = space.pointSerializer.read(in)
-        val value = Obj.read(in, access)
-        Node(/* index = index, */ key = key, value = value)
-      }
-
-      def write(p: Node[S, D], out: DataOutput): Unit = {
-        // out.writeInt(p.index)
-        space.pointSerializer.write(p.key, out)
-        p.value.write(out)
-      }
-    }
-
-    implicit def view[S <: Sys[S], D <: Space[D]]: (Node[S, D], S#Tx) => D#PointLike = (p, tx) => p.key
-  }
-  private final case class Node[S <: Sys[S], D <: Space[D]](/* index: Int, */ key: D#Point, value: Obj[S])
-
   private object Value {
     implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Value[S]] =
       anyValSer.asInstanceOf[ValSer[S]]
@@ -624,13 +599,19 @@ object SOMImpl {
     }
   }
 
-  private final class Impl[S <: Sys[S], D <: Space[D]](val id: S#Id, val config: Config,
+  private final class Impl[S <: Sys[S], D1 <: Space[D1]](val id: S#Id, val config: Config,
                                                        lattice: S#Var[Lattice],
-                                                       list: ListImpl[S], map: TreeImpl[S, D])
-                                                      (implicit spaceHelper: SpaceHelper[D])
+                                                       list: ListImpl[S], map: TreeImpl[S, D1])
+                                                      (implicit spaceHelper: SpaceHelper[D1])
     extends SOM[S] {
 
+    type D = D1
+
     def tpe: Obj.Type = SOM
+
+    def space: D = spaceHelper.space
+
+    def tree: SkipOctree[S, D, Node[S, D]] = map
 
     def addAll(f: Folder[S], selected: Boolean)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S, Int] = {
       val vecSize = config.features
@@ -789,7 +770,7 @@ object SOMImpl {
       val idOut       = txOut.newId()
       val latticeOut  = txOut.newVar(idOut, lattice())
       val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
-      import spaceHelper.space
+      import spaceHelper.{space => _space}
       val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
       val out         = new Impl[Out, D](id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
       context.defer(this, out) {
