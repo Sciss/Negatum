@@ -2,12 +2,12 @@ package de.sciss.negatum
 
 import de.sciss.file._
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.negatum.SVMConfig.{Kernel, Type}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Folder, Workspace}
+import de.sciss.synth.proc.Workspace
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.ExecutionContext

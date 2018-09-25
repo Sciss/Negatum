@@ -3,10 +3,10 @@ package de.sciss.negatum
 import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.stm.{Copy, Sys}
+import de.sciss.lucre.stm.{Copy, Folder, Sys}
 import de.sciss.mellite.Mellite
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Folder, Workspace}
+import de.sciss.synth.proc.Workspace
 
 import scala.util.{Failure, Success}
 
@@ -48,7 +48,7 @@ object SelectionTest extends App {
 
       val rendering = model.predict(negOut)
       rendering.reactNow { implicit tx => {
-        case Rendering.Completed(Success(selected)) =>
+        case Rendering.Completed(Success(_)) =>
           tx.afterCommit(sys.exit())
 
         case Rendering.Completed(Failure(ex)) =>

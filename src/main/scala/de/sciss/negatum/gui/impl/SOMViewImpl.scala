@@ -15,21 +15,22 @@ package de.sciss.negatum
 package gui
 package impl
 
-import java.awt.{Color, RenderingHints}
 import java.awt.datatransfer.Transferable
 import java.awt.geom.Path2D
+import java.awt.{Color, RenderingHints}
 
-import javax.swing.TransferHandler
-import javax.swing.TransferHandler.TransferSupport
 import de.sciss.icons.raphael
 import de.sciss.lucre.geom.IntPoint2D
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.{DragAndDrop, GUI, ListObjView}
 import de.sciss.numbers
-import de.sciss.synth.proc.{Folder, Workspace}
+import de.sciss.synth.proc.Workspace
+import javax.swing.TransferHandler
+import javax.swing.TransferHandler.TransferSupport
 
 import scala.collection.mutable
 import scala.concurrent.stm.Ref
@@ -49,6 +50,8 @@ object SOMViewImpl {
                                        (implicit val cursor: stm.Cursor[S],
                                         val workspace: Workspace[S] /* , val undoManager: UndoManager */)
     extends SOMView[S] with ComponentHolder[Component] { impl =>
+
+    type C = Component
 
     def init(n: SOM[S])(implicit tx: S#Tx): this.type = {
       deferTx {

@@ -20,12 +20,12 @@ import java.util.concurrent.{TimeUnit, TimeoutException}
 import de.sciss.file._
 import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util._
-import de.sciss.synth.{SynthGraph, proc}
 import de.sciss.synth.proc.impl.MkSynthGraphSource
-import de.sciss.synth.proc.{AudioCue, Folder, Proc, SynthGraphObj}
+import de.sciss.synth.proc.{AudioCue, Proc, SynthGraphObj}
+import de.sciss.synth.{SynthGraph, proc}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
@@ -48,7 +48,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
   @volatile
   private[this] var _shouldStop   = false
 
-  private[this] implicit val random = new Random(config.seed)
+  private[this] implicit val random: Random = new Random(config.seed)
 
   protected def body(): Vec[Individual] = blocking {
     import config._

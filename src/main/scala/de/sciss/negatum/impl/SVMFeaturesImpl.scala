@@ -19,11 +19,11 @@ import java.util.concurrent.TimeUnit
 import de.sciss.file.File
 import de.sciss.lucre.expr.DoubleVector
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, Folder, Proc, SoundProcesses}
+import de.sciss.synth.proc.{AudioCue, Proc, SoundProcesses}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, blocking}
@@ -38,7 +38,7 @@ object SVMFeaturesImpl {
     }
     val vecSize = numCoeff * 2
     val sel2 = if (overwrite) sel1 else sel1.filterNot { case (p, _) =>
-      p.attr.$[DoubleVector](Negatum.attrFeatures).map(_.value.size).exists(_ == vecSize)
+      p.attr.$[DoubleVector](Negatum.attrFeatures).map(_.value.size).contains(vecSize)
     }
     val runs = sel2.map { case (p, folderIdx) =>
       val graph = p.graph.value

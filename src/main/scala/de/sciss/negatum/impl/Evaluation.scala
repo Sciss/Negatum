@@ -22,7 +22,7 @@ import de.sciss.processor.Processor
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
-import de.sciss.synth.proc.{Bounce, Proc, TimeRef, WorkspaceHandle}
+import de.sciss.synth.proc.{Bounce, Proc, TimeRef}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -101,7 +101,7 @@ object Evaluation {
       tx.newHandle(proc) // (Obj.typedSerializer[I, Proc.Elem[I]])
     }
 
-    import WorkspaceHandle.Implicits._
+    import de.sciss.lucre.stm.WorkspaceHandle.Implicits._
     val bncCfg              = Bounce.Config[I]
     bncCfg.group            = objH :: Nil
     // val audioF           = File.createTemp(prefix = "muta_bnc", suffix = ".aif")

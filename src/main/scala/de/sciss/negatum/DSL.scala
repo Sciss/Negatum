@@ -18,7 +18,7 @@ import de.sciss.fscape.Graph
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj, LongObj}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Folder, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.NoSys
 import de.sciss.synth.SynthGraph

@@ -16,25 +16,27 @@ package de.sciss.negatum.gui
 import de.sciss.desktop
 import de.sciss.desktop.OptionPane
 import de.sciss.icons.raphael
+import de.sciss.lucre.expr.CellView
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
-import de.sciss.lucre.swing.Window
+import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.audiocue.AudioCueObjView
 import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
-import de.sciss.mellite.gui.{AttrCellView, ListObjView, ObjView}
+import de.sciss.mellite.gui.{ListObjView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.synth.proc.{AudioCue, Workspace}
+import javax.swing.Icon
 
 object NegatumObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = Negatum[~]
-  val icon          = ObjViewImpl.raphaelIcon(raphael.Shapes.Biohazard)
-  val prefix        = "Negatum"
-  def humanName     = prefix
-  def tpe           = Negatum
-  def category      = ObjView.categComposition
-  def hasMakeDialog = true
+  val icon          : Icon      = ObjViewImpl.raphaelIcon(raphael.Shapes.Biohazard)
+  val prefix        : String    = "Negatum"
+  def humanName     : String    = prefix
+  def tpe           : Obj.Type  = Negatum
+  def category      : String    = ObjView.categComposition
+  def hasMakeDialog : Boolean   = true
 
   private[this] lazy val _init: Unit = ListObjView.addFactory(this)
 
@@ -91,17 +93,17 @@ object NegatumObjView extends ListObjView.Factory {
 
     type E[~ <: stm.Sys[~]] = Negatum[~]
 
-    def factory = NegatumObjView
+    def factory: ObjView.Factory = NegatumObjView
 
     def isViewable = true
 
     def openView(parent: Option[Window[S]])
                 (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
       val _obj      = objH()
-      val title     = AttrCellView.name(_obj)
+      val title     = CellView.name(_obj)
       val _view     = NegatumView(_obj)
-      val frame     = new WindowImpl[S](title) {
-        val view = _view
+      val frame: WindowImpl[S] = new WindowImpl[S](title) {
+        val view: View[S] = _view
       }
       frame.init()
       Some(frame)

@@ -17,11 +17,11 @@ package impl
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys, WorkspaceHandle}
 import de.sciss.lucre.{stm, event => evt}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.{AudioCue, Folder, Proc, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, Proc}
 
 object NegatumImpl {
   private final val SER_VERSION = 0x4e56  // "Ne"
@@ -109,7 +109,7 @@ object NegatumImpl {
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
       new Impl[Out] { out =>
-        protected val targets   = Targets[Out]
+        protected val targets: Targets[Out] = Targets[Out]
         val template            = context(proc.template  )
         val population          = context(proc.population)
         connect()
@@ -167,10 +167,10 @@ object NegatumImpl {
   }
 
   private final class New[S <: Sys[S]](temp0: AudioCue.Obj[S])(implicit tx0: S#Tx) extends Impl[S] {
-    protected val targets   = evt.Targets[S](tx0)
+    protected val targets: Targets[S] = Targets[S](tx0)
 
-    val template    = AudioCue.Obj.newVar[S](temp0)
-    val population  = Folder[S]
+    val template  : AudioCue.Obj.Var[S] = AudioCue.Obj.newVar[S](temp0)
+    val population: Folder[S]           = Folder[S]
     connect()(tx0)
   }
 
@@ -183,7 +183,7 @@ object NegatumImpl {
       if (serVer != SER_VERSION) sys.error(s"Incompatible serialized (found $serVer, required $SER_VERSION)")
     }
 
-    val template    = AudioCue.Obj.readVar[S](in, access)
-    val population  = Folder      .read   [S](in, access)
+    val template  : AudioCue.Obj.Var[S] = AudioCue.Obj.readVar[S](in, access)
+    val population: Folder[S]           = Folder      .read   [S](in, access)
   }
 }

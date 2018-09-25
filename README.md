@@ -11,12 +11,12 @@ In the future, its extensions to SoundProcesses will become part of
 SoundProcesses/Mellite.
 
 This project is (C)opyright 2016&ndash;2018 by Hanns Holger Rutz. All rights reserved.
-It is released under the [GNU General Public License](https://raw.github.com/Sciss/Negatum/master/LICENSE) v3+ and comes with absolutely no warranties. 
+It is released under the [GNU General Public License](https://git.iem.at/sciss/Negatum/raw/master/LICENSE) v3+ and comes with absolutely no warranties. 
 To contact the author, send an email to `contact at sciss.de`
 
 ## requirements / installation
 
-This project builds against Scala 2.11 and 2.10 using sbt 0.13.
+This project builds against Scala 2.12 using sbt.
 To build the application:
 
     sbt assembly

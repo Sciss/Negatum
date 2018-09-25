@@ -43,6 +43,8 @@ object SVMModelViewImpl {
                                         val workspace: Workspace[S] /* , val undoManager: UndoManager */)
     extends SVMModelView[S] with ComponentHolder[Component] {
 
+    type C = Component
+
     def init(n: SVMModel[S])(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
       this

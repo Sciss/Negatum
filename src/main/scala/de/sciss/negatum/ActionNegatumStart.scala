@@ -13,10 +13,11 @@
 
 package de.sciss.negatum
 
+import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.negatum.Composition.logComp
+import de.sciss.synth.proc.Action
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, Folder}
-import Composition.logComp
 
 object ActionNegatumStart extends NamedAction("negatum-start") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {

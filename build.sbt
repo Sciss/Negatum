@@ -1,19 +1,19 @@
 lazy val baseName = "Negatum"
 
 name               := baseName
-version            := "0.6.0-SNAPSHOT"
+version            := "0.6.0"
 organization       := "de.sciss"
 scalaVersion       := "2.12.6"
 description        := "Genetic Algorithms"
-homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
+homepage           := Some(url(s"https://git.iem.at/sciss/${name.value}"))
 licenses           := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 // ---- main dependencies ----
 
-lazy val melliteVersion         = "2.24.0"
-lazy val soundProcessesVersion  = "3.20.2"
+lazy val melliteVersion         = "2.27.3"
+lazy val soundProcessesVersion  = "3.21.3"
 lazy val scalaColliderVersion   = "1.27.0"
 lazy val ugensVersion           = "1.19.1"
 lazy val dspVersion             = "1.3.0"
@@ -40,7 +40,7 @@ libraryDependencies ++= Seq(
   "de.sciss"        %% "kollflitz"                  % kollFlitzVersion,
 //  "tw.edu.ntu.csie" %  "libsvm"                  % libSVMVersion,
   "com.datumbox"    %  "libsvm"                     % libSVMVersion,
-  "at.iem"          %% "scalacollider-trace"        % traceVersion % "test"
+  "at.iem"          %% "scalacollider-trace"        % traceVersion % Test
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint")
@@ -76,8 +76,8 @@ pomIncludeRepository := { _ => false }
 
 pomExtra := { val n = name.value
 <scm>
-  <url>git@github.com:Sciss/{n}.git</url>
-  <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
+  <url>git@git.iem.at:sciss/{n}.git</url>
+  <connection>scm:git:git@git.iem.at:sciss/{n}.git</connection>
 </scm>
 <developers>
   <developer>

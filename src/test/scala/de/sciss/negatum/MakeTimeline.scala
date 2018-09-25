@@ -3,13 +3,13 @@ package de.sciss.negatum
 import de.sciss.file._
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.mellite.gui.TimelineObjView
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
-import de.sciss.synth.proc.{FadeSpec, Folder, ObjKeys, Proc, TimeRef, Timeline, Workspace}
+import de.sciss.synth.proc.{FadeSpec, ObjKeys, Proc, TimeRef, Timeline, Workspace}
 import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 
 object MakeTimeline extends App {
@@ -94,8 +94,8 @@ object MakeTimeline extends App {
           val gIn  = pIn.graph().value
           val gOut = SynthGraph {
             import proc.graph._
-            import ugen._
             import Ops._
+            import ugen._
             val b = SynthGraph.builder
             gIn.sources.foreach {
               case NegatumIn() => // remove RandSeed?

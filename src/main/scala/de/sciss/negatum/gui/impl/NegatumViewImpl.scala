@@ -15,29 +15,26 @@ package de.sciss.negatum
 package gui
 package impl
 
-import javax.swing.SpinnerNumberModel
-
 import de.sciss.desktop.UndoManager
-import de.sciss.desktop.impl.UndoManagerImpl
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
+import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.swing.deferTx
-import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View}
 import de.sciss.lucre.swing.impl.ComponentHolder
+import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View, deferTx}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.{AttrCellView, GUI}
+import de.sciss.mellite.gui.GUI
 import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc.Workspace
+import javax.swing.SpinnerNumberModel
 
 import scala.concurrent.stm.Ref
 import scala.swing.{BorderPanel, BoxPanel, Component, FlowPanel, Label, Orientation, ProgressBar, Swing}
-import scala.util.{Success, Failure}
+import scala.util.{Failure, Success}
 
 object NegatumViewImpl {
   def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                         workspace: Workspace[S]): NegatumView[S] = {
-    implicit val undo = new UndoManagerImpl
+    implicit val undo: UndoManager = UndoManager()
     val res = new Impl[S](tx.newHandle(n))
     res.init(n)
   }
@@ -47,11 +44,13 @@ object NegatumViewImpl {
                                         val workspace: Workspace[S], val undoManager: UndoManager)
     extends NegatumView[S] with ComponentHolder[Component] {
 
+    type C = Component
+
     def init(n: Negatum[S])(implicit tx: S#Tx): this.type = {
       val attr  = n.attr
-      implicit val intEx      = IntObj
-      implicit val doubleEx   = DoubleObj
-      implicit val booleanEx  = BooleanObj
+      implicit val intEx    : IntObj    .type = IntObj
+      implicit val doubleEx : DoubleObj .type = DoubleObj
+      implicit val booleanEx: BooleanObj.type = BooleanObj
 
       class Field(name: String, view: View[S]) {
         lazy val label : Label      = new Label(s"$name:")
@@ -59,19 +58,19 @@ object NegatumViewImpl {
       }
 
       def mkIntField(name: String, key: String, default: Int): Field = {
-        val view = IntSpinnerView.optional(AttrCellView[S, Int, IntObj](attr, key),
+        val view = IntSpinnerView.optional[S](CellView.attr[S, Int, IntObj](attr, key),
           name = name, default = Some(default))
         new Field(name, view)
       }
 
       def mkDoubleField(name: String, key: String, default: Double): Field = {
-        val view = DoubleSpinnerView.optional(AttrCellView[S, Double, DoubleObj](attr, key),
+        val view = DoubleSpinnerView.optional[S](CellView.attr[S, Double, DoubleObj](attr, key),
           name = name, default = Some(default))
         new Field(name, view)
       }
 
       def mkBooleanField(name: String, key: String, default: Boolean): Field = {
-        val view = BooleanCheckBoxView.optional(AttrCellView[S, Boolean, BooleanObj](attr, key),
+        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
           name = name, default = default)
         new Field(name, view) {
           override lazy val editor: Component = {
@@ -89,7 +88,7 @@ object NegatumViewImpl {
 
       val fSeed = {
         val name = "Seed"
-        val view = IntSpinnerView.optional(AttrCellView[S, Int, IntObj](attr, attrSeed),
+        val view = IntSpinnerView.optional[S](CellView.attr[S, Int, IntObj](attr, attrSeed),
           name = name, default = None)
         new Field(name, view)
       }

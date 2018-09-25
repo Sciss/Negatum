@@ -16,6 +16,7 @@ package de.sciss.negatum
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.{BooleanObj, IntObj, StringObj}
+import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.gui.TimelineObjView
 import de.sciss.negatum.Hibernation.logComp
@@ -24,7 +25,7 @@ import de.sciss.span.Span
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Action, AudioCue, Ensemble, FadeSpec, Folder, ObjKeys, Proc, TimeRef, Timeline, graph}
+import de.sciss.synth.proc.{Action, AudioCue, Ensemble, FadeSpec, ObjKeys, Proc, TimeRef, Timeline, graph}
 import de.sciss.synth.{Curve, SynthGraph}
 
 object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {

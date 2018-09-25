@@ -23,10 +23,10 @@ import de.sciss.lucre.geom.IntSpace.{ThreeDim, TwoDim}
 import de.sciss.lucre.geom.{DistanceMeasure, IntCube, IntDistanceMeasure2D, IntDistanceMeasure3D, IntPoint2D, IntPoint3D, IntSpace, IntSquare, Space}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.{Config, Node}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
-import de.sciss.synth.proc.{Folder, SoundProcesses}
+import de.sciss.synth.proc.SoundProcesses
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration
@@ -609,7 +609,7 @@ object SOMImpl {
 
     def tpe: Obj.Type = SOM
 
-    def space: D = spaceHelper.space
+    implicit def space: D = spaceHelper.space
 
     def tree: SkipOctree[S, D, Node[S, D]] = map
 
@@ -770,7 +770,6 @@ object SOMImpl {
       val idOut       = txOut.newId()
       val latticeOut  = txOut.newVar(idOut, lattice())
       val listOut     = SkipList.Map.empty[Out, Int, Value[Out]]()
-      import spaceHelper.{space => _space}
       val mapOut      = SkipOctree.empty[Out, D, Node[Out, D]](map.hyperCube)
       val out         = new Impl[Out, D](id = idOut, config = config, lattice = latticeOut, map = mapOut, list = listOut)
       context.defer(this, out) {

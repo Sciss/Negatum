@@ -19,18 +19,16 @@ import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
 
-import javax.swing.{JComponent, JTable, TransferHandler}
-import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import de.sciss.audiowidgets.Transport
 import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj}
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
-import de.sciss.lucre.{expr, stm}
 import de.sciss.mellite.Mellite
 import de.sciss.mellite.gui.{CodeFrame, DragAndDrop, GUI, ListObjView}
 import de.sciss.negatum.impl.{Evaluation, SOMEval}
@@ -39,6 +37,8 @@ import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{AudioCue, Proc, Workspace}
 import de.sciss.synth.{SynthGraph, proc}
 import de.sciss.{desktop, numbers, sonogram}
+import javax.swing.table.{AbstractTableModel, TableCellRenderer}
+import javax.swing.{JComponent, JTable, TransferHandler}
 
 import scala.annotation.switch
 import scala.collection.{breakOut, mutable}
@@ -58,6 +58,8 @@ object FeatureAnalysisViewImpl {
                                         template: AudioCue)(implicit val cursor: stm.Cursor[S],
                                         val workspace: Workspace[S])
     extends FeatureAnalysisView[S] with ComponentHolder[Component] {
+
+    type C = Component
 
     @volatile
     private[this] var _disposedGUI = false
@@ -128,7 +130,7 @@ object FeatureAnalysisViewImpl {
       val f = negatum.population
       disposables ::= f.changed.react { implicit tx => upd =>
         upd.changes.foreach {
-          case expr.List.Added  (fIdx, elem) =>
+          case stm.List.Added  (fIdx, elem) =>
             val rowOpt = mkRow(elem, fIdx)
             deferTx {
               val d     = mTable.data
@@ -141,7 +143,7 @@ object FeatureAnalysisViewImpl {
               rowOpt.foreach(mTable.insert(ins, _))
             }
 
-          case expr.List.Removed(fIdx, _) =>
+          case stm.List.Removed(fIdx, _) =>
             deferTx {
               val d     = mTable.data
               val mIdx  = binarySearch(d)(_.folderIdx.compareTo(fIdx))

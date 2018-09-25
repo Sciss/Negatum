@@ -16,12 +16,13 @@ package de.sciss.negatum
 import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{Folder, WorkspaceHandle}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.negatum.Composition.{logComp, logCompErr, mkDateString}
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc._
-import Composition.{logComp, logCompErr, mkDateString}
 import de.sciss.synth.proc.Implicits._
+import de.sciss.synth.proc._
 
 import scala.util.{Failure, Success}
 
@@ -29,9 +30,9 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
   // step 1
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
     val dsl = DSL[S]
-    import dsl._
     import Util._
     import DefaultRandom._
+    import dsl._
     import universe._
 
     logComp("negatum-rec-done")

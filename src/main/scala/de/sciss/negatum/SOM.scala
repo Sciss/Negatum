@@ -16,9 +16,8 @@ package de.sciss.negatum
 import de.sciss.lucre.data.SkipOctree
 import de.sciss.lucre.geom.Space
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Folder, Obj, Sys}
 import de.sciss.negatum.SOM.Node
-import de.sciss.synth.proc.Folder
 import de.sciss.negatum.impl.{SOMImpl => Impl}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
 

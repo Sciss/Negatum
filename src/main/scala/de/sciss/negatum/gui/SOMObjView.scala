@@ -14,32 +14,32 @@
 package de.sciss.negatum
 package gui
 
-import javax.swing.{Icon, SpinnerNumberModel}
-
 import de.sciss.desktop
 import de.sciss.icons.raphael
+import de.sciss.lucre.expr.CellView
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{CellView, View, Window, deferTx}
+import de.sciss.lucre.swing.{View, Window, deferTx}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
-import de.sciss.mellite.gui.{AttrCellView, GUI, ListObjView, ObjView, ViewHasWorkspace}
+import de.sciss.mellite.gui.{GUI, ListObjView, ObjView, ViewHasWorkspace}
 import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Workspace
+import javax.swing.{Icon, SpinnerNumberModel}
 
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Label, TextField}
 
 object SOMObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = SOM[~]
-  val icon: Icon        = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
-  val prefix            = "SOM"
-  def humanName         = "Self Organizing Map"
-  def tpe               = SOM
-  def category: String  = ObjView.categComposition
-  def hasMakeDialog     = true
+  val icon          : Icon      = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
+  val prefix        : String    = "SOM"
+  def humanName     : String    = "Self Organizing Map"
+  def tpe           : Obj.Type  = SOM
+  def category      : String    = ObjView.categComposition
+  def hasMakeDialog : Boolean   = true
 
   private[this] lazy val _init: Unit = ListObjView.addFactory(this)
 
@@ -56,7 +56,7 @@ object SOMObjView extends ListObjView.Factory {
     cursor.step { implicit tx =>
       implicit val ws: Workspace[S] = workspace
       val _view = new MakeViewImpl[S](ok)
-      val frame = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
+      val frame: WindowImpl[S] = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
         val view: View[S] = _view
       }
       _view.init(frame)
@@ -83,16 +83,16 @@ object SOMObjView extends ListObjView.Factory {
 
     type E[~ <: stm.Sys[~]] = SOM[~]
 
-    def factory = SOMObjView
+    def factory: ObjView.Factory = SOMObjView
 
     def isViewable = true
 
     def openView(parent: Option[Window[S]])
                 (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
       val _obj      = objH()
-      val title     = AttrCellView.name(_obj)
+      val title     = CellView.name(_obj)
       val _view     = SOMView(_obj)
-      val frame     = new WindowImpl[S](title) {
+      val frame: WindowImpl[S] = new WindowImpl[S](title) {
         val view: SOMView[S] = _view
       }
       frame.init()
@@ -103,6 +103,8 @@ object SOMObjView extends ListObjView.Factory {
   private final class MakeViewImpl[S <: Sys[S]](ok: Config[S] => Unit)
                                                (implicit val workspace: Workspace[S], val cursor: stm.Cursor[S])
     extends ViewHasWorkspace[S] with ComponentHolder[Component] { impl =>
+
+    type C = Component
 
     private[this] var _frame: Window[S] = _
 

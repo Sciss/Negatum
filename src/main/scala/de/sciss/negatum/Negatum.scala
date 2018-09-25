@@ -15,11 +15,11 @@ package de.sciss.negatum
 
 import de.sciss.lucre.event.Publisher
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Folder, Obj, Sys, WorkspaceHandle}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
 import de.sciss.serial.{DataInput, Serializer}
-import de.sciss.synth.proc.{AudioCue, Folder, WorkspaceHandle}
+import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

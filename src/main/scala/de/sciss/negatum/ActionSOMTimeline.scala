@@ -14,15 +14,16 @@
 package de.sciss.negatum
 
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, IntObj}
+import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.gui.TimelineObjView
+import de.sciss.negatum.Composition.{logComp, mkDateString}
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
-import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc._
 import de.sciss.synth.proc.Implicits._
-import Composition.{logComp, mkDateString}
+import de.sciss.synth.proc._
+import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 
 object ActionSOMTimeline extends NamedAction("som-timeline") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
@@ -126,8 +127,8 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
         val gIn  = pIn.graph().value
         val gOut = SynthGraph {
           import proc.graph._
-          import ugen._
           import Ops._
+          import ugen._
           val b = SynthGraph.builder
           gIn.sources.foreach {
             case NegatumIn() => // remove RandSeed?

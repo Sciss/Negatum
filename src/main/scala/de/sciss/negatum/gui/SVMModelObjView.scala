@@ -14,39 +14,39 @@
 package de.sciss.negatum
 package gui
 
-import javax.swing.TransferHandler.TransferSupport
-import javax.swing.{Icon, SpinnerNumberModel, TransferHandler}
-
 import de.sciss.desktop
 import de.sciss.icons.raphael
+import de.sciss.lucre.expr.CellView
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{CellView, View, Window, defer, deferTx}
+import de.sciss.lucre.swing.{View, Window, defer, deferTx}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
 import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
-import de.sciss.mellite.gui.{AttrCellView, GUI, ListObjView, ObjView, ViewHasWorkspace}
+import de.sciss.mellite.gui.{GUI, ListObjView, ObjView, ViewHasWorkspace}
 import de.sciss.negatum.SVMConfig.{Kernel, Type}
 import de.sciss.processor.Processor
 import de.sciss.swingplus.{ComboBox, GroupPanel, ListView, Separator, Spinner}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Workspace
+import javax.swing.TransferHandler.TransferSupport
+import javax.swing.{Icon, SpinnerNumberModel, TransferHandler}
 
 import scala.collection.breakOut
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{InTxn, Ref}
 import scala.swing.event.SelectionChanged
 import scala.swing.{Action, BorderPanel, BoxPanel, CheckBox, Component, FlowPanel, Label, Orientation, ProgressBar, ScrollPane, TextField}
 import scala.util.{Failure, Success}
 
 object SVMModelObjView extends ListObjView.Factory {
   type E[~ <: stm.Sys[~]] = SVMModel[~]
-  val icon: Icon        = ObjViewImpl.raphaelIcon(Shapes.Category)
-  val prefix            = "SVMModel"
-  def humanName         = "SVM Model"
-  def tpe               = SVMModel
-  def category: String  = ObjView.categComposition
-  def hasMakeDialog     = true
+  val icon          : Icon      = ObjViewImpl.raphaelIcon(Shapes.Category)
+  val prefix        : String    = "SVMModel"
+  def humanName     : String    = "SVM Model"
+  def tpe           : Obj.Type  = SVMModel
+  def category      : String    = ObjView.categComposition
+  def hasMakeDialog : Boolean   = true
 
   private[this] lazy val _init: Unit = ListObjView.addFactory(this)
 
@@ -63,7 +63,7 @@ object SVMModelObjView extends ListObjView.Factory {
     cursor.step { implicit tx =>
       implicit val ws: Workspace[S] = workspace
       val _view = new MakeViewImpl[S](ok)
-      val frame = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
+      val frame: WindowImpl[S] = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
         val view: View[S] = _view
       }
       _view.init(frame)
@@ -90,17 +90,17 @@ object SVMModelObjView extends ListObjView.Factory {
 
     type E[~ <: stm.Sys[~]] = SVMModel[~]
 
-    def factory = SVMModelObjView
+    def factory: ObjView.Factory = SVMModelObjView
 
     def isViewable = true
 
     def openView(parent: Option[Window[S]])
                 (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
       val _obj      = objH()
-      val title     = AttrCellView.name(_obj)
+      val title     = CellView.name(_obj)
       val _view     = SVMModelView(_obj)
-      val frame     = new WindowImpl[S](title) {
-        val view = _view
+      val frame: WindowImpl[S] = new WindowImpl[S](title) {
+        val view: View[S] = _view
       }
       frame.init()
       Some(frame)
@@ -110,6 +110,8 @@ object SVMModelObjView extends ListObjView.Factory {
   private final class MakeViewImpl[S <: Sys[S]](ok: Config[S] => Unit)
                                                (implicit val workspace: Workspace[S], val cursor: stm.Cursor[S])
     extends ViewHasWorkspace[S] with ComponentHolder[Component] { impl =>
+
+    type C = Component
 
     private[this] var _frame: Window[S] = _
     private[this] val processor = Ref(Option.empty[Processor[SVMModel.Trained[S]]])
@@ -279,7 +281,7 @@ object SVMModelObjView extends ListObjView.Factory {
 
       lazy val actionCancel: Action = Action("Cancel") {
         impl.cursor.step { implicit tx =>
-          implicit val itx = tx.peer
+          implicit val itx: InTxn = tx.peer
           val p = processor.swap(None)
           // aborted() = true
           p.foreach(_.abort())
@@ -321,7 +323,7 @@ object SVMModelObjView extends ListObjView.Factory {
         updateConfig()
         val numCoeff = mNumFeatures.getNumber.intValue >> 1
         val procOpt = if (mList.isEmpty) None else impl.cursor.step { implicit tx =>
-          implicit val itx = tx.peer
+          implicit val itx: InTxn = tx.peer
           if (processor().nonEmpty) None else {
             val n: List[Negatum[S]] = mList.map(_.negatumH())(breakOut)
             val p = SVMModel.train(n, builder, numCoeff = numCoeff)
@@ -340,7 +342,7 @@ object SVMModelObjView extends ListObjView.Factory {
           import de.sciss.synth.proc.SoundProcesses.executionContext
           p.onComplete { tr =>
             impl.cursor.step { implicit tx =>
-              implicit val itx = tx.peer
+              implicit val itx: InTxn = tx.peer
               if (processor().contains(p)) {
                 processor() = None
                 close()
@@ -375,7 +377,7 @@ object SVMModelObjView extends ListObjView.Factory {
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
-      implicit val itx = tx.peer
+      implicit val itx: InTxn = tx.peer
       processor.swap(None).foreach(_.abort())
     }
   }

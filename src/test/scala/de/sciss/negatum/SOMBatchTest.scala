@@ -2,9 +2,10 @@ package de.sciss.negatum
 
 import de.sciss.file._
 import de.sciss.lucre.expr.{DoubleVector, IntObj}
+import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.{Durable, Folder}
+import de.sciss.synth.proc.Durable
 
 import scala.util.{Failure, Success}
 
@@ -17,7 +18,7 @@ object SOMBatchTest extends App {
   dir.delete()
   //  val factory = BerkeleyDB.tmp()
   val factory = BerkeleyDB.factory(dir)
-  implicit val cursor = Durable(BerkeleyDB.tmp())
+  implicit val cursor: S = Durable(BerkeleyDB.tmp())
 
   val r  = new scala.util.Random(1L)
   val t1 = System.currentTimeMillis()
