@@ -2,7 +2,7 @@
  *  Selection.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -50,7 +50,7 @@ object Selection {
           val idxS        = acc.indexWhere(_ > roulette)
           val idx         = if (idxS >= 0) sorted(idxS)._1 else in.size - 1
           val (chosen, _) = inIdx(idx)
-          val in1         = in.patch(from = idx, patch = Nil, replaced = 1)
+          val in1         = in.patch(idx, Nil, 1)
           outB += chosen
           loop(rem1, in1 /* in - chosen */ /*,  out + chosen */)
         }

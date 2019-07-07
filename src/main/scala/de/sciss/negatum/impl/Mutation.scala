@@ -2,7 +2,7 @@
  *  Mutation.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -51,7 +51,7 @@ object Mutation {
           if (attempt == 0) {
             Console.err.println(s"Mutation - giving up with individual ${off % sq.size}")
             val newIndiv = Chromosome.mkIndividual(config)
-            sq1 = sq1.patch(from = off, patch = newIndiv :: Nil, replaced = 1)
+            sq1 = sq1.patch(off, newIndiv :: Nil, 1)
 //            if (off == sq.size - 1 && res.isEmpty) {
 //              Console.err.println("Mutation - WTF - could not mutate even one individual.")
 //              return Vector.empty
@@ -83,7 +83,7 @@ object Mutation {
 
     val mutationIter  = rrand(minMut, maxMut)
     require(mutationIter > 0)
-    val res = (chosenT /: (1 to mutationIter)) { case (pred, iter) =>
+    val res = (1 to mutationIter).foldLeft(chosenT) { case (pred, iter) =>
       val tpe = random.nextInt(7)
       val TEST = if (!DEBUG) 0L else {
         val n = random.nextLong()
@@ -169,12 +169,12 @@ object Mutation {
     val v           = vertices(idx)
     val targets     = Chromosome.getArgUsages(top, v)
     val top1        = top.removeVertex(v)
-    val top3        = (top1 /: targets) { (top2, e) =>
+    val top3        = targets.foldLeft(top1) { (top2, e) =>
       val x = top2.removeEdge(e)
       assert(x ne top2)
       x
     }
-    val succ = (top3 /: targets) { case (top4, Edge(t: Vertex.UGen, _, _)) =>
+    val succ = targets.foldLeft(top3) { case (top4, Edge(t: Vertex.UGen, _, _)) =>
       Chromosome.completeUGenInputs(config, top4, t)
     }
     (succ, v)
@@ -189,8 +189,8 @@ object Mutation {
     val vOld    = vertices(idx)
     val outlet  = Chromosome.getArgUsages(top, vOld)
     val inlets  = Chromosome.sortedEdges (top, vOld)
-    val top1    = (top  /: outlet)(_ removeEdge _)
-    val top2    = (top1 /: inlets)(_ removeEdge _)
+    val top1    = outlet.foldLeft(top )(_ removeEdge _)
+    val top2    = inlets.foldLeft(top1)(_ removeEdge _)
     val top3    = top2.removeVertex(vOld)
 
     val vNew    = vOld match {
@@ -212,8 +212,9 @@ object Mutation {
       case _ => Vector.empty
     }
 
-    val top4  = top3.addVertex(vNew)
-    val top5  = (top4 /: outlet.map(_.copy(targetVertex = vNew)))((t, e) => t.addEdge(e).get._1)
+    val top4    = top3.addVertex(vNew)
+    val outletM = outlet.map(_.copy(targetVertex = vNew))
+    val top5    = outletM.foldLeft(top4)((t, e) => t.addEdge(e).get._1)
 
     // just as many as possible, leaving tail inlets empty
     val newInlets = inlets.collect {
@@ -221,7 +222,7 @@ object Mutation {
         e.copy(sourceVertex = vNew, inlet = newInletNames(oldInletNames.indexOf(e.inlet)))
     }
 
-    val top6  = (top5 /: newInlets)((t, e) => t.addEdge(e).get._1)
+    val top6  = newInlets.foldLeft(top5)((t, e) => t.addEdge(e).get._1)
     val top7  = vNew match {
       case vu: Vertex.UGen => Chromosome.completeUGenInputs(config, top6, vu)
       case _ => top6
@@ -295,13 +296,14 @@ object Mutation {
       val (_, edgesMove)      = edgesS.splitAt(edgesS.size/2)
       val vertexOld           = edges.head.targetVertex
       val vertexNew           = vertexOld.copy()
-      val top1                = (top /: edgesMove)(_ removeEdge _)
+      val top1                = edgesMove.foldLeft(top)(_ removeEdge _)
       val top2                = top1.addVertex(vertexNew)
-      val top3                = (top2 /: edgesMove) { (t, eOld) =>
+      val top3                = edgesMove.foldLeft(top2) { (t, eOld) =>
         val eNew = eOld.copy(targetVertex = vertexNew)
         t.addEdge(eNew).get._1
       }
-      val succ = (top3 /: Chromosome.sortedEdges(top, vertexOld)) { (t, eOld) =>
+      val edgesSt = Chromosome.sortedEdges(top, vertexOld)
+      val succ = edgesSt.foldLeft(top3) { (t, eOld) =>
         val eNew = eOld.copy(sourceVertex = vertexNew)
         t.addEdge(eNew).get._1
       }
@@ -338,7 +340,7 @@ object Mutation {
       // use `v1` as argument instead.
       val (v1, v2)  = it.next()
       val edgesOld: List[Edge] = Chromosome.getArgUsages(top, v2)  // all edges pointing to the old vertex
-      val top1      = (top  /: edgesOld)(_ removeEdge _)
+      val top1      = edgesOld.foldLeft(top)(_ removeEdge _)
 
       @tailrec
       def inner(pred: SynthGraphT, rem: List[Edge]): Option[SynthGraphT] = rem match {
@@ -350,7 +352,7 @@ object Mutation {
           } else None
         case _ =>
           val edgesOld2 = Chromosome.sortedEdges(top, v2)
-          val next0 = (pred /: edgesOld2)(_ removeEdge _)
+          val next0 = edgesOld2.foldLeft(pred)(_ removeEdge _)
           val next  = next0.removeVertex(v2)
           Some(next)
       }

@@ -2,7 +2,7 @@
  *  Negatum.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -14,12 +14,11 @@
 package de.sciss.negatum
 
 import de.sciss.lucre.event.Publisher
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Folder, Obj, Sys, WorkspaceHandle}
+import de.sciss.lucre.stm.{Folder, Obj, Sys}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
 import de.sciss.serial.{DataInput, Serializer}
-import de.sciss.synth.proc.AudioCue
+import de.sciss.synth.proc.{AudioCue, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -225,7 +224,7 @@ object Negatum extends Obj.Type {
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
 
   def run(config: Negatum.Config, iter: Int = 1)
-         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S, Unit]
+         (implicit tx: S#Tx, universe: Universe[S]): Rendering[S, Unit]
 
   def template: AudioCue.Obj.Var[S]
 

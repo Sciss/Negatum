@@ -2,7 +2,7 @@
  *  Binaural.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -19,7 +19,6 @@ import de.sciss.negatum.Delaunay.Vector2
 import de.sciss.synth.{AddAction, ControlSet, SynthGraph, addBefore, addToHead, addToTail, message}
 import de.sciss.{numbers, synth}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Binaural {
@@ -29,9 +28,9 @@ object Binaural {
 
   final val MetersPerPixel = 10.20 / 824.0 // 1.5/92 // hScale
 
-  val ChannelToMatrixMap: Map[Spk, Vector2] = Speakers.select.zipWithIndex.map { case (pt, i) =>
+  val ChannelToMatrixMap: Map[Spk, Vector2] = Speakers.select.iterator.zipWithIndex.map { case (pt, i) =>
     Spk(i) -> pt
-  } (breakOut)
+  } .toMap
 
   object Radians {
     val North = Radians(math.Pi * 0.5)

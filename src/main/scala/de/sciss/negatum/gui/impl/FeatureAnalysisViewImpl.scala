@@ -2,7 +2,7 @@
  *  FeatureAnalysisViewImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -26,22 +26,22 @@ import de.sciss.icons.raphael
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
+import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.mellite.Mellite
-import de.sciss.mellite.gui.{CodeFrame, DragAndDrop, GUI, ListObjView}
+import de.sciss.mellite.gui.{CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
 import de.sciss.negatum.impl.{Evaluation, SOMEval}
 import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{AudioCue, Proc, Workspace}
+import de.sciss.synth.proc.{AudioCue, Proc, Universe}
 import de.sciss.synth.{SynthGraph, proc}
 import de.sciss.{desktop, numbers, sonogram}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import javax.swing.{JComponent, JTable, TransferHandler}
 
 import scala.annotation.switch
-import scala.collection.{breakOut, mutable}
+import scala.collection.mutable
 import scala.concurrent.stm.{Ref, atomic}
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.swing.Table.IntervalMode
@@ -49,14 +49,12 @@ import scala.swing.{Action, BorderPanel, Component, FlowPanel, Graphics2D, Progr
 import scala.util.Failure
 
 object FeatureAnalysisViewImpl {
-  def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                         workspace: Workspace[S]): FeatureAnalysisView[S] = {
+  def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): FeatureAnalysisView[S] = {
     new Impl[S](tx.newHandle(negatum), negatum.template.value).init(negatum)
   }
 
   private final class Impl[S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]],
-                                        template: AudioCue)(implicit val cursor: stm.Cursor[S],
-                                        val workspace: Workspace[S])
+                                        template: AudioCue)(implicit val universe: Universe[S])
     extends FeatureAnalysisView[S] with ComponentHolder[Component] {
 
     type C = Component
@@ -246,9 +244,9 @@ object FeatureAnalysisViewImpl {
         if (sel.size != 1) return null
         cursor.step { implicit tx =>
           negatumH().population.get(sel.head.folderIdx).map { obj =>
-            val view = ListObjView(obj)
-            DragAndDrop.Transferable(ListObjView.Flavor) {
-              new ListObjView.Drag[S](workspace, cursor, view)
+            val view = ObjListView(obj)
+            DragAndDrop.Transferable(ObjView.Flavor) {
+              new ObjView.Drag[S](universe, view)
             }
           } .orNull
         }
@@ -398,10 +396,10 @@ object FeatureAnalysisViewImpl {
       }
 
     private def selectedRows: Seq[Row] = ggTable.selection.rows
-      .map { viewRowIdx =>
+      .iterator.map { viewRowIdx =>
         val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
         mTable.data(rowIdx)
-      } (breakOut)
+      } .toList // (breakOut)
 
     private def guiInit(data0: Vector[Row]): Unit = {
       mTable.data   = data0

@@ -2,7 +2,7 @@
  *  ScanSOM.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -21,7 +21,6 @@ import de.sciss.span.Span
 import de.sciss.synth.proc.{TimeRef, Timeline}
 import de.sciss.{kollflitz, numbers}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
@@ -119,19 +118,20 @@ object ScanSOM {
       val ds = (pt1, pt2).zipped.map { (c1, c2) => val d: Double = c1 - c2; d * d }
       math.sqrt(ds.sum)
     }
-    val lensInt           = (0.0 +: trjLens).integrate[Array[Double]](Numeric.DoubleIsFractional, breakOut)
+    val lensInt           = (0.0 +: trjLens).integrate // [Array[Double]](Numeric.DoubleIsFractional, breakOut)
     val totalLen: Double  = lensInt.last
     val durMean           = math.max(0.1, config.durMean)
     val side              = som.config.extent * 2
 
     var time  = span.start
     var count = 0
+    val lensIntA = lensInt.toArray
     while (time < span.stop) {
       import numbers.Implicits._
       val dist   = time.linLin(span.start, span.stop, 0.0, totalLen)
       // if not found, returned value is `(-insertion_point - 1)`
       // insertion_point = -(result + 1)
-      val trjIdx  = util.Arrays.binarySearch(lensInt, dist)
+      val trjIdx  = util.Arrays.binarySearch(lensIntA, dist)
       val pt: Seq[Int] = if (trjIdx >= 0) {
         trajectory(trjIdx).map { d =>
           (d * side).toInt

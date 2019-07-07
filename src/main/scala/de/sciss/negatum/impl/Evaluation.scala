@@ -2,7 +2,7 @@
  *  Evaluation.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -22,7 +22,7 @@ import de.sciss.processor.Processor
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
-import de.sciss.synth.proc.{Bounce, Proc, TimeRef}
+import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -94,14 +94,13 @@ object Evaluation {
 
     // val exp = ExprImplicits[I]
 
-    val objH = inMemory.step { implicit tx =>
+    val (objH, _u) = inMemory.step { implicit tx =>
       val proc      = Proc[I]
       proc.graph()  = graph
-      // val procObj   = Obj(Proc.Elem(proc))
-      tx.newHandle(proc) // (Obj.typedSerializer[I, Proc.Elem[I]])
+      tx.newHandle(proc) -> Universe.dummy[I]
     }
+    implicit val u: Universe[I] = _u
 
-    import de.sciss.lucre.stm.WorkspaceHandle.Implicits._
     val bncCfg              = Bounce.Config[I]
     bncCfg.group            = objH :: Nil
     // val audioF           = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
@@ -114,7 +113,7 @@ object Evaluation {
     sCfg.sampleRate         = sampleRate
     // bc.init : (S#Tx, Server) => Unit
     bncCfg.span             = Span(0L, (duration * TimeRef.SampleRate).toLong)
-    val bnc0                = Bounce[I, I].apply(bncCfg)
+    val bnc0                = Bounce[I]().apply(bncCfg)
     // tx.afterCommit {
     bnc0.start()
     // }

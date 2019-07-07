@@ -2,7 +2,7 @@
  *  Composition.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -17,11 +17,11 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import de.sciss.file._
+import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
 import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.stm.{Durable => _, _}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc._
+import de.sciss.synth.proc.{Action, Durable, Workspace}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
@@ -70,7 +70,9 @@ object Composition {
           copyWorkspace(wsIn = prev, wsOut = res)
         } finally {
           try {
-            prev.close()
+            prev.cursor.step { implicit tx =>
+              prev.dispose()
+            }
           } catch {
             case NonFatal(ex) =>
               Console.err.println("While closing previous session:")
@@ -88,7 +90,9 @@ object Composition {
           val res       = emptyWorkspace(thisSessionF)
           val prev      = readWorkspace(fallbackF)
           copyWorkspace(wsIn = prev, wsOut = res)
-          prev.close()
+          prev.cursor.step { implicit tx =>
+            prev.dispose()
+          }
           res
       }
     }
@@ -178,7 +182,9 @@ object Composition {
     }
 
     println("Created/updated workspace.")
-    ws.close()
+    ws.cursor.step { implicit tx =>
+      ws.dispose()
+    }
   }
 
   val actions: Seq[NamedAction] = Seq(
@@ -208,7 +214,7 @@ object Composition {
     val ensSOMPlay = ensemble("som-play").in(ensMain)(initPlay = false)
 
     val pNegListen = proc("negatum-listen").in(ensNegListen) {
-      import graph._
+      import de.sciss.synth.proc.graph._
       import Ops._
       import ugen._
 

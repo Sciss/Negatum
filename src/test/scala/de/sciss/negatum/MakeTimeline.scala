@@ -6,7 +6,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
-import de.sciss.mellite.gui.TimelineObjView
+import de.sciss.mellite.gui.ObjTimelineView
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
 import de.sciss.synth.proc.{FadeSpec, ObjKeys, Proc, TimeRef, Timeline, Workspace}
@@ -27,9 +27,9 @@ object MakeTimeline extends App {
     implicit val cursor: stm.Cursor[S] = workspace.cursor
 
     cursor.step { implicit tx =>
-      val som: SOM[S] = workspace.collectObjects {
+      val som: SOM[S] = workspace.root.iterator.collectFirst {
         case _som: SOM[S] => _som
-      } .headOption.getOrElse(sys.error("Workspace does not contain SOM"))
+      } .getOrElse(sys.error("Workspace does not contain SOM"))
 
       val tl    = Timeline[S]
       val cfg   = ScanSOM.Config()
@@ -121,8 +121,8 @@ object MakeTimeline extends App {
           pOut.graph() = gOut
           val trk   = idx % 4   // minimise overlap without extensive analysis
           val pAttr = pOut.attr
-          pAttr.put(TimelineObjView.attrTrackIndex , IntObj.newVar[S](trkIdx(trk)))
-          pAttr.put(TimelineObjView.attrTrackHeight, IntObj.newVar[S](trkHeight))
+          pAttr.put(ObjTimelineView.attrTrackIndex , IntObj.newVar[S](trkIdx(trk)))
+          pAttr.put(ObjTimelineView.attrTrackHeight, IntObj.newVar[S](trkHeight))
           pOut.name = pIn.name
           val output = pOut.outputs.add(Proc.mainOut)
           fBus.addLast(output)
@@ -163,7 +163,9 @@ object MakeTimeline extends App {
     }
 
     println("Closing...")
-    workspace.close()
+    workspace.cursor.step { implicit tx =>
+      workspace.dispose()
+    }
 
     sys.exit()
   }

@@ -2,7 +2,7 @@
  *  SVMConfig.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -17,7 +17,6 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import libsvm.svm_parameter
 
 import scala.annotation.switch
-import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 import scala.language.implicitConversions
 
@@ -277,7 +276,7 @@ object SVMConfig {
      normalize  : Boolean
    ) extends SVMConfig {
 
-    override def toString = s"""SVMConfig(
+    override def toString: String = s"""SVMConfig(
       |    tpe         = $tpe,
       |    kernel      = $kernel,
       |    cacheSize   = $cacheSize,
@@ -316,8 +315,8 @@ object SVMConfig {
             res.weight_label  = new Array(0)
             res.weight        = new Array(0)
           } else {
-            res.weight_label  = weights.map(_.label)         (breakOut)
-            res.weight        = weights.map(_.value.toDouble)(breakOut)
+            res.weight_label  = weights.iterator.map(_.label)         .toArray
+            res.weight        = weights.iterator.map(_.value.toDouble).toArray
           }
 
         case Type.NuSVC(nu) =>

@@ -2,7 +2,7 @@
  *  SVMModelImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -30,7 +30,6 @@ import de.sciss.synth.proc.SoundProcesses
 import libsvm.{svm, svm_model, svm_node, svm_problem}
 
 import scala.annotation.tailrec
-import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
@@ -39,7 +38,7 @@ object SVMModelImpl {
   def train[S <: Sys[S]](n: ISeq[Negatum[S]], config: SVMConfig, numCoeff: Int)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): Processor[Trained[S]] = {
     val res = new TrainImpl[S](config, numCoeff = numCoeff,
-      negatumH = n.map(tx.newHandle(_))(breakOut))
+      negatumH = n.iterator.map(tx.newHandle(_)).toList)
     tx.afterCommit {
       import ExecutionContext.Implicits.global
       res.start()
@@ -92,7 +91,7 @@ object SVMModelImpl {
       val vecSize = numCoeff * 2
       val futLabelled: Future[Array[LabelledFeatures]] =
         SoundProcesses.atomic[S, Array[LabelledFeatures]] { implicit tx =>
-          negatumH.flatMap { nS =>
+          negatumH.iterator.flatMap { nS =>
             val f = nS().population
             f.iterator.flatMap { obj =>
               val attr = obj.attr
@@ -104,7 +103,7 @@ object SVMModelImpl {
                 new LabelledFeatures(feat.toArray, label = isIn)
               }
             } .toArray[LabelledFeatures]
-          } (breakOut)
+          } .toArray // (breakOut)
         }
 
       val labelled  = Await.result(futLabelled, Duration(30, TimeUnit.SECONDS))
@@ -196,7 +195,7 @@ object SVMModelImpl {
           idx        += 1
         }
         nodes
-      } (breakOut)
+      } // (breakOut)
 
       val svmModel  = svm.svm_train(svmProb, svmParam)
 

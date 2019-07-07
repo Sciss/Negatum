@@ -2,7 +2,7 @@
  *  UGens.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -16,8 +16,6 @@ package impl
 
 import de.sciss.synth.ugen.{EnvGen_Perc, EnvGen_Sine, EnvGen_Triangle, EnvGen_Linen, EnvGen_CutOff, EnvGen_DADSR, EnvGen_ASR, EnvGen_ADSR, UnaryOpUGen, BinaryOpUGen}
 import de.sciss.synth.{scalar, UndefinedRate, UGenSpec, audio, demand}
-
-import scala.collection.breakOut
 
 object UGens {
   private val NoNoAttr: Set[UGenSpec.Attribute] = {
@@ -132,13 +130,13 @@ object UGens {
   }
 
   private val seq0: Vec[UGenSpec] = ugens0 ++ binUGens ++ unaryUGens ++ envUGens ++ sumUGens ++ moreUGens
-  private val map0: Map[String, UGenSpec] = seq0.map(s => s.name -> s)(breakOut)
+  private val map0: Map[String, UGenSpec] = seq0.iterator.map(s => s.name -> s).toMap
 
   private val ugens1: Vec[UGenSpec] = ParamRanges.map.keysIterator.map(
     name => map0(name)).toIndexedSeq
 
   var seq: Vec[UGenSpec] = ugens1
-  var map: Map[String, UGenSpec] = seq.map(s => s.name -> s)(breakOut)
+  var map: Map[String, UGenSpec] = seq.iterator.map(s => s.name -> s).toMap
 
   val mapAll: Map[String, UGenSpec] = map0
 

@@ -2,7 +2,7 @@
  *  Crossover.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -92,10 +92,10 @@ object Crossover {
       }
 
     def mkTop(vertices1: Vec[Vertex], edges1: Seq[Edge], vertices2: Vec[Vertex], edges2: Seq[Edge]): SynthGraphT = {
-      val t1a = (Topology.empty[Vertex, Edge] /: vertices1)(_ addVertex _)
-      val t1b = (t1a /: edges1)(_.addEdge(_).get._1)  // this is now the first half of the original top
+      val t1a = vertices1.foldLeft(Topology.empty[Vertex, Edge])(_ addVertex _)
+      val t1b = edges1.foldLeft(t1a)(_.addEdge(_).get._1)  // this is now the first half of the original top
 
-      val (t2a, e2cpy) = ((t1b, edges2) /: vertices2) { case ((t0, e0), v0) =>
+      val (t2a, e2cpy) = vertices2.foldLeft((t1b, edges2)) { case ((t0, e0), v0) =>
         // two parents might share the same vertices from a common
         // ancestry; in that case we must individualize the vertex
         // (making a copy means they get fresh object identity and hash)
@@ -109,7 +109,7 @@ object Crossover {
         }
         (tRes, eRes)
       }
-      (t2a /: e2cpy) { (t0, e0) =>
+      e2cpy.foldLeft(t2a) { (t0, e0) =>
         val res = t0.addEdge(e0)
         if (res.isFailure) {
           println("WARNING: Cross-over mkTop - cycle detected!")
@@ -122,7 +122,7 @@ object Crossover {
     val topC2a = mkTop(head2, edgesHead2, tail1, edgesTail1)
 
     def complete(top: SynthGraphT, inc: Seq[Vertex.UGen]): SynthGraphT = {
-      val top1 = if (inc.isEmpty) top else (top /: inc)((res, v) => Chromosome.completeUGenInputs(config, res, v))
+      val top1 = if (inc.isEmpty) top else inc.foldLeft(top)((res, v) => Chromosome.completeUGenInputs(config, res, v))
       val top2 = shrinkTop(top1, top.vertices.size, 0)
       top2
     }

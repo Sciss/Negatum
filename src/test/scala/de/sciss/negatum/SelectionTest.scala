@@ -29,15 +29,15 @@ object SelectionTest extends App {
     implicit val cursor: stm.Cursor[S] = workspace.cursor
 
     /* val prediction = */ cursor.step { implicit tx =>
-      val negIn: Negatum[S] = workspace.collectObjects {
+      val negIn: Negatum[S] = workspace.root.iterator.collect {
         case f: Folder[S] => f.iterator.collectFirst {
           case n: Negatum[S] => n
         }
-      } .flatten.head
+      } .flatten.toList.head
 
-      val model = workspace.collectObjects {
+      val model = workspace.root.iterator.collectFirst {
         case m: SVMModel[S] => m
-      } .head
+      } .get
 
       val cpy = Copy[S, S]
       val negOut = cpy(negIn)

@@ -2,7 +2,7 @@
  *  SOMViewImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -23,12 +23,12 @@ import de.sciss.icons.raphael
 import de.sciss.lucre.geom.IntPoint2D
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Folder
-import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.{DragAndDrop, GUI, ListObjView}
+import de.sciss.mellite.gui.{DragAndDrop, GUI, ObjListView, ObjView}
 import de.sciss.numbers
-import de.sciss.synth.proc.Workspace
+import de.sciss.synth.proc.Universe
 import javax.swing.TransferHandler
 import javax.swing.TransferHandler.TransferSupport
 
@@ -39,16 +39,14 @@ import scala.swing.{Action, Alignment, BorderPanel, Button, Component, Dimension
 import scala.util.{Failure, Success}
 
 object SOMViewImpl {
-  def apply[S <: Sys[S]](map: SOM[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                      workspace: Workspace[S]): SOMView[S] = {
+  def apply[S <: Sys[S]](map: SOM[S])(implicit tx: S#Tx, universe: Universe[S]): SOMView[S] = {
 //    implicit val undo = new UndoManagerImpl
     val res = new Impl[S](tx.newHandle(map), extent = map.config.extent)
     res.init(map)
   }
 
   private final class Impl[S <: Sys[S]](somH: stm.Source[S#Tx, SOM[S]], extent: Int)
-                                       (implicit val cursor: stm.Cursor[S],
-                                        val workspace: Workspace[S] /* , val undoManager: UndoManager */)
+                                       (implicit val universe: Universe[S] /* , val undoManager: UndoManager */)
     extends SOMView[S] with ComponentHolder[Component] { impl =>
 
     type C = Component
@@ -72,7 +70,7 @@ object SOMViewImpl {
 
       val lbPicked = new Label(" ")
 
-      var viewPicked = Option.empty[ListObjView[S]]
+      var viewPicked = Option.empty[ObjListView[S]]
 
       val actionViewPicked = Action(null) {
         viewPicked.foreach { view =>
@@ -98,8 +96,8 @@ object SOMViewImpl {
 
         protected def export(): Option[Transferable] =
           viewPicked.map { view =>
-            DragAndDrop.Transferable(ListObjView.Flavor) {
-              new ListObjView.Drag[S](workspace, impl.cursor, view)
+            DragAndDrop.Transferable(ObjView.Flavor) {
+              new ObjView.Drag[S](universe, view)
             }
           }
       }
@@ -174,7 +172,7 @@ object SOMViewImpl {
               val ptObjOpt  = som.query(qp)
               val _ptOpt    = ptObjOpt.map(_._1)
               val _viewOpt  = ptObjOpt.map { case (_, obj) =>
-                ListObjView(obj)
+                ObjListView(obj)
               }
               (_ptOpt, _viewOpt)
             }
@@ -208,14 +206,14 @@ object SOMViewImpl {
 
       ggDrop.peer.setTransferHandler(new TransferHandler {
         override def canImport(support: TransferSupport): Boolean = {
-          val res = support.isDataFlavorSupported(ListObjView.Flavor) && renderRef.single.get.isEmpty
+          val res = support.isDataFlavorSupported(ObjView.Flavor) && renderRef.single.get.isEmpty
           if (res) support.setDropAction(TransferHandler.LINK)
           res
         }
 
         override def importData(support: TransferSupport): Boolean = {
-          val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
-          renderRef.single.get.isEmpty && drag.workspace == workspace && drag.view.factory.tpe == Folder && {
+          val drag = support.getTransferable.getTransferData(ObjView.Flavor).asInstanceOf[ObjView.Drag[_]]
+          renderRef.single.get.isEmpty && drag.universe.workspace == universe.workspace && drag.view.factory.tpe == Folder && {
             val folderH = drag.view.objH.asInstanceOf[stm.Source[S#Tx, Folder[S]]]
             ggDrop.text = drag.view.name
             startRender(folderH)

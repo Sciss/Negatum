@@ -2,7 +2,7 @@
  *  NegatumApp.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -16,19 +16,20 @@ package gui
 
 import java.awt.Color
 import java.util.Locale
+
 import javax.swing.UIManager
 import javax.swing.plaf.ColorUIResource
-
 import de.sciss.desktop.Menu
 import de.sciss.desktop.impl.SwingApplicationImpl
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
 import de.sciss.mellite.gui._
 import de.sciss.mellite.{Application, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Ensemble, SynthGraphObj, Workspace}
+import de.sciss.synth.proc.{Durable, Ensemble, SynthGraphObj, Universe, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.swing.Action
@@ -139,24 +140,28 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
     // XXX TODO --- bug in SoundProcesses; remove the following line when fixed (3.8.1)
     SynthGraphObj .init()
 
-    val wsOpt = if (!config.openWorkspace) None else {
+    type S = Durable
+
+    val uOpt = if (!config.openWorkspace) None else {
       print("Creating workspace...")
-      val ws = if (config.hibernation) {
+      implicit val ws: Workspace.Durable = if (config.hibernation) {
         Hibernation.createWorkspace()
       } else {
         Composition.createFreshWorkspace()
       }
       println(" ok.")
-      ActionOpenWorkspace.openGUI(ws)
-      Some(ws)
+      implicit val cursor: Cursor[S] = ws.cursor
+      val u: Universe[S] = cursor.step { implicit tx => Universe() }
+      ActionOpenWorkspace.openGUI(u)
+      Some(u)
     }
 
     if (LOG_FRAME) LogFrame.instance    // init
 
     val mf = new mellite.gui.MainFrame
 
-    if (config.playEnsemble) wsOpt.foreach { ws =>
-      startEnsemble(ws, hibernation = config.hibernation)
+    if (config.playEnsemble) uOpt.foreach { implicit u =>
+      startEnsemble[S](hibernation = config.hibernation)
     }
 
     if (config.imperfectFrame) {
@@ -167,13 +172,13 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
     }
   }
 
-  def startEnsemble[S <: Sys[S]](ws: Workspace[S], hibernation: Boolean): Unit = {
+  def startEnsemble[S <: Sys[S]](hibernation: Boolean)(implicit u: Universe[S]): Unit = {
     import proc.Implicits._
-    implicit val _ws    : Workspace [S] = ws
-    implicit val cursor : stm.Cursor[S] = ws.cursor
-    GUI.atomic[S, Unit]("Main Ensemble ", s"Opening main ensemble elements window for '${ws.name}'") {
+    implicit val _ws    : Workspace [S] = u.workspace
+    implicit val cursor : stm.Cursor[S] = u.cursor
+    GUI.atomic[S, Unit]("Main Ensemble ", s"Opening main ensemble elements window for '${_ws.name}'") {
       implicit tx =>
-        val ensMap = ws.root.iterator.collect {
+        val ensMap = _ws.root.iterator.collect {
           case ens: Ensemble[S] => ens.name -> ens
         }.toMap
 

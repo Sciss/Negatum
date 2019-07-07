@@ -2,7 +2,7 @@
  *  SVMModelViewImpl.scala
  *  (SVMModel)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -15,32 +15,29 @@ package de.sciss.negatum
 package gui
 package impl
 
-import javax.swing.TransferHandler
-import javax.swing.TransferHandler.TransferSupport
-
 import de.sciss.icons.raphael
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.mellite.gui.{GUI, ListObjView}
-import de.sciss.synth.proc.Workspace
+import de.sciss.mellite.gui.{GUI, ObjView}
+import de.sciss.synth.proc.Universe
+import javax.swing.TransferHandler
+import javax.swing.TransferHandler.TransferSupport
 
 import scala.concurrent.stm.Ref
 import scala.swing.{Action, Alignment, BorderPanel, Component, FlowPanel, Label, ProgressBar, Swing}
 import scala.util.{Failure, Success}
 
 object SVMModelViewImpl {
-  def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                        workspace: Workspace[S]): SVMModelView[S] = {
+  def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, universe: Universe[S]): SVMModelView[S] = {
 //    implicit val undo = new UndoManagerImpl
     val res = new Impl[S](tx.newHandle(m))
     res.init(m)
   }
 
   private final class Impl[S <: Sys[S]](modelH: stm.Source[S#Tx, SVMModel[S]])
-                                       (implicit val cursor: stm.Cursor[S],
-                                        val workspace: Workspace[S] /* , val undoManager: UndoManager */)
+                                       (implicit val universe: Universe[S] /* , val undoManager: UndoManager */)
     extends SVMModelView[S] with ComponentHolder[Component] {
 
     type C = Component
@@ -72,14 +69,16 @@ object SVMModelViewImpl {
 
       ggDrop.peer.setTransferHandler(new TransferHandler {
         override def canImport(support: TransferSupport): Boolean = {
-          val res = support.isDataFlavorSupported(ListObjView.Flavor) && renderRef.single.get.isEmpty
+          val res = support.isDataFlavorSupported(ObjView.Flavor) && renderRef.single.get.isEmpty
           if (res) support.setDropAction(TransferHandler.LINK)
           res
         }
 
         override def importData(support: TransferSupport): Boolean = {
-          val drag = support.getTransferable.getTransferData(ListObjView.Flavor).asInstanceOf[ListObjView.Drag[_]]
-          renderRef.single.get.isEmpty && drag.workspace == workspace && drag.view.isInstanceOf[NegatumObjView[_]] && {
+          val drag = support.getTransferable.getTransferData(ObjView.Flavor).asInstanceOf[ObjView.Drag[_]]
+          renderRef.single.get.isEmpty && drag.universe.workspace == universe.workspace &&
+            drag.view.isInstanceOf[NegatumObjView[_]] && {
+
             val view = drag.view.asInstanceOf[NegatumObjView[S]]
             ggDrop.text = view.name
             runPrediction(view.objH)

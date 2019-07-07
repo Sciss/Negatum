@@ -29,11 +29,11 @@ object MakeModel extends App {
     implicit val cursor: stm.Cursor[S] = workspace.cursor
 
     val training = cursor.step { implicit tx =>
-      val neg: Vec[Negatum[S]] = workspace.collectObjects {
+      val neg: Vec[Negatum[S]] = workspace.root.iterator.collect {
         case f: Folder[S] => f.iterator.collectFirst {
           case n: Negatum[S] => n
         }
-      } .flatten
+      } .flatten.toVector
 
       println(s"Analyzing ${neg.size} results...")
 

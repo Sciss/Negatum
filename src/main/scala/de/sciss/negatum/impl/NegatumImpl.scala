@@ -2,7 +2,7 @@
  *  NegatumImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -17,11 +17,11 @@ package impl
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys, WorkspaceHandle}
-import de.sciss.lucre.{stm, event => evt}
+import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys}
+import de.sciss.lucre.{event => evt}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.{AudioCue, Proc}
+import de.sciss.synth.proc.{AudioCue, Proc, Universe}
 
 object NegatumImpl {
   private final val SER_VERSION = 0x4e56  // "Ne"
@@ -89,7 +89,7 @@ object NegatumImpl {
     // --- rendering ---
 
     final def run(config: Config, iter: Int)
-                 (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): Rendering[S, Unit] = {
+                 (implicit tx: S#Tx, universe: Universe[S]): Rendering[S, Unit] = {
       val popIn = population.iterator.collect {
         case p: Proc[S] =>
           val gObj      = p.graph()
@@ -101,6 +101,7 @@ object NegatumImpl {
       } .toIndexedSeq
       val templateV   = template.value
       val populationH = tx.newHandle(population)
+      import universe.cursor
       val r = new NegatumRenderingImpl[S](config = config, template = templateV, popIn = popIn, numIter = iter,
         populationH = populationH)
       r.startTx()

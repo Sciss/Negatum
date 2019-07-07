@@ -2,7 +2,7 @@
  *  NegatumViewImpl.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -19,12 +19,13 @@ import de.sciss.desktop.UndoManager
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View, deferTx}
+import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.GUI
 import de.sciss.swingplus.{GroupPanel, Spinner}
-import de.sciss.synth.proc.Workspace
+import de.sciss.synth.proc.Universe
 import javax.swing.SpinnerNumberModel
 
 import scala.concurrent.stm.Ref
@@ -32,16 +33,14 @@ import scala.swing.{BorderPanel, BoxPanel, Component, FlowPanel, Label, Orientat
 import scala.util.{Failure, Success}
 
 object NegatumViewImpl {
-  def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                        workspace: Workspace[S]): NegatumView[S] = {
+  def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): NegatumView[S] = {
     implicit val undo: UndoManager = UndoManager()
     val res = new Impl[S](tx.newHandle(n))
     res.init(n)
   }
 
   private final class Impl[S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]])
-                                       (implicit val cursor: stm.Cursor[S],
-                                        val workspace: Workspace[S], val undoManager: UndoManager)
+                                       (implicit val universe: Universe[S], val undoManager: UndoManager)
     extends NegatumView[S] with ComponentHolder[Component] {
 
     type C = Component

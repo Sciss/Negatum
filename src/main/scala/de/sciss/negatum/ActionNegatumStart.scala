@@ -2,7 +2,7 @@
  *  ActionNegatumStart.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -34,13 +34,14 @@ object ActionNegatumStart extends NamedAction("negatum-start") {
         count < Composition.MaxNegatum
       case _ => false
     }
+    implicit val u: Universe[S] = universe
     if (hasOpenNeg) {
       logComp("Continuing with Negatum evolution")
-      val univ1 = Action.Universe(done, universe.workspace)
+      val univ1 = Action.Universe(done)
       done.execute(univ1)
     } else {
       logComp("Starting new Negatum analysis")
-      val univ1 = Action.Universe(rec, universe.workspace)
+      val univ1 = Action.Universe(rec)
       rec.execute(univ1)
     }
   }

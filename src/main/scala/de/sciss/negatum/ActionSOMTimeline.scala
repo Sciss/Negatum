@@ -2,7 +2,7 @@
  *  ActionSOMTimeline.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -16,7 +16,7 @@ package de.sciss.negatum
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.mellite.gui.TimelineObjView
+import de.sciss.mellite.gui.ObjTimelineView
 import de.sciss.negatum.Composition.{logComp, mkDateString}
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
@@ -155,8 +155,8 @@ object ActionSOMTimeline extends NamedAction("som-timeline") {
         pOut.graph() = gOut
         val trk   = idx % 4   // minimise overlap without extensive analysis
         val pAttr = pOut.attr
-        pAttr.put(TimelineObjView.attrTrackIndex , IntObj.newVar[S](trkIdx(trk)))
-        pAttr.put(TimelineObjView.attrTrackHeight, IntObj.newVar[S](trkHeight))
+        pAttr.put(ObjTimelineView.attrTrackIndex , IntObj.newVar[S](trkIdx(trk)))
+        pAttr.put(ObjTimelineView.attrTrackHeight, IntObj.newVar[S](trkHeight))
         pOut.name = pIn.name
         val output = pOut.outputs.add(Proc.mainOut)
         fBus.addLast(output)

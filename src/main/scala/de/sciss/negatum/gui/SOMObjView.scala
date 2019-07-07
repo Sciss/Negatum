@@ -2,7 +2,7 @@
  *  SOMObjView.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -19,20 +19,25 @@ import de.sciss.icons.raphael
 import de.sciss.lucre.expr.CellView
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, Window, deferTx}
+import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.impl.ListObjViewImpl.NonEditable
-import de.sciss.mellite.gui.impl.{ListObjViewImpl, ObjViewImpl, WindowImpl}
-import de.sciss.mellite.gui.{GUI, ListObjView, ObjView, ViewHasWorkspace}
+import de.sciss.mellite.gui.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
+import de.sciss.mellite.gui.impl.objview.ObjViewImpl
+import de.sciss.mellite.gui.impl.{ObjViewCmdLineParser, WindowImpl}
+import de.sciss.mellite.gui.{GUI, ObjListView, ObjView}
+import de.sciss.processor.Processor.Aborted
 import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Workspace
+import de.sciss.synth.proc.Universe
+import de.sciss.synth.proc.gui.UniverseView
 import javax.swing.{Icon, SpinnerNumberModel}
 
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Label, TextField}
+import scala.util.{Failure, Success, Try}
 
-object SOMObjView extends ListObjView.Factory {
+object SOMObjView extends ObjListView.Factory {
   type E[~ <: stm.Sys[~]] = SOM[~]
   val icon          : Icon      = ObjViewImpl.raphaelIcon(raphael.Shapes.Safari)
   val prefix        : String    = "SOM"
@@ -41,21 +46,26 @@ object SOMObjView extends ListObjView.Factory {
   def category      : String    = ObjView.categComposition
   def hasMakeDialog : Boolean   = true
 
-  private[this] lazy val _init: Unit = ListObjView.addFactory(this)
+  private[this] lazy val _init: Unit = ObjListView.addFactory(this)
 
   def init(): Unit = _init
 
-  def mkListView[S <: Sys[S]](obj: SOM[S])(implicit tx: S#Tx): SOMObjView[S] with ListObjView[S] =
+  def mkListView[S <: Sys[S]](obj: SOM[S])(implicit tx: S#Tx): SOMObjView[S] with ObjListView[S] =
     new Impl(tx.newHandle(obj)).initAttrs(obj)
 
   final case class Config[S <: stm.Sys[S]](name: String, peer: SOM.Config)
 
-  def initMakeDialog[S <: Sys[S]](workspace: Workspace[S], window: Option[desktop.Window])
-                                 (ok: Config[S] => Unit)
-                                 (implicit cursor: stm.Cursor[S]): Unit = {
-    cursor.step { implicit tx =>
-      implicit val ws: Workspace[S] = workspace
-      val _view = new MakeViewImpl[S](ok)
+  def canMakeObj: Boolean = true
+
+  override def initMakeCmdLine[S <: Sys[S]](args: List[String])(implicit universe: Universe[S]): MakeResult[S] = {
+    object p extends ObjViewCmdLineParser[Config[S]](this, args)
+    p.parse(Config(name = p.name(), peer = SOM.Config()))
+  }
+
+  def initMakeDialog[S <: Sys[S]](window: Option[desktop.Window])(done: MakeResult[S] => Unit)
+                                 (implicit universe: Universe[S]): Unit = {
+    universe.cursor.step { implicit tx =>
+      val _view = new MakeViewImpl[S](done)
       val frame: WindowImpl[S] = new WindowImpl[S](CellView.const[S, String](s"New $prefix")) {
         val view: View[S] = _view
       }
@@ -73,9 +83,9 @@ object SOMObjView extends ListObjView.Factory {
 
   final class Impl[S <: Sys[S]](val objH: stm.Source[S#Tx, SOM[S]])
     extends SOMObjView[S]
-      with ListObjView[S]
+      with ObjListView[S]
       with ObjViewImpl.Impl[S]
-      with ListObjViewImpl.EmptyRenderer[S]
+      with EmptyRenderer[S]
       with NonEditable[S]
       /* with NonViewable[S] */ {
 
@@ -87,8 +97,7 @@ object SOMObjView extends ListObjView.Factory {
 
     def isViewable = true
 
-    def openView(parent: Option[Window[S]])
-                (implicit tx: S#Tx, workspace: Workspace[S], cursor: stm.Cursor[S]): Option[Window[S]] = {
+    def openView(parent: Option[Window[S]])(implicit tx: S#Tx, universe: Universe[S]): Option[Window[S]] = {
       val _obj      = objH()
       val title     = CellView.name(_obj)
       val _view     = SOMView(_obj)
@@ -100,9 +109,9 @@ object SOMObjView extends ListObjView.Factory {
     }
   }
 
-  private final class MakeViewImpl[S <: Sys[S]](ok: Config[S] => Unit)
-                                               (implicit val workspace: Workspace[S], val cursor: stm.Cursor[S])
-    extends ViewHasWorkspace[S] with ComponentHolder[Component] { impl =>
+  private final class MakeViewImpl[S <: Sys[S]](done: Try[Config[S]] => Unit)
+                                               (implicit val universe: Universe[S])
+    extends UniverseView[S] with ComponentHolder[Component] { impl =>
 
     type C = Component
 
@@ -189,6 +198,7 @@ object SOMObjView extends ListObjView.Factory {
         impl.cursor.step { implicit tx =>
           close()
         }
+        done(Failure(Aborted()))
       }
 
       implicit class SpinnerValues(m: SpinnerNumberModel) {
@@ -212,7 +222,7 @@ object SOMObjView extends ListObjView.Factory {
       val actionCreate = Action("Ok") {
         updateConfig()
         val name = ggName.text
-        ok(Config(name, builder))
+        done(Success(Config(name, builder)))
         impl.cursor.step { implicit tx =>
           close()
         }
@@ -233,6 +243,5 @@ object SOMObjView extends ListObjView.Factory {
   }
 }
 trait SOMObjView[S <: stm.Sys[S]] extends ObjView[S] {
-  override def objH: stm.Source[S#Tx , SOM[S]]
-  override def obj(implicit tx: S#Tx): SOM[S]
+  type Repr = SOM[S]
 }

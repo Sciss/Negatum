@@ -2,7 +2,7 @@
  *  ActionHibernateRecDone.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -65,7 +65,9 @@ object ActionHibernateRecDone extends NamedAction("hibernate-rec-done") {
     config.useAsync = false
     logComp("Starting FScape rendering...")
 
-    implicit val ctx = GenContext[S]
+//    implicit val ctx = GenContext[S]
+
+    implicit val u: Universe[S] = universe
 
     /* val renderFSc = */ fsc.run(config)
 //    val selfH     = tx.newHandle(self)

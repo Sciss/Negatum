@@ -2,7 +2,7 @@
  *  ActionHibernateFScDone.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v3+
  *
@@ -18,7 +18,7 @@ import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.{BooleanObj, IntObj, StringObj}
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.mellite.gui.TimelineObjView
+import de.sciss.mellite.gui.ObjTimelineView
 import de.sciss.negatum.Hibernation.logComp
 import de.sciss.numbers.Implicits._
 import de.sciss.span.Span
@@ -95,7 +95,8 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         fPlay.clear()
         fPlay.addLast(tl)
 
-        val restartU = Action.Universe(self = restart, workspace = universe.workspace)
+        implicit val u: Universe[S] = universe
+        val restartU = Action.Universe(self = restart)
         restart.execute(restartU)
 
         // we have to restart the ensemble, because otherwise
@@ -154,7 +155,7 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         pAttr.put(ObjKeys.attrFadeIn  , FadeSpec.Obj.newVar[S](fadeInVal ))
         pAttr.put(ObjKeys.attrFadeOut , FadeSpec.Obj.newVar[S](fadeOutVal))
         val trkIdx = idx + 1
-        pAttr.put(TimelineObjView.attrTrackIndex, IntObj.newVar[S](trkIdx))
+        pAttr.put(ObjTimelineView.attrTrackIndex, IntObj.newVar[S](trkIdx))
         pAttr.put(ObjKeys.attrName, StringObj.newVar[S](cv.artifact.getName))
         val busIdx = busOff + (idx % 4)
         pAttr.put(ObjKeys.attrBus, IntObj.newVar(busIdx))
