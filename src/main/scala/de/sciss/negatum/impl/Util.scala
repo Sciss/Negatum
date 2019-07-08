@@ -33,7 +33,7 @@ object Util {
 
   def roulette[A](in: Seq[(A, Int)])(implicit random: Random): A = {
     val sum         = in.map(_._2).sum
-    val norm        = in.zipWithIndex.map { case ((c, f), j) => (j, f / sum) }
+    val norm        = in.zipWithIndex.map { case ((_ /* c */, f), j) => (j, f / sum) }
     val sorted      = norm.sortBy(_._2)
     val accum       = sorted.scanLeft(0.0) { case (a, (_, f)) => a + f } .tail
     val roul        = random.nextDouble() // * max

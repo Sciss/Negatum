@@ -33,7 +33,7 @@ object Vertex {
       def asCompileString(ins: Vec[String]): String =
         if (isBinOp) mkBinOpString(ins) else mkRegularString(ins)
 
-      def boxName =
+      def boxName: String =
         if (isBinOp) {
           val id = info.name.substring(4).toInt
           val op = BinaryOpUGen.Op(id)
@@ -118,7 +118,7 @@ object Vertex {
     def isUGen      = false
     def isConstant  = true
 
-    def boxName = f.toString
+    def boxName: String = f.toString
   }
 }
 sealed trait Vertex {

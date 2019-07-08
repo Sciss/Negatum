@@ -5,4 +5,4 @@
 - new analysis doesn't seem to add new negatum to folder?
 
 - init conditions: "
-  - ens-neg-listen play muss auf `false`stehen
+  - ens-neg-listen play muss auf `false` stehen

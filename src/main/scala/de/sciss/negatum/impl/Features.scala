@@ -212,9 +212,9 @@ object Features {
     val c = filecache.Config[CacheKey, CacheValue]()
     // c.executionContext = SoundProcesses.executionContext
     c.capacity  = filecache.Limit(count = 10)
-    c.accept    = { (key, value) => key._1.lastModified() == value.lastModified }
-    c.space     = { (key, value) => value.meta.length() + value.feature.length() }
-    c.evict     = { (key, value) => value.meta.delete() ; value.feature.delete() }
+    c.accept    = { (key        , value) => key._1.lastModified() == value.lastModified }
+    c.space     = { (_ /* key */, value) => value.meta.length() + value.feature.length() }
+    c.evict     = { (_ /* key */, value) => value.meta.delete() ; value.feature.delete() }
     c.build
   }
   private val cacheP = TxnExecutor.defaultAtomic { implicit tx => TxnProducer(cCfg) }

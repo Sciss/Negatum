@@ -33,7 +33,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
 
 object SOMImpl {
-  private object Value {
+  private object Value {  // IntelliJ highlight bug; the contains of the object _is_ used
     implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Value[S]] =
       anyValSer.asInstanceOf[ValSer[S]]
 
@@ -162,7 +162,7 @@ object SOMImpl {
     }
   }
 
-  private object SpaceHelper {
+  private object SpaceHelper {  // IntelliJ highlight bug; the contains of the object _is_ used
     implicit object TwoDim extends SpaceHelper[IntSpace.TwoDim] {
       def space: IntSpace.TwoDim = IntSpace.TwoDim
 

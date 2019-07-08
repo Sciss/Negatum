@@ -30,8 +30,8 @@ object Rendering {
     def isComplete = false
   }
 
-  val  Cancelled = Processor.Aborted
-  type Cancelled = Processor.Aborted
+  val  Cancelled: Processor.Aborted.type  = Processor.Aborted
+  type Cancelled                          = Processor.Aborted
 }
 trait Rendering[S <: Sys[S], A] extends Observable[S#Tx, Rendering.State[A]] with Disposable[S#Tx] {
   def state(implicit tx: S#Tx): Rendering.State[A]

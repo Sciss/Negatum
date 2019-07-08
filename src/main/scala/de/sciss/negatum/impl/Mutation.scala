@@ -83,7 +83,7 @@ object Mutation {
 
     val mutationIter  = rrand(minMut, maxMut)
     require(mutationIter > 0)
-    val res = (1 to mutationIter).foldLeft(chosenT) { case (pred, iter) =>
+    val res = (1 to mutationIter).foldLeft(chosenT) { case (pred, _ /*iter*/) =>
       val tpe = random.nextInt(7)
       val TEST = if (!DEBUG) 0L else {
         val n = random.nextLong()
@@ -121,7 +121,7 @@ object Mutation {
               case 5 => splitVertex (config, pred)
               case 6 => mergeVertex (config, pred)
             }
-            pred // MkTopology(pred)
+            // pred // MkTopology(pred)
         }
 
       //      if (next ne pred) {
@@ -257,7 +257,7 @@ object Mutation {
     val vertices    = top.vertices
 
     val candidates  = vertices.collect {
-      case v @ Vertex.UGen(spec) if top.edgeMap.get(v).exists(_.size >= 2) => v
+      case v @ Vertex.UGen(_ /*spec*/) if top.edgeMap.get(v).exists(_.size >= 2) => v
     }
 
     if (candidates.isEmpty) top else {

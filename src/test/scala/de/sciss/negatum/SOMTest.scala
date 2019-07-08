@@ -16,7 +16,7 @@ object SOMTest extends App {
   dir.delete()
 //  val factory = BerkeleyDB.tmp()
   val factory = BerkeleyDB.factory(dir)
-  implicit val cursor = Durable(BerkeleyDB.tmp())
+  implicit val cursor: Durable = Durable(BerkeleyDB.tmp())
 
   val r  = new util.Random(1L)
   val t1 = System.currentTimeMillis()

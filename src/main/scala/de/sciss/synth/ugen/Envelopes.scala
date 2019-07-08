@@ -41,7 +41,7 @@ trait EnvGenLike extends GE.Lazy with HasDoneFlag with AudioRated {
 
 case object EnvGen_ADSR extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("attack"      , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.01f),rates = Map.empty),
     Argument("decay"       , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.3f), rates = Map.empty),
     Argument("sustainLevel", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.5f), rates = Map.empty),
@@ -60,7 +60,7 @@ final case class EnvGen_ADSR(attack: GE = 0.01f, decay: GE = 0.3f, sustainLevel:
 
 case object EnvGen_ASR extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("attack" , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.01f),rates = Map.empty),
     Argument("level"  , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty),
     Argument("release", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty)
@@ -76,7 +76,7 @@ final case class EnvGen_ASR(attack: GE = 0.01f, level: GE = 1.0f, release: GE = 
 
 case object EnvGen_CutOff extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("release", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.1f), rates = Map.empty),
     Argument("level"  , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty)
   )
@@ -91,7 +91,7 @@ final case class EnvGen_CutOff(release: GE = 0.1f, level: GE = 1.0f, /* curve: E
 
 case object EnvGen_DADSR extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("delay"       , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.1f), rates = Map.empty),
     Argument("attack"      , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.01f),rates = Map.empty),
     Argument("decay"       , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.3f), rates = Map.empty),
@@ -112,7 +112,7 @@ final case class EnvGen_DADSR(delay: GE = 0.1f, attack: GE = 0.01f, decay: GE = 
 
 case object EnvGen_Linen extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("attack" , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.01f),rates = Map.empty),
     Argument("sustain", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty),
     Argument("release", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty),
@@ -130,7 +130,7 @@ final case class EnvGen_Linen(attack: GE = 0.01f, sustain: GE = 1.0f, release: G
 
 case object EnvGen_Perc extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[UGenSpec.Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("attack" , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 0.01f),rates = Map.empty),
     Argument("release", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty),
     Argument("level"  , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1.0f), rates = Map.empty)
@@ -146,7 +146,7 @@ final case class EnvGen_Perc(attack: GE = 0.01f, release: GE = 1.0f, level: GE =
 
 case object EnvGen_Sine extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[Argument](
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
     Argument("dur", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1f), rates = Map.empty),
     Argument("level", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1f), rates = Map.empty)
   )
@@ -161,8 +161,8 @@ final case class EnvGen_Sine(dur: GE = 1.0f, level: GE = 1.0f,
 
 case object EnvGen_Triangle extends EnvGenCompanion {
   import UGenSpec._
-  val envelopeArgs = Vec[Argument](
-    Argument("dur", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1f), rates = Map.empty),
+  val envelopeArgs: Vec[UGenSpec.Argument] = Vector(
+    Argument("dur"  , tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1f), rates = Map.empty),
     Argument("level", tpe = ArgumentType.GE(SignalShape.Generic), defaults = Map(UndefinedRate -> 1f), rates = Map.empty)
   )
 }

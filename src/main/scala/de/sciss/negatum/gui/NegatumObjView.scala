@@ -105,7 +105,7 @@ object NegatumObjView extends ObjListView.Factory {
       with NonEditable[S]
       /* with NonViewable[S] */ {
 
-    override def obj(implicit tx: S#Tx) = objH()
+    override def obj(implicit tx: S#Tx): Negatum[S] = objH()
 
     type E[~ <: stm.Sys[~]] = Negatum[~]
 

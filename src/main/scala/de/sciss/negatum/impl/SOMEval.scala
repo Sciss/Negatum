@@ -17,6 +17,7 @@ import de.sciss.dsp
 import de.sciss.file.File
 import de.sciss.synth.io.AudioFile
 
+// XXX TODO --- the naming is weird; all this is independent of SOM
 object SOMEval {
   final class Weight(val spectral: Array[Double], val temporal: Array[Double]) {
     override def toString: String = spectral.map(d => f"$d%1.3f").mkString("[", ", ", "]")

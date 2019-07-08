@@ -110,9 +110,9 @@ object NegatumImpl {
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
       new Impl[Out] { out =>
-        protected val targets: Targets[Out] = Targets[Out]
-        val template            = context(proc.template  )
-        val population          = context(proc.population)
+        protected val targets : Targets         [Out] = Targets[Out]
+        val template          : AudioCue.Obj.Var[Out] = context(proc.template  )
+        val population        : Folder          [Out] = context(proc.population)
         connect()
       }
 

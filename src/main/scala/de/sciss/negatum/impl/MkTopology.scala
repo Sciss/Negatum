@@ -54,7 +54,7 @@ object MkTopology {
           val df2     = if (df1.isDefined || rate == UndefinedRate) df1 else arg.defaults.get(UndefinedRate)
           val dfGE    = df2.map(_.toGE)
 
-          if (!dfGE.exists(_ == argVal)) {  // .contains is not available for Scala 2.10!
+          if (!dfGE.contains(argVal)) {
             val vIn = vertexMap.getOrElse(argVal, {
               argVal match {
                 case c @ Constant(f) =>

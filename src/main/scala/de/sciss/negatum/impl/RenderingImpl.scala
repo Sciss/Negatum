@@ -42,7 +42,7 @@ trait RenderingImpl[S <: Sys[S], A, B]
   private[this] val _state        = Ref[State[A]](Rendering.Progress(0.0))
   private[this] val _disposed     = Ref(false)
 
-  final def reactNow(fun: (S#Tx) => State[A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+  final def reactNow(fun: S#Tx => State[A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
     val res = react(fun)
     fun(tx)(state)
     res

@@ -111,7 +111,7 @@ object Delaunay {
     // XXX TODO --- calling `sortBy` twice doesn't make sense
     val pointsSortedXYAscending = pointList.take(nPoints).zipWithIndex
       .sortBy(_._1.y)
-      .sortBy(_._1.x).map { case (Vector2(x, y), i) => i }
+      .sortBy(_._1.x).map { case (Vector2(_ /*x */, _ /* y */), i) => i }
 
     val pointsSortedAndDeduped =
       pointsSortedXYAscending.foldLeft((Nil: List[Int], -1)) {

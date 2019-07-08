@@ -56,7 +56,7 @@ object ReadSpeakerCoords extends App {
 
   def mkVector(even: Boolean): String = {
     val select = rectsS.filter(_.even == even)
-    val mapped = select.map { case Rect(x, y, ch, _) =>
+    val mapped = select.map { case Rect(x, y, _ /*ch*/, _) =>
       f"Vector2($x%gf, $y%gf)"
     }
     val pre = if (even) "even" else "odd"
