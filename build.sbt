@@ -42,7 +42,8 @@ lazy val root = project.in(file("."))
       "de.sciss"        %% "scalacolliderugens-core"    % deps.main.scalaColliderUGens,
       "de.sciss"        %% "scalacolliderugens-plugins" % deps.main.scalaColliderUGens,
       "de.sciss"        %% "scissdsp"                   % deps.main.dsp,
-      "de.sciss"        %% "strugatzki"                 % deps.main.strugatzki,
+//      "de.sciss"        %% "strugatzki"                 % deps.main.strugatzki,
+      "com.github.scopt" %% "scopt" % "3.7.1",
       "de.sciss"        %% "filecache-txn"              % deps.main.fileCache,
       "de.sciss"        %% "fileutil"                   % deps.main.fileUtil,   // (sbt bug)
       "de.sciss"        %% "kollflitz"                  % deps.main.kollFlitz,

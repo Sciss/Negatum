@@ -19,7 +19,7 @@ import de.sciss.filecache
 import de.sciss.filecache.{TxnConsumer, TxnProducer}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.span.Span
-import de.sciss.strugatzki.{FeatureCorrelation, FeatureExtraction, Strugatzki}
+//import de.sciss.strugatzki.{FeatureCorrelation, FeatureExtraction, Strugatzki}
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 import de.sciss.synth.proc.Bounce
 
@@ -103,87 +103,84 @@ object Features {
     val genFolder           = File.createTemp(prefix = "muta_eval", directory = true)
     val genExtr             = genFolder / "gen_feat.xml"
 
-    val normF   = genFolder / Strugatzki.NormalizeName
-    if (normalizeMFCC) {
-      import Features.{norms => featNorms}
-      if (numMFCC != featNorms.length + 1)
-        throw new IllegalArgumentException(s"Normalize option requires numCoeffs == ${featNorms.length - 1}")
-      blocking {
-        val normAF  = AudioFile.openWrite(normF, AudioFileSpec(numChannels = featNorms.length, sampleRate = 44100))
-        normAF.write(featNorms)
-        normAF.close()
-      }
-    }
-    val featF   = File.createTemp(prefix = "gen_feat", suffix = ".aif")
-
-    val exCfg             = FeatureExtraction.Config()
-    exCfg.audioInput      = bounceF
-    exCfg.featureOutput   = featF
-    exCfg.metaOutput      = Some(genExtr)
-    exCfg.numCoeffs       = numMFCC
-    val ex                = FeatureExtraction(exCfg)
-    import ExecutionContext.Implicits.global
-    ex.start()
-    //      _ex.onFailure {
-    //        case t => println(s"gen-extr failed with $t")
-    //      }
-    ex.recover {
-      case cause => throw Features.ExtractionFailed(cause)
-    }
-
-    val numFrames = inputSpec.numFrames
-
-    val corr = ex.flatMap { _ =>
-      val corrCfg           = FeatureCorrelation.Config()
-      corrCfg.metaInput     = inputExtr
-      corrCfg.databaseFolder= genFolder
-      corrCfg.minSpacing    = Long.MaxValue >> 1
-      corrCfg.numMatches    = 1
-      corrCfg.numPerFile    = 1
-      corrCfg.maxBoost      = maxBoost.toFloat
-      corrCfg.normalize     = normalizeMFCC
-      corrCfg.minPunch      = numFrames
-      corrCfg.maxPunch      = numFrames
-      corrCfg.punchIn       = FeatureCorrelation.Punch(
-        span = Span(0L, numFrames),
-        temporalWeight = temporalWeight.toFloat)
-      val _corr             = FeatureCorrelation(corrCfg)
-      _corr.start()
-      _corr
-    }
-
-    val simFut0 = corr.map { matches =>
-      // assert(matches.size == 1)
-      val sim0 = matches.headOption.map { m =>
-        if (DEBUG) println(m)
-        m.sim
-      } .getOrElse(0f)
-      val sim  = if (sim0.isNaN || sim0.isInfinite) 0.0 else sim0.toDouble
-      sim
-    }
-
-    val simFut = simFut0.recover {
-      case Bounce.ServerFailed(_) => 0.0
-      case Features.ExtractionFailed(_) =>
-        if (DEBUG) println("Gen-extr failed!")
-        0.0
-
-      case _: TimeoutException =>
-        if (DEBUG) println("Bounce timeout!")
-//        wait.foreach { bnc0 => bnc0.abort() }
-        0.0    // we aborted the process after 4 seconds
-    }
-
-    val res = simFut
-
-    res.onComplete { _ =>
-      if (normalizeMFCC) normF.delete()
-      featF.delete()
-      // audioF    .delete()
-      genExtr.delete()
-      genFolder.delete()
-    }
-    res
+    ???
+//    val normF   = genFolder / Strugatzki.NormalizeName
+//    if (normalizeMFCC) {
+//      import Features.{norms => featNorms}
+//      if (numMFCC != featNorms.length + 1)
+//        throw new IllegalArgumentException(s"Normalize option requires numCoeffs == ${featNorms.length - 1}")
+//      blocking {
+//        val normAF  = AudioFile.openWrite(normF, AudioFileSpec(numChannels = featNorms.length, sampleRate = 44100))
+//        normAF.write(featNorms)
+//        normAF.close()
+//      }
+//    }
+//    val featF   = File.createTemp(prefix = "gen_feat", suffix = ".aif")
+//
+//    val exCfg             = FeatureExtraction.Config()
+//    exCfg.audioInput      = bounceF
+//    exCfg.featureOutput   = featF
+//    exCfg.metaOutput      = Some(genExtr)
+//    exCfg.numCoeffs       = numMFCC
+//    val ex                = FeatureExtraction(exCfg)
+//    import ExecutionContext.Implicits.global
+//    ex.start()
+//    ex.recover {
+//      case cause => throw Features.ExtractionFailed(cause)
+//    }
+//
+//    val numFrames = inputSpec.numFrames
+//
+//    val corr = ex.flatMap { _ =>
+//      val corrCfg           = FeatureCorrelation.Config()
+//      corrCfg.metaInput     = inputExtr
+//      corrCfg.databaseFolder= genFolder
+//      corrCfg.minSpacing    = Long.MaxValue >> 1
+//      corrCfg.numMatches    = 1
+//      corrCfg.numPerFile    = 1
+//      corrCfg.maxBoost      = maxBoost.toFloat
+//      corrCfg.normalize     = normalizeMFCC
+//      corrCfg.minPunch      = numFrames
+//      corrCfg.maxPunch      = numFrames
+//      corrCfg.punchIn       = FeatureCorrelation.Punch(
+//        span = Span(0L, numFrames),
+//        temporalWeight = temporalWeight.toFloat)
+//      val _corr             = FeatureCorrelation(corrCfg)
+//      _corr.start()
+//      _corr
+//    }
+//
+//    val simFut0 = corr.map { matches =>
+//      // assert(matches.size == 1)
+//      val sim0 = matches.headOption.map { m =>
+//        if (DEBUG) println(m)
+//        m.sim
+//      } .getOrElse(0f)
+//      val sim  = if (sim0.isNaN || sim0.isInfinite) 0.0 else sim0.toDouble
+//      sim
+//    }
+//
+//    val simFut = simFut0.recover {
+//      case Bounce.ServerFailed(_) => 0.0
+//      case Features.ExtractionFailed(_) =>
+//        if (DEBUG) println("Gen-extr failed!")
+//        0.0
+//
+//      case _: TimeoutException =>
+//        if (DEBUG) println("Bounce timeout!")
+//        0.0    // we aborted the process after 4 seconds
+//    }
+//
+//    val res = simFut
+//
+//    res.onComplete { _ =>
+//      if (normalizeMFCC) normF.delete()
+//      featF.delete()
+//      // audioF    .delete()
+//      genExtr.delete()
+//      genFolder.delete()
+//    }
+//    res
   }
 
   // ---- private ----
@@ -225,18 +222,19 @@ object Features {
     val inputSpec         = AudioFile.readSpec(f)
     val inputMod          = f.lastModified()
     require(inputSpec.numChannels == 1, s"Input file '${f.name}' must be mono but has ${inputSpec.numChannels} channels")
-    val exCfg             = FeatureExtraction.Config()
-    exCfg.audioInput      = f
-    val inputFeature      = File.createTemp(suffix = ".aif")
-    exCfg.featureOutput   = inputFeature
-    val inputExtr         = File.createTemp(suffix = "_feat.xml")
-    exCfg.metaOutput      = Some(inputExtr)
-    exCfg.numCoeffs       = numCoeffs
-    val futInputExtr      = FeatureExtraction(exCfg)
-    import cacheP.executionContext
-    futInputExtr.start()
-    futInputExtr.map { _ =>
-      CacheValue(lastModified = inputMod, meta = inputExtr, feature = inputFeature)
-    }
+    ???
+//    val exCfg             = FeatureExtraction.Config()
+//    exCfg.audioInput      = f
+//    val inputFeature      = File.createTemp(suffix = ".aif")
+//    exCfg.featureOutput   = inputFeature
+//    val inputExtr         = File.createTemp(suffix = "_feat.xml")
+//    exCfg.metaOutput      = Some(inputExtr)
+//    exCfg.numCoeffs       = numCoeffs
+//    val futInputExtr      = FeatureExtraction(exCfg)
+//    import cacheP.executionContext
+//    futInputExtr.start()
+//    futInputExtr.map { _ =>
+//      CacheValue(lastModified = inputMod, meta = inputExtr, feature = inputFeature)
+//    }
   }
 }
