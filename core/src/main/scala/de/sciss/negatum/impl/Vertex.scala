@@ -14,7 +14,7 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.synth.ugen.BinaryOpUGen
+import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
 import de.sciss.synth.{GE, UGenSpec}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -25,52 +25,69 @@ object Vertex {
     def unapply(v: UGen): Option[UGenSpec] = Some(v.info)
 
     private final class Impl(val info: UGenSpec) extends UGen {
-      private def isBinOp: Boolean = info.name.startsWith("Bin_")
+      private def isBinOp : Boolean = info.name.startsWith("Bin_")
+      private def isUnOp  : Boolean = info.name.startsWith("Un_")
 
       def copy(): UGen = new Impl(info)
 
       def instantiate(ins: Vec[(AnyRef, Class[_])]): GE =
-        if (isBinOp) mkBinOpUGen(ins) else mkRegularUGen(ins)
+        if (isBinOp) mkBinOpUGen(ins) else if (isUnOp) mkUnOpUGen(ins) else mkRegularUGen(ins)
 
-      def asCompileString(ins: Vec[String]): String =
-        if (isBinOp) mkBinOpString(ins) else mkRegularString(ins)
-
-      def boxName: String =
-        if (isBinOp) {
-          val id = info.name.substring(4).toInt
-          val op = BinaryOpUGen.Op(id)
-          val n   = op.name
-          s"${n.substring(0, 1).toLowerCase}${n.substring(1)}"
-        } else {
-          info.name
-        }
-
-      private def mkBinOpString(ins: Vec[String]): String = {
-        val nu = boxName
-        s"(${ins(0)} $nu ${ins(1)})"
-      }
-
-      private def mkRegularString(ins: Vec[String]): String = {
-        val rates = info.rates
-        val consName0 = rates.method match {
-          case UGenSpec.RateMethod.Alias (name) => name
-          case UGenSpec.RateMethod.Custom(name) => name
-          case UGenSpec.RateMethod.Default =>
-            val rate = rates.set.max
-            rate.methodName
-        }
-        val consName  = if (consName0 == "apply") "" else s".$consName0"
-        val nameCons  = s"${info.name}$consName"
-        if (ins.isEmpty && consName.nonEmpty)   // e.g. SampleRate.ir
-          nameCons
-        else
-          ins.mkString(s"$nameCons(", ", ", ")")
-      }
+//      def asCompileString(ins: Vec[String]): String =
+//        if (isBinOp) mkBinOpString(ins) else if (isUnOp) mkUnOpString(ins) else mkRegularString(ins)
+//
+//      def boxName: String =
+//        if (isBinOp) {
+//          val id = info.name.substring(4).toInt
+//          val op = BinaryOpUGen.Op(id)
+//          val n   = op.name
+//          s"${n.substring(0, 1).toLowerCase}${n.substring(1)}"
+//        } else if (isUnOp) {
+//          val id = info.name.substring(3).toInt
+//          val op = UnaryOpUGen.Op(id)
+//          val n   = op.name
+//          s"${n.substring(0, 1).toLowerCase}${n.substring(1)}"
+//        } else {
+//          info.name
+//        }
+//
+//      private def mkBinOpString(ins: Vec[String]): String = {
+//        val nu = boxName
+//        s"(${ins(0)} $nu ${ins(1)})"
+//      }
+//
+//      private def mkUnOpString(ins: Vec[String]): String = {
+//        val nu = boxName
+//        s"${ins(0)}.$nu(${ins(1)})"
+//      }
+//
+//      private def mkRegularString(ins: Vec[String]): String = {
+//        val rates = info.rates
+//        val consName0 = rates.method match {
+//          case UGenSpec.RateMethod.Alias (name) => name
+//          case UGenSpec.RateMethod.Custom(name) => name
+//          case UGenSpec.RateMethod.Default =>
+//            val rate = rates.set.max
+//            rate.methodName
+//        }
+//        val consName  = if (consName0 == "apply") "" else s".$consName0"
+//        val nameCons  = s"${info.name}$consName"
+//        if (ins.isEmpty && consName.nonEmpty)   // e.g. SampleRate.ir
+//          nameCons
+//        else
+//          ins.mkString(s"$nameCons(", ", ", ")")
+//      }
 
       private def mkBinOpUGen(ins: Vec[(AnyRef, Class[_])]): GE = {
         val id = info.name.substring(4).toInt
         val op = BinaryOpUGen.Op(id)
         op.make(ins(0)._1.asInstanceOf[GE], ins(1)._1.asInstanceOf[GE])
+      }
+
+      private def mkUnOpUGen(ins: Vec[(AnyRef, Class[_])]): GE = {
+        val id = info.name.substring(3).toInt
+        val op = UnaryOpUGen.Op(id)
+        op.make(ins(0)._1.asInstanceOf[GE])
       }
 
       private def mkRegularUGen(ins: Vec[(AnyRef, Class[_])]): GE = {
@@ -101,7 +118,7 @@ object Vertex {
 
     def instantiate(ins: Vec[(AnyRef, Class[_])]): GE
 
-    def asCompileString(ins: Vec[String]): String
+//    def asCompileString(ins: Vec[String]): String
 
     def isUGen      = true
     def isConstant  = false
@@ -120,14 +137,14 @@ object Vertex {
     def isUGen      = false
     def isConstant  = true
 
-    def boxName: String = f.toString
+//    def boxName: String = f.toString
   }
 }
 sealed trait Vertex {
   /** Creates an structurally identical copy, but wrapped in a new vertex (object identity). */
   def copy(): Vertex
 
-  def boxName: String
+//  def boxName: String
 
   def isConstant: Boolean
   def isUGen    : Boolean

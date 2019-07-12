@@ -15,7 +15,7 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache           = "0.5.1"
-    val fscape              = "2.27.0"
+    val fscape              = "2.27.1-SNAPSHOT"
     val soundProcesses      = "3.29.3"
 //    val strugatzki          = "2.19.0"
   }

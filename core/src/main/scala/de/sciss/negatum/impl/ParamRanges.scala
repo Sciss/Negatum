@@ -14,7 +14,7 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.synth.ugen.BinaryOpUGen
+import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
 
 import scala.language.implicitConversions
 
@@ -54,8 +54,9 @@ object ParamRanges {
   def ifOver (param: String, lo: Double = 10.0): Option[Dynamic] = Some(Dynamic.IfOver (param, lo))
   def ifUnder(param: String, hi: Double =  0.1): Option[Dynamic] = Some(Dynamic.IfUnder(param, hi))
 
-  val binOrDyn : Dynamic = Dynamic.Or (Dynamic.In("a"), Dynamic.In("b"))
-  val binAndDyn: Dynamic = Dynamic.And(Dynamic.In("a"), Dynamic.In("b"))
+  val unDyn     : Dynamic = Dynamic.In("a")
+  val binOrDyn  : Dynamic = Dynamic.Or (Dynamic.In("a"), Dynamic.In("b"))
+  val binAndDyn : Dynamic = Dynamic.And(Dynamic.In("a"), Dynamic.In("b"))
 
   val map: Map[String, Info] = Map(
     // ---- Chaos ----
@@ -362,187 +363,42 @@ object ParamRanges {
       "freq"  -> Spec(lo = 10.0, hi = 20000.0),
       "rq"    -> Spec(lo = 0.01, hi = 100.0)    // arbitrary
     )),
+    "MidEQ" -> Info(dynamic = true, params = Map(
+      "in"    -> Spec(dynamic = true),
+      "freq"  -> Spec(lo = 10.0, hi = 20000.0),
+      "rq"    -> Spec(lo = 0.01, hi = 100.0),     // arbitrary
+      "gain"  -> Spec(lo = -144.0, hi = 144.0)    // arbitrary
+    )),
+    "Resonz" -> Info(dynamic = true, params = Map(
+      "in"    -> Spec(dynamic = true),
+      "freq"  -> Spec(lo = 10.0, hi = 20000.0),
+      "rq"    -> Spec(lo = 0.01, hi = 100.0)      // arbitrary
+    )),
+    "Formlet" -> Info(dynamic = true, params = Map(
+      "in"    -> Spec(dynamic = true),
+      "freq"  -> Spec(lo = 10.0, hi = 20000.0),
+      "attack"-> Spec(lo = 0.001, hi = 100.0),     // arbitrary
+      "decay" -> Spec(lo = 0.001, hi = 100.0)     // arbitrary
+    )),
+    "Slew" -> Info(params = Map(
+      "in"    -> Spec(),
+      "up"    -> Spec(lo = 0.001, hi = 40000.0),
+      "down"  -> Spec(lo = 0.001, hi = 40000.0)
+    )),
+    "Median" -> Info(params = Map(
+      "in"      -> Spec(),
+      "length"  -> Spec(lo = 3.0, hi = 31.0),
+    )),
+    "FreqShift" -> Info(dynamic = true, params = Map(
+      "in"      -> Spec(dynamic = true),
+      "freq"    -> Spec(lo = -20000.0, hi = 20000.0),
+      "phae"    -> Spec()
+    )),
 
     // TODO: continue here
     /*
-    <ugen name="Slew">
-        <rate name="control"/>
-        <rate name="audio"/>
-        <arg name="in" rate="ugen">
-            <doc>
-                input signal
-            </doc>
-        </arg>
-        <arg name="up" default="1.0">
-            <doc>
-                maximum upward slope.
-            </doc>
-        </arg>
-        <arg name="down" default="1.0">
-            <doc>
-                maximum downward slope.
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A slew rate limiter UGen.
-                Limits the slope of an input signal. The slope is expressed in units per second.
 
-                Since the UGen is initialized with the initial value of the input signal, some tricks
-                must be applied to set it to an alternative start value. For example:
-                {{{
-                val in = Select.kr(ToggleFF.kr(1), Seq("start".ir, "target".kr))
-                Slew.kr(in)  // begins at "start" and moves towards "target"
-                }}}
-            </text>
-        </doc>
-    </ugen>
-    <ugen name="Slope">
-        <rate name="control"/>
-        <rate name="audio"/>
-        <arg name="in" rate="ugen">
-            <doc>
-                input signal to be measured
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A UGen measuring the slope of signal.
-                It calculates the rate of change per second of a signal, as given by the following formula:
-                {{{
-                out(i) = (in(i) - in(i-1)) * sampleRate
-                }}}
-                It thus equal to `HPZ1.ar(_) * 2 * SampleRate.ir`
-            </text>
-        </doc>
-    </ugen>
-
-    <ugen name="MidEQ">
-        <rate name="control"/>
-        <rate name="audio"/>
-        <arg name="in" rate="ugen">
-            <doc>
-                input signal to be filtered
-            </doc>
-        </arg>
-        <arg name="freq" default="440.0">
-            <doc>
-                center frequency in Hertz
-            </doc>
-        </arg>
-        <arg name="rq" default="1.0">
-            <doc>
-                reciprocal of Q. The Q (or quality) is conventionally defined as center-frequency / bandwidth,
-                meaning that rq = bandwidth / center-frequency. A higher Q or lower rq produces a steeper filter.
-                Too high values for `rq` may blow the filter up!
-            </doc>
-        </arg>
-        <arg name="gain" default="0.0">
-            <doc>
-                The amount of boost (when positive) or attenuation (when negative) applied to
-                the frequency band, in decibels.
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A single band parametric equalizer UGen. It attenuates or boosts a frequency band.
-            </text>
-            <example name="mouse controlled frequency and boost">
-                val in   = WhiteNoise.ar(0.25)
-                val freq = MouseX.kr(200, 10000, 1)
-                val gain = MouseY.kr(-12, 12) // bottom to top
-                MidEQ.ar(in, freq, rq = 0.5, gain = gain)
-            </example>
-            <see>ugen.BPF</see>
-            <see>ugen.BRF</see>
-            <see>ugen.HPF</see>
-            <see>ugen.LPF</see>
-            <see>ugen.Resonz</see>
-        </doc>
-    </ugen>
-    <ugen name="Median">
-        <rate name="control"/>
-        <rate name="audio">
-            <arg name="in" rate="ugen">
-                <doc>
-                    input signal to be processed
-                </doc>
-            </arg>
-        </rate>
-        <arg name="length" default="3" init="true" pos="1">
-            <doc>
-                window size. I.e., the number of input samples in which to find the median.
-                Must be an odd number from 1 to 31. A value of 1 has no effect.
-                ''Warning'': This parameter is only read an initialization time and
-                cannot be modulated while the UGen is running.
-            </doc>
-        </arg>
-        <arg name="in" pos="0"/>
-        <doc warn-pos="true">
-            <text>
-                A filter UGen that calculates the median of a running window over its input signal.
-                This non-linear filter can be used to reduce impulse noise from a signal.
-            </text>
-            <example name="engage with mouse button">
-                val in  = Saw.ar(500) * 0.1 + Dust2.ar(100) * 0.9 // signal plus noise
-                val flt = Median.ar(in, 3)
-                LinXFade2.ar(in, flt, MouseButton.kr(-1, 1))
-            </example>
-            <example name="long filter distorts by chopping off peaks in input">
-                Median.ar(SinOsc.ar(1000) * 0.2, 31)
-            </example>
-            <see>ugen.LPF</see>
-            <see>ugen.LeakDC</see>
-            <see>ugen.RunningSum</see>
-        </doc>
-    </ugen>
-
-    <ugen name="Resonz">
-        <rate name="control"/>
-        <rate name="audio"/>
-        <arg name="in" rate="ugen">
-            <doc>
-                input signal to be filtered
-            </doc>
-        </arg>
-        <arg name="freq" default="440.0">
-            <doc>
-                resonant frequency in Hertz
-            </doc>
-        </arg>
-        <arg name="rq" default="1.0">
-            <doc>
-                reciprocal of Q. The Q (or quality) is conventionally defined as center-frequency / bandwidth,
-                meaning that rq = bandwidth / center-frequency. A higher Q or lower rq produces a steeper filter.
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A two pole resonant filter UGen. It has zeroes at `z = +1` and `z = -1`.
-
-                Based on K. Steiglitz, "A Note on Constant-Gain Digital Resonators", Computer Music Journal,
-                vol 18, no. 4, pp. 8-10, Winter 1994.
-            </text>
-            <example name="modulated frequency">
-                val in   = Saw.ar(200) * 0.5
-                val freq = SinOsc.ar(XLine.ar(0.3, 100, 20)).madd(3600, 4000)
-                Resonz.ar(in, freq)
-            </example>
-            <example name="mouse controlled frequency and Q">
-                val in   = WhiteNoise.ar(0.5)
-                val freq = MouseX.kr(200, 10000, 1)
-                val q    = MouseY.kr(1, 100, 1) // bottom to top
-                val flt  = Resonz.ar(in, freq, q.reciprocal)
-                flt * q.sqrt // compensate for energy loss
-            </example>
-            <see>ugen.BPF</see>
-            <see>ugen.Ringz</see>
-            <see>ugen.HPF</see>
-            <see>ugen.LPF</see>
-            <see>ugen.MidEQ</see>
-        </doc>
-    </ugen>
-    <ugen name="Ringz">
+     <ugen name="Ringz">
         <rate name="control"/>
         <rate name="audio"/>
         <arg name="in" rate="ugen">
@@ -560,88 +416,7 @@ object ParamRanges {
                 the 60 dB decay time in seconds
             </doc>
         </arg>
-        <doc>
-            <text>
-                A resonant or "ringing" filter UGen. This is the same as `Resonz`, except that instead of a
-                Q parameter, the bandwidth is specified as a 60 dB ring decay time.
-                One `Ringz` is equivalent to one component of the `Klank` UGen.
-            </text>
-            <example name="module ring time">
-                Ringz.ar(Impulse.ar(6) * 0.3, 2000, XLine.kr(4, 0.04, 8))
-            </example>
-            <example name="modulated frequency">
-                val in   = Saw.ar(200) * 0.02
-                val freq = SinOsc.ar(XLine.ar(0.3, 100, 20)).madd(2800, 4800)
-                Ringz.ar(in, freq)
-            </example>
-            <example name="multiple glissandi excited by noise">
-                val ex = WhiteNoise.ar(0.001)
-                Mix.fill(10) {
-                  Ringz.ar(ex,
-                    XLine.kr(ExpRand(100, 5000), ExpRand(100, 5000), 20),
-                  0.5)
-                }
-            </example>
-            <see>ugen.Resonz</see>
-            <see>ugen.Formlet</see>
-            <see>ugen.BPF</see>
-            <see>ugen.Klank</see>
-            <see>ugen.MidEQ</see>
-        </doc>
     </ugen>
-    <ugen name="Formlet">
-        <rate name="control"/>
-        <rate name="audio"/>
-        <arg name="in" rate="ugen">
-            <doc>
-                input signal to be filtered
-            </doc>
-        </arg>
-        <arg name="freq" default="440.0">
-            <doc>
-                resonant frequency in Hertz
-            </doc>
-        </arg>
-        <arg name="attack" default="1.0">
-            <doc>
-                the 60 dB attack time in seconds
-            </doc>
-        </arg>
-        <arg name="decay" default="1.0">
-            <doc>
-                the 60 dB decay time in seconds
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A FOF-like resonant filter UGen. Its impulse response is like that of a sine wave with a `Decay2`
-                envelope over it. It is possible to control the attack and decay times.
-
-                `Formlet` is equivalent to:
-                {{{
-                Ringz(in, freq, decay) - Ringz(in, freq, attack)
-                }}}
-
-                The great advantage to this filter over FOF (Fonction d'onde formantique) is that there is no limit
-                to the number of overlapping grains since the grain is just the impulse response of the filter.
-            </text>
-            <example name="modulated formant frequency">
-                val in = Blip.ar(SinOsc.kr(5,0).madd(20, 300), 1000) * 0.1
-                Formlet.ar(in, XLine.kr(1500, 700, 8), 0.005, 0.04)
-            </example>
-            <example name="mouse control of frequency and decay time">
-                val in    = Blip.ar(SinOsc.kr(5,0).madd(20, 300), 1000) * 0.1
-                val freq  = MouseY.kr(700, 2000, 1)
-                val decay = MouseX.kr(0.01, 0.2, 1)
-                Formlet.ar(in, freq, attack = 0.005, decay = decay)
-            </example>
-            <see>ugen.Ringz</see>
-            <see>ugen.Resonz</see>
-            <see>ugen.RLPF</see>
-            <see>ugen.RHPF</see>
-        </doc>
-    </ugen>
-
     <ugen name="FOS">
         <rate name="control"/>
         <rate name="audio"/>
@@ -963,38 +738,7 @@ object ParamRanges {
             <see>ugen.FreqShift</see>
         </doc>
     </ugen>
-    <ugen name="FreqShift">
-        <rate name="audio"/>
-        <arg name="in"/>
-        <arg name="freq" default="0.0">
-            <doc>
-                the shift amount in Hertz. Positive values shift upwards, negative values shift downwards.
-            </doc>
-        </arg>
-        <arg name="phase" default="0.0"><!-- XXX TODO - what is this for? -->
-            <doc>
-                a phase parameter in radians (0 to 2 Pi).
-            </doc>
-        </arg>
-        <doc>
-            <text>
-                A frequency shifting UGen. It implements single sideband (SSB) amplitude modulation, also known
-                as frequency shifting, but not to be confused with pitch shifting. Frequency shifting moves all
-                the components of a signal by a fixed amount but does not preserve the original harmonic
-                relationships.
-            </text>
-            <example name="shift a sine frequency from 200 to 700 Hz">
-                val freq = Line.ar(0, 500, 5)
-                FreqShift.ar(SinOsc.ar(200) * 0.25, freq)
-            </example>
-            <example name="negative frequency to shift downwards">
-                val freq = Line.ar(0, -500, 5)
-                FreqShift.ar(SinOsc.ar(700) * 0.25, freq)
-            </example>
-            <see>ugen.Hilbert</see>
-            <see>ugen.PV_MagShift</see>
-        </doc>
-    </ugen>
+
     <ugen name="MoogFF">
         <rate name="control"/>
         <rate name="audio"/>
@@ -1336,45 +1080,15 @@ object ParamRanges {
     )),
     // K2A, A2K, T2K, T2A, DC
 
+    "Line" -> Info(dynamic = true, params = Map(
+      "start" -> Spec(),
+      "end"   -> Spec(),
+      "dur"   -> Spec(lo = 0.001, hi = 2000.0)
+    )),
+
     // TODO: continue here
     /*
 
-      <ugen name="Line" side-effect="true" done-flag="true">
-          <rate name="audio"/>
-          <rate name="control"/>
-          <arg name="start" default="0.0" init="true">
-              <doc>
-                  Starting value
-              </doc>
-          </arg>
-          <arg name="end" default="1.0" init="true">
-              <doc>
-                  Ending value
-              </doc>
-          </arg>
-          <arg name="dur" default="1.0" init="true">
-              <doc>
-                  Duration in seconds
-              </doc>
-          </arg>
-          <arg name="doneAction" default="doNothing">
-              <doc>
-                  A done-action that is evaluated when the Line has reached the end value after the
-                  given duration
-              </doc>
-          </arg>
-          <doc>
-              <text>
-                  A line generator UGen that moves from a start value to the end value in a given duration.
-              </text>
-              <example name="pan from left to right">
-                  Pan2.ar(PinkNoise.ar(0.3), Line.kr(-1, 1, 10, freeSelf))
-              </example>
-              <see>ugen.XLine</see>
-              <see>ugen.EnvGen</see>
-              <see>ugen.Ramp</see>
-          </doc>
-      </ugen>
       <ugen name="XLine" side-effect="true" done-flag="true">
           <rate name="audio"/>
           <rate name="control"/>
@@ -1713,6 +1427,32 @@ object ParamRanges {
     s"Bin_${BinaryOpUGen.Fold2    .id}" -> Info(dynamic = binOrDyn),
     s"Bin_${BinaryOpUGen.Wrap2    .id}" -> Info(dynamic = binOrDyn),
     // Div,
+
+    s"Un_${UnaryOpUGen.Neg        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Not        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Abs        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Frac       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Signum     .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Squared    .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Cubed      .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Sqrt       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Exp        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Midicps    .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Cpsmidi    .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Log        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Sin        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Cos        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Tan        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Sinh       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Cosh       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Tanh       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Distort    .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Softclip   .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.HannWindow .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.TriWindow  .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.WelchWindow.id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Ramp       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Scurve     .id}" -> Info(dynamic = unDyn),
 
     // ---- OSC ----
     // DegreeToKey, Select, TWindex, Index, IndexL, FoldIndex, WrapIndex,

@@ -149,7 +149,7 @@ object Features {
         val denom = rmsA * rmsB
         val v     = num / denom
 
-        v.poll(0, s"corr-$label")
+//        v.poll(0, s"corr-$label")
 
         if (!isLoud) v else {
           val boost = rmsB / rmsA

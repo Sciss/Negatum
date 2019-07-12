@@ -72,7 +72,8 @@ object UGens {
     import UnaryOpUGen._
     val ops = Vector[Op](Neg, Not, Abs, Ceil, Floor, Frac, Signum, Squared, Cubed, Sqrt, Exp, Reciprocal,
       Midicps, Cpsmidi, Midiratio, Ratiomidi, Dbamp, Ampdb, Octcps, Cpsoct, Log, Log2, Log10, Sin, Cos,
-      Tan, Asin, Acos, Atan, Sinh, Cosh, Tanh, Distort, Softclip, Ramp, Scurve)
+      Tan, Asin, Acos, Atan, Sinh, Cosh, Tanh, Distort, Softclip,
+      RectWindow, HannWindow, WelchWindow, TriWindow, Ramp, Scurve)
     ops.map { op =>
       val name  = s"Un_${op.id}"
       val rates = UGenSpec.Rates.Set(Set(audio))
