@@ -79,19 +79,23 @@ object Negatum extends Obj.Type {
 
   object Evaluation {
     def apply(
+               minFreq    : Int     = 32,
+               maxFreq    : Int     = 16000,
+               numMel     : Int     = 42,
                numMFCC    : Int     = 42,
-               normMFCC   : Boolean = false,
                maxBoost   : Double  = 10.0,
                timeWeight : Double  = 0.3
-    ): Evaluation = new Impl(numMFCC = numMFCC, normMFCC = normMFCC, maxBoost = maxBoost,
-      timeWeight = timeWeight)
+    ): Evaluation = new Impl(minFreq = minFreq, maxFreq = maxFreq, numMFCC = numMFCC, numMel = numMel,
+      maxBoost = maxBoost, timeWeight = timeWeight)
 
-    private class Impl(val numMFCC: Int, val normMFCC: Boolean, val maxBoost: Double,
+    private class Impl(val minFreq: Int, val maxFreq: Int, val numMFCC: Int, val numMel: Int, val maxBoost: Double,
                        val timeWeight: Double) extends Evaluation
   }
   trait Evaluation {
+    def minFreq     : Int
+    def maxFreq     : Int
     def numMFCC     : Int
-    def normMFCC    : Boolean
+    def numMel      : Int
     def maxBoost    : Double
     def timeWeight  : Double
   }
@@ -192,10 +196,19 @@ object Negatum extends Obj.Type {
   //  final val attrGenAllowedUGens  = "gen-allowed-ugens"
 
   /** Attribute for evaluation config defaults. Type `Int` */
+  final val attrEvalMinFreq       = "eval-min-freq"
+
+  /** Attribute for evaluation config defaults. Type `Int` */
+  final val attrEvalMaxFreq       = "eval-max-freq"
+
+  /** Attribute for evaluation config defaults. Type `Int` */
   final val attrEvalNumMFCC       = "eval-num-mfcc"
 
-  /** Attribute for evaluation config defaults. Type `Boolean` */
-  final val attrEvalNormMFCC      = "eval-norm-mfcc"
+  /** Attribute for evaluation config defaults. Type `Int` */
+  final val attrEvalNumMel        = "eval-num-mel"
+
+//  /** Attribute for evaluation config defaults. Type `Boolean` */
+//  final val attrEvalNormMFCC      = "eval-norm-mfcc"
 
   /** Attribute for evaluation config defaults. Type `Double` */
   final val attrEvalMaxBoost      = "eval-max-boost"

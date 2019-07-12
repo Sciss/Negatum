@@ -69,8 +69,15 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
     }
 
     val inputExtr: File = {
-      val fut = Features.extract(template.artifact, config.eval.numMFCC)
-      Await.result(fut, Duration(30, TimeUnit.SECONDS))._1
+      val e = config.eval
+      val featCfg = Features.Config(
+        minFreq = e.minFreq,
+        maxFreq = e.maxFreq,
+        numMel  = e.numMel,
+        numMFCC = e.numMFCC
+      )
+      val fut = Features.extract(template.artifact, featCfg)
+      Await.result(fut, Duration(6 /* 30 */, TimeUnit.SECONDS))._1
     }
 
     val INIT_COUNT  = pop.count(_.fitness.isNaN)
@@ -90,7 +97,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
             inputExtr = inputExtr, numVertices = numVertices)
           // XXX TODO --- Mutagen used four parallel processes; should we do the same?
           val sim = try {
-            Await.result(fut, Duration(30, TimeUnit.SECONDS))
+            Await.result(fut, Duration(6 /* 30 */, TimeUnit.SECONDS))
           } catch {
             case NonFatal(ex) =>
               val message = if (ex.isInstanceOf[TimeoutException]) {

@@ -21,7 +21,7 @@ import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, View}
+import de.sciss.lucre.swing.{DoubleSpinnerView, IntSpinnerView, View}
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.gui.GUI
 import de.sciss.swingplus.{GroupPanel, Spinner}
@@ -68,17 +68,17 @@ object NegatumViewImpl {
         new Field(name, view)
       }
 
-      def mkBooleanField(name: String, key: String, default: Boolean): Field = {
-        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
-          name = name, default = default)
-        new Field(name, view) {
-          override lazy val editor: Component = {
-            val res = view.component
-            res.text = null
-            res
-          }
-        }
-      }
+//      def mkBooleanField(name: String, key: String, default: Boolean): Field = {
+//        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
+//          name = name, default = default)
+//        new Field(name, view) {
+//          override lazy val editor: Component = {
+//            val res = view.component
+//            res.text = null
+//            res
+//          }
+//        }
+//      }
 
       // def mkEmptyField(): Field = new Field("", View.wrap[S](Swing.HGlue))
 
@@ -100,11 +100,13 @@ object NegatumViewImpl {
       // attrGenAllowedUGens -- TODO
       val gridGen = Seq(fGenPopulation, fGenConstProb, fGenMinVertices, fGenDefaultProb, fGenMaxVertices, fSeed)
 
+      val fEvalMinFreq        = mkIntField    ("Min Freq [Hz]"          , attrEvalMinFreq   , eval.minFreq)
+      val fEvalMaxFreq        = mkIntField    ("Max Freq [Hz]"          , attrEvalMaxFreq   , eval.maxFreq)
       val fEvalNumMFCC        = mkIntField    ("# of MFCC"              , attrEvalNumMFCC   , eval.numMFCC)
-      val fEvalNormMFCC       = mkBooleanField("Normalize MFCC"         , attrEvalNormMFCC  , eval.normMFCC)
+      val fEvalNumMel         = mkIntField    ("# of Mel Bands"         , attrEvalNumMel    , eval.numMel )
       val fEvalMaxBoost       = mkDoubleField ("Max. Boost"             , attrEvalMaxBoost  , eval.maxBoost)
       val fEvalTempWeight     = mkDoubleField ("Temporal Weight"        , attrEvalTimeWeight, eval.timeWeight)
-      val gridEval = Seq(fEvalNumMFCC, fEvalMaxBoost, fEvalNormMFCC, fEvalTempWeight)
+      val gridEval = Seq(fEvalMinFreq, fEvalNumMFCC, fEvalMaxFreq, fEvalNumMel, fEvalMaxBoost, fEvalTempWeight)
 
       val fBreedSelFrac       = mkDoubleField ("Selection Fraction"     , attrBreedSelectFrac  , breed.selectFrac)
       val fBreedElitism       = mkIntField    ("Elitism"                , attrBreedElitism  , breed.elitism)
@@ -201,8 +203,10 @@ object NegatumViewImpl {
                 golem       = attr.$[IntObj    ](attrBreedGolem     ).map(_.value).getOrElse(breed.golem)
               )
               val cEval     = Negatum.Evaluation(
-                numMFCC     = attr.$[IntObj    ](attrEvalNumMFCC    ).map(_.value).getOrElse(eval.numMFCC),
-                normMFCC    = attr.$[BooleanObj](attrEvalNormMFCC   ).map(_.value).getOrElse(eval.normMFCC),
+                minFreq     = attr.$[IntObj    ](attrEvalMinFreq    ).map(_.value).getOrElse(eval.minFreq ),
+                maxFreq     = attr.$[IntObj    ](attrEvalMaxFreq    ).map(_.value).getOrElse(eval.maxFreq ),
+                numMFCC     = attr.$[IntObj    ](attrEvalNumMFCC    ).map(_.value).getOrElse(eval.numMFCC ),
+                numMel      = attr.$[IntObj    ](attrEvalNumMel     ).map(_.value).getOrElse(eval.numMel  ),
                 maxBoost    = attr.$[DoubleObj ](attrEvalMaxBoost   ).map(_.value).getOrElse(eval.maxBoost),
                 timeWeight  = attr.$[DoubleObj ](attrEvalTimeWeight ).map(_.value).getOrElse(eval.timeWeight)
               )

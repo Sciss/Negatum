@@ -17,15 +17,15 @@ package impl
 import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.{TxnConsumer, TxnProducer}
+import de.sciss.fscape.stream.Control
+import de.sciss.fscape.{GE, Graph}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
-import de.sciss.span.Span
-import de.sciss.strugatzki.{FeatureCorrelation, FeatureExtraction, Strugatzki}
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
-import de.sciss.synth.proc.Bounce
+import de.sciss.synth.UGenSource.Vec
+import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.stm.TxnExecutor
-import scala.concurrent.{Future, TimeoutException, blocking}
+import scala.concurrent.{Future, Promise, blocking}
 
 object Features {
   final val norms = Array[Array[Float]](
@@ -47,13 +47,13 @@ object Features {
 
   final case class ExtractionFailed(cause: Throwable) extends Exception(cause)
 
-  def extract(input: File, numMFCC: Int): Future[(File, AudioFileSpec)] = {
-    val key       = input -> numMFCC
+  def extract(input: File, config: Config): Future[(File, AudioFileSpec)] = {
+    val key       = (input, config)
     val futMeta   = TxnExecutor.defaultAtomic { implicit tx =>
       cache.acquire(key)
     }
     val res       = futMeta.map { v =>
-      val inputExtr = v.meta
+      val inputExtr = v.feature
       val inputSpec = blocking(AudioFile.readSpec(input))
       TxnExecutor.defaultAtomic { implicit tx =>
         cache.release(key)
@@ -66,9 +66,8 @@ object Features {
 
   private[this] final val DEBUG = false
 
-  // XXX TODO --- replace Strugatzki by FScape
   def correlate(bounceF: File, inputSpec: AudioFileSpec, inputExtr: File,
-                numMFCC: Int, normalizeMFCC: Boolean, maxBoost: Double, temporalWeight: Double): Future[Double] = {
+                config: Config, maxBoost: Double, temporalWeight: Double): Future[Double] = {
 
   // XXX TODO -- would be faster if we could use a Poll during
   // the bounce and instruct the bounce proc to immediately terminate
@@ -100,89 +99,170 @@ object Features {
       af.cleanUp()
     }
 
-    val genFolder           = File.createTemp(prefix = "muta_eval", directory = true)
-    val genExtr             = genFolder / "gen_feat.xml"
+    val pRes = Promise[Vec[Double]]()
 
-    val normF   = genFolder / Strugatzki.NormalizeName
-    if (normalizeMFCC) {
-      import Features.{norms => featNorms}
-      if (numMFCC != featNorms.length + 1)
-        throw new IllegalArgumentException(s"Normalize option requires numCoeffs == ${featNorms.length - 1}")
-      blocking {
-        val normAF  = AudioFile.openWrite(normF, AudioFileSpec(numChannels = featNorms.length, sampleRate = 44100))
-        normAF.write(featNorms)
-        normAF.close()
+    val g = Graph {
+      val specFeat = AudioFile.readSpec(inputExtr)
+      require (specFeat.numChannels == 1)
+      import de.sciss.fscape.graph._
+      val (featSize, _ /*sampleRate*/, loudA, mfccA) = mkExtraction(bounceF, config)
+      val sigB: GE = AudioFileIn(inputExtr, numChannels = 1)
+//      sigA.poll(sigA.isNaN, "sigA-NaN")
+//      sigB.poll(sigB.isNaN, "sigB-NaN")
+
+      def feat(in: GE): (GE, GE) = {
+        val loud = ResizeWindow(in, featSize, stop  = -featSize + 1)
+        val mfcc = ResizeWindow(in, featSize, start = 1)
+        (loud, mfcc)
       }
-    }
-    val featF   = File.createTemp(prefix = "gen_feat", suffix = ".aif")
 
-    val exCfg             = FeatureExtraction.Config()
-    exCfg.audioInput      = bounceF
-    exCfg.featureOutput   = featF
-    exCfg.metaOutput      = Some(genExtr)
-    exCfg.numCoeffs       = numMFCC
-    val ex                = FeatureExtraction(exCfg)
-    ex.start()
-    //      _ex.onFailure {
-    //        case t => println(s"gen-extr failed with $t")
-    //      }
-    ex.recover {
-      case cause => throw Features.ExtractionFailed(cause)
-    }
+      val (loudB, mfccB) = feat(sigB)
 
-    val numFrames = inputSpec.numFrames
+      // val maxBoostDb = maxBoost.ampDb
 
-    val corr = ex.flatMap { _ =>
-      val corrCfg           = FeatureCorrelation.Config()
-      corrCfg.metaInput     = inputExtr
-      corrCfg.databaseFolder= genFolder
-      corrCfg.minSpacing    = Long.MaxValue >> 1
-      corrCfg.numMatches    = 1
-      corrCfg.numPerFile    = 1
-      corrCfg.maxBoost      = maxBoost.toFloat
-      corrCfg.normalize     = normalizeMFCC
-      corrCfg.minPunch      = numFrames
-      corrCfg.maxPunch      = numFrames
-      corrCfg.punchIn       = FeatureCorrelation.Punch(
-        span = Span(0L, numFrames),
-        temporalWeight = temporalWeight.toFloat)
-      val _corr             = FeatureCorrelation(corrCfg)
-      _corr.start()
-      _corr
+      def mkCorr(a: GE, b: GE, clipBoost: Boolean, label: String): GE = {
+        val mul   = a * b
+        val num   = RunningSum(mul).last
+        val rmsA  = RunningSum(a.squared).last.sqrt
+        val rmsB  = RunningSum(b.squared).last.sqrt
+        val denom = rmsA * rmsB
+        val v     = num / denom
+
+        v.poll(0, s"corr-$label")
+
+        if (!clipBoost) v else {
+          val boost = rmsB / rmsA
+          v.poll(0, "boost")
+          v * (boost < maxBoost)
+        }
+      }
+
+//      Plot1D(sigA, size = 1024, "A")
+//      Plot1D(sigB, size = 1024, "B")
+
+//      num   .poll(0, "num")
+//      denom .poll(0, "denom")
+      val corrLoud = mkCorr(loudA, loudB, clipBoost = true , label = "loud")
+      val mfccLoud = mkCorr(mfccA, mfccB, clipBoost = false, label = "mfcc")
+
+      val res = corrLoud * temporalWeight + mfccLoud * (1.0 - temporalWeight)
+      DebugDoublePromise(res, pRes)
     }
 
-    val simFut0 = corr.map { matches =>
-      // assert(matches.size == 1)
-      val sim0 = matches.headOption.map { m =>
-        if (DEBUG) println(m)
-        m.sim
-      } .getOrElse(0f)
-      val sim  = if (sim0.isNaN || sim0.isInfinite) 0.0 else sim0.toDouble
-      sim
-    }
-
-    val simFut = simFut0.recover {
-      case Bounce.ServerFailed(_) => 0.0
-      case Features.ExtractionFailed(_) =>
-        if (DEBUG) println("Gen-extr failed!")
-        0.0
-
-      case _: TimeoutException =>
-        if (DEBUG) println("Bounce timeout!")
-//        wait.foreach { bnc0 => bnc0.abort() }
-        0.0    // we aborted the process after 4 seconds
-    }
-
-    val res = simFut
-
-    res.onComplete { _ =>
-      if (normalizeMFCC) normF.delete()
-      featF.delete()
-      // audioF    .delete()
-      genExtr.delete()
-      genFolder.delete()
+    val cfg = Control.Config()
+    val ctl = Control(cfg)
+    ctl.run(g)
+    val res = pRes.future.map { vec =>
+      val corr = vec.head // pRes.future.value.get.get.head
+//      println(s"corr $corr")
+      if (corr.isNaN) 0.0 else corr
     }
     res
+  }
+
+  protected def any2stringadd: Any = ()
+
+  object Config {
+    implicit object serializer extends ImmutableSerializer[Config] {
+      def write(v: Config, out: DataOutput): Unit = {
+        import v._
+        out.writeInt(stepSize )
+        out.writeInt(fftSize  )
+        out.writeInt(numMFCC  )
+        out.writeInt(numMel   )
+        out.writeInt(minFreq  )
+        out.writeInt(maxFreq  )
+      }
+
+      def read(in: DataInput): Config = Config(
+        stepSize = in.readInt(),
+        fftSize  = in.readInt(),
+        numMFCC  = in.readInt(),
+        numMel   = in.readInt(),
+        minFreq  = in.readInt(),
+        maxFreq  = in.readInt()
+      )
+    }
+  }
+  final case class Config(stepSize: Int =   256,
+                          fftSize : Int =  2048,
+                          numMFCC : Int =    31,
+                          numMel  : Int =    62,
+                          minFreq : Int =    32,
+                          maxFreq : Int = 16000,
+                         ) {
+
+    require ((fftSize >= stepSize) && (fftSize % stepSize) == 0, s"stepSize $stepSize, fftSize $fftSize")
+    require (numMel >= numMFCC && numMel >= 2, s"numMFCC $numMFCC, numMel $numMel")
+    require (minFreq >= 8 && maxFreq > minFreq, s"minFreq $minFreq, maxFreq $maxFreq")
+  }
+
+  private def mkExtraction(fIn: File, config: Config): (Int, Double, GE, GE) = {
+    import config._
+    import de.sciss.fscape.graph._
+
+    val specIn      = AudioFile.readSpec(fIn)
+    import specIn.{numChannels, numFrames, sampleRate}
+    def mkIn()      = AudioFileIn(fIn, numChannels = numChannels)
+    val in          = mkIn()
+    val numSteps    = (numFrames + stepSize - 1) / stepSize
+    //      val numMFCCOut  = numSteps * numMFCC
+    val featSize    = 1 + numMFCC // per frame: loudness and MFCC
+    val slidLen     = fftSize * numSteps
+
+    val inMono      = Mix.MonoEqP(in)
+
+//    inMono.poll(inMono.isNaN, "inMono-NaN")
+
+    val fftSlid     = Sliding(inMono, fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann).take(slidLen)
+    val fft         = Real1FFT(fftSlid, fftSize, mode = 2)
+    val fftMag      = fft.complex.mag
+    val mel         = MelFilter(fftMag, fftSize/2, bands = numMel,
+      minFreq = 36, maxFreq = 18000, sampleRate = sampleRate)
+    val mfcc        = DCT_II(mel.log.max(-320.0), numMel, numMFCC, zero = 0) / numMel // .take(numMFCCOut)
+    //      (numSteps: GE).poll(0,"numSteps")
+    //      Length(mfcc).poll(0, "mfcc-length")
+
+//    mfcc.poll(mfcc.isNaN, "mfcc-NaN")
+
+    val loud        = Loudness(in = fftSlid, sampleRate = sampleRate, size = fftSize, spl = 90) / 90
+    //      Length(loud).poll(0, "loud-length")
+
+//    loud.poll(loud.isNaN, "loud-NaN")
+
+
+//    loud.poll(sig.isNaN, "sig-NaN")
+
+    (featSize, sampleRate, loud, mfcc)
+  }
+
+  def runExtraction(fIn: File, fOut: File, config: Config = Config()): Future[Unit] = {
+    import config._
+    val g = Graph {
+      import de.sciss.fscape.graph._
+      val (featSize, sampleRate, loud, mfcc) = mkExtraction(fIn, config)
+      // XXX TODO wo kommt denn dieser scheiss elastic buffer schon wieder her?
+      val sig = ResizeWindow(mfcc.elastic(numMFCC), numMFCC, start = -1) + ResizeWindow(loud, 1, stop = +numMFCC)
+      //      val sig: GE = loud +: Vector.tabulate(numMFCC)(ch => WindowApply(mfcc, numMFCC, index = ch))
+
+      val fOutExt = fOut.extL
+      val tpeOut  = AudioFileType.writable.collectFirst {
+        case tpe if tpe.extensions.contains(fOutExt) => tpe
+      } .getOrElse(AudioFileType.AIFF)
+
+      val specOut = AudioFileSpec(
+        fileType      = tpeOut,
+        sampleFormat  = SampleFormat.Float,
+        numChannels   = 1, // featSize,
+        sampleRate    = sampleRate / stepSize * featSize
+      )
+      AudioFileOut(sig, fOut, specOut)
+    }
+
+    val cfg = Control.Config()
+    val ctl = Control(cfg)
+    ctl.run(g)
+    ctl.status
   }
 
   // ---- private ----
@@ -191,50 +271,41 @@ object Features {
     implicit object serializer extends ImmutableSerializer[CacheValue] {
       def write(v: CacheValue, out: DataOutput): Unit = {
         out.writeLong(v.lastModified)
-        out.writeUTF (v.meta   .getCanonicalPath)
         out.writeUTF (v.feature.getCanonicalPath)
       }
 
       def read(in: DataInput): CacheValue = {
         val mod     = in.readLong()
-        val meta    = file(in.readUTF())
         val feature = file(in.readUTF())
-        CacheValue(lastModified = mod, meta = meta, feature = feature)
+        CacheValue(lastModified = mod, feature = feature)
       }
     }
   }
 
-  private type CacheKey = (File, Int)
-  private case class CacheValue(lastModified: Long, meta: File, feature: File)
+  private type CacheKey = (File, Config)
+  private case class CacheValue(lastModified: Long, feature: File)
 
   private val cCfg  = {
     val c = filecache.Config[CacheKey, CacheValue]()
     // c.executionContext = SoundProcesses.executionContext
     c.capacity  = filecache.Limit(count = 10)
     c.accept    = { (key        , value) => key._1.lastModified() == value.lastModified }
-    c.space     = { (_ /* key */, value) => value.meta.length() + value.feature.length() }
-    c.evict     = { (_ /* key */, value) => value.meta.delete() ; value.feature.delete() }
+    c.space     = { (_ /* key */, value) => value.feature.length() }
+    c.evict     = { (_ /* key */, value) => value.feature.delete() }
     c.build
   }
   private val cacheP = TxnExecutor.defaultAtomic { implicit tx => TxnProducer(cCfg) }
   private val cache  = TxnConsumer(cacheP)(mkCacheValue)
 
-  private def mkCacheValue(key: (File, Int)): Future[CacheValue] = {
-    val (f, numCoeffs) = key
-    val inputSpec         = AudioFile.readSpec(f)
-    val inputMod          = f.lastModified()
-    require(inputSpec.numChannels == 1, s"Input file '${f.name}' must be mono but has ${inputSpec.numChannels} channels")
-    val exCfg             = FeatureExtraction.Config()
-    exCfg.audioInput      = f
-    val inputFeature      = File.createTemp(suffix = ".aif")
-    exCfg.featureOutput   = inputFeature
-    val inputExtr         = File.createTemp(suffix = "_feat.xml")
-    exCfg.metaOutput      = Some(inputExtr)
-    exCfg.numCoeffs       = numCoeffs
-    val futInputExtr      = FeatureExtraction(exCfg)
-    futInputExtr.start()
-    futInputExtr.map { _ =>
-      CacheValue(lastModified = inputMod, meta = inputExtr, feature = inputFeature)
+  private def mkCacheValue(key: (File, Config)): Future[CacheValue] = {
+    val (fIn, featCfg) = key
+//    val inputSpec         = AudioFile.readSpec(fIn)
+    val inputMod          = fIn.lastModified()
+//    require(inputSpec.numChannels == 1, s"Input file '${f.name}' must be mono but has ${inputSpec.numChannels} channels")
+    val fOut              = File.createTemp(suffix = ".aif")
+    val fut               = runExtraction(fIn = fIn, fOut = fOut, config = featCfg)
+    fut.map { _ =>
+      CacheValue(lastModified = inputMod, feature = fOut)
     }
   }
 }

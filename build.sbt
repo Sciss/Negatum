@@ -15,8 +15,9 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache           = "0.5.1"
+    val fscape              = "2.27.0"
     val soundProcesses      = "3.29.3"
-    val strugatzki          = "2.19.0"
+//    val strugatzki          = "2.19.0"
   }
   val app = new {
     val dsp                 = "1.3.2"
@@ -26,6 +27,7 @@ lazy val deps = new {
     val mellite             = "2.37.0"
     val scalaCollider       = "1.28.4"
     val scalaColliderUGens  = "1.19.5"
+    val scopt               = "3.7.1"
   }
   val test = new {
     val trace               = "0.4.0"
@@ -50,7 +52,8 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
     libraryDependencies ++= Seq(
       "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
       "de.sciss"        %% "filecache-txn"              % deps.core.fileCache,
-      "de.sciss"        %% "strugatzki"                 % deps.core.strugatzki,
+      "de.sciss"        %% "fscape-lucre"               % deps.core.fscape,
+//      "de.sciss"        %% "strugatzki"                 % deps.core.strugatzki,
     )
   )
 
@@ -62,15 +65,16 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
     name        := s"$baseName-App",
     description := "Negatum sound piece / stand alone application",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "mellite"                    % deps.app.mellite,
-      "de.sciss"        %% "scalacollider"              % deps.app.scalaCollider,
-      "de.sciss"        %% "scalacolliderugens-core"    % deps.app.scalaColliderUGens,
-      "de.sciss"        %% "scalacolliderugens-plugins" % deps.app.scalaColliderUGens,
-      "de.sciss"        %% "scissdsp"                   % deps.app.dsp,
-      "de.sciss"        %% "fileutil"                   % deps.app.fileUtil,   // (sbt bug)
-      "de.sciss"        %% "kollflitz"                  % deps.app.kollFlitz,
-      "com.datumbox"    %  "libsvm"                     % deps.app.libSVM,
-      "de.sciss"        %% "scalacollider-trace"        % deps.test.trace % Test
+      "de.sciss"          %% "mellite"                    % deps.app.mellite,
+      "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,
+      "de.sciss"          %% "scalacolliderugens-core"    % deps.app.scalaColliderUGens,
+      "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.scalaColliderUGens,
+      "de.sciss"          %% "scissdsp"                   % deps.app.dsp,
+      "de.sciss"          %% "fileutil"                   % deps.app.fileUtil,   // (sbt bug)
+      "de.sciss"          %% "kollflitz"                  % deps.app.kollFlitz,
+      "com.datumbox"      %  "libsvm"                     % deps.app.libSVM,
+      "com.github.scopt"  %% "scopt"                      % deps.app.scopt,           // parsing command line options
+      "de.sciss"          %% "scalacollider-trace"        % deps.test.trace % Test
     )
   )
 

@@ -31,14 +31,21 @@ object Evaluation {
 
   def apply(config: Config, graph: SynthGraph, inputSpec: AudioFileSpec,
             inputExtr: File, numVertices: Int)(implicit exec: ExecutionContext): Future[Float] = {
+    import config.eval
     import config.eval._
     import config.gen._
     import config.penalty._
     val audioF  = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
     val bnc0    = Evaluation.bounce(graph, audioF = audioF, inputSpec = inputSpec)
     val simFut  = bnc0.flatMap { _ =>
+      val featCfg = Features.Config(
+        minFreq = eval.minFreq,
+        maxFreq = eval.maxFreq,
+        numMFCC = eval.numMFCC,
+        numMel  = eval.numMel
+      )
       Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
-        numMFCC = numMFCC, normalizeMFCC = normMFCC, maxBoost = maxBoost, temporalWeight = timeWeight)
+        config = featCfg, maxBoost = maxBoost, temporalWeight = timeWeight)
     }
     val res = simFut.map { sim0 =>
       import numbers.Implicits._

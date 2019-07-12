@@ -15,7 +15,7 @@ package de.sciss.negatum
 package impl
 
 import de.sciss.lucre.event.Targets
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, IntObj}
+import de.sciss.lucre.expr.{DoubleObj, IntObj}
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
@@ -56,8 +56,10 @@ object NegatumImpl {
       golem       = attr.$[IntObj    ](attrBreedGolem     ).map(_.value).getOrElse(breed.golem)
     )
     val cEval     = Negatum.Evaluation(
-      numMFCC     = attr.$[IntObj    ](attrEvalNumMFCC    ).map(_.value).getOrElse(eval.numMFCC),
-      normMFCC    = attr.$[BooleanObj](attrEvalNormMFCC   ).map(_.value).getOrElse(eval.normMFCC),
+      minFreq     = attr.$[IntObj    ](attrEvalMinFreq    ).map(_.value).getOrElse(eval.minFreq ),
+      maxFreq     = attr.$[IntObj    ](attrEvalMaxFreq    ).map(_.value).getOrElse(eval.maxFreq ),
+      numMFCC     = attr.$[IntObj    ](attrEvalNumMFCC    ).map(_.value).getOrElse(eval.numMFCC ),
+      numMel      = attr.$[IntObj    ](attrEvalNumMel     ).map(_.value).getOrElse(eval.numMel  ),
       maxBoost    = attr.$[DoubleObj ](attrEvalMaxBoost   ).map(_.value).getOrElse(eval.maxBoost),
       timeWeight  = attr.$[DoubleObj ](attrEvalTimeWeight ).map(_.value).getOrElse(eval.timeWeight)
     )
