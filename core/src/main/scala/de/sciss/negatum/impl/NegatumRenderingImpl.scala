@@ -125,7 +125,9 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
               }
               0.0f
           }
-          indiv.fitness = sim
+          // negative correlations are not nice because they
+          // mess up the roulette selection; so clip them to zero
+          indiv.fitness = math.max(0.0, sim)
           checkAborted()
           PROG_COUNT += 1
           progress = PROG_COUNT * PROG_WEIGHT
