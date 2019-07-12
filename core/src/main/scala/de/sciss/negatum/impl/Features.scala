@@ -205,7 +205,7 @@ object Features {
                           numMFCC : Int =    31,
                           numMel  : Int =    62,
                           minFreq : Int =    32,
-                          maxFreq : Int = 16000,
+                          maxFreq : Int = 16000
                          ) {
 
     require ((fftSize >= stepSize) && (fftSize % stepSize) == 0, s"stepSize $stepSize, fftSize $fftSize")
