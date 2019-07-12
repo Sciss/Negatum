@@ -105,14 +105,17 @@ object Features {
       val specFeat = AudioFile.readSpec(inputExtr)
       require (specFeat.numChannels == 1)
       import de.sciss.fscape.graph._
-      val (featSize, _ /*sampleRate*/, loudA, mfccA) = mkExtraction(bounceF, config)
+      val (featSize, _ /*sampleRate*/, loudA0, mfccA0) = mkExtraction(bounceF, config)
       val sigB: GE = AudioFileIn(inputExtr, numChannels = 1)
 //      sigA.poll(sigA.isNaN, "sigA-NaN")
 //      sigB.poll(sigB.isNaN, "sigB-NaN")
 
+      val loudA = loudA0 // .elastic(featSize)
+      val mfccA = mfccA0.elastic(featSize)  // XXX TODO WTF
+
       def feat(in: GE): (GE, GE) = {
-        val loud = ResizeWindow(in, featSize, stop  = -featSize + 1)
-        val mfcc = ResizeWindow(in, featSize, start = 1)
+        val loud = ResizeWindow(in, featSize, stop  = -featSize + 1) // .elastic(featSize)
+        val mfcc = ResizeWindow(in, featSize, start = 1).elastic(featSize)  // XXX TODO WTF
         (loud, mfcc)
       }
 
@@ -120,30 +123,43 @@ object Features {
 
       // val maxBoostDb = maxBoost.ampDb
 
-      def mkCorr(a: GE, b: GE, clipBoost: Boolean, label: String): GE = {
-        val mul   = a * b
-        val num   = RunningSum(mul).last
-        val rmsA  = RunningSum(a.squared).last.sqrt
-        val rmsB  = RunningSum(b.squared).last.sqrt
+      def mkCorr(a: GE, b: GE, isLoud: Boolean): GE = {
+
+        val label = if (isLoud) "loud" else "mfcc"
+
+//        aMean.poll(0, s"aMean-$label")
+//        bMean.poll(0, s"bMean-$label")
+
+        // mfcc are more or less DC-less, so we don't calculate the mean
+        val aDif  = if (!isLoud) a else {
+          val aBuf  = BufferMemory(a, specFeat.numFrames)
+          val aMean = RunningSum(a).last / Length(a)
+          aBuf - aMean
+        }
+
+        val bDif  = if (!isLoud) b else {
+          val bBuf  = BufferMemory(b, specFeat.numFrames)
+          val bMean = RunningSum(b).last / Length(b)
+          bBuf - bMean
+        }
+
+        val num   = RunningSum(aDif * bDif).last
+        val rmsA  = RunningSum(aDif.squared).last.sqrt
+        val rmsB  = RunningSum(bDif.squared).last.sqrt
         val denom = rmsA * rmsB
         val v     = num / denom
 
         v.poll(0, s"corr-$label")
 
-        if (!clipBoost) v else {
+        if (!isLoud) v else {
           val boost = rmsB / rmsA
-          v.poll(0, "boost")
+//          v.poll(0, "boost")
           v * (boost < maxBoost)
         }
       }
 
-//      Plot1D(sigA, size = 1024, "A")
-//      Plot1D(sigB, size = 1024, "B")
-
-//      num   .poll(0, "num")
-//      denom .poll(0, "denom")
-      val corrLoud = mkCorr(loudA, loudB, clipBoost = true , label = "loud")
-      val mfccLoud = mkCorr(mfccA, mfccB, clipBoost = false, label = "mfcc")
+      val corrLoud = mkCorr(loudA, loudB, isLoud = true )
+      val mfccLoud = mkCorr(mfccA, mfccB, isLoud = false)
 
       val res = corrLoud * temporalWeight + mfccLoud * (1.0 - temporalWeight)
       DebugDoublePromise(res, pRes)
