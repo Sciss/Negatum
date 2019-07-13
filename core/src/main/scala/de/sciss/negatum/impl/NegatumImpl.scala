@@ -48,7 +48,7 @@ object NegatumImpl {
       // allowedUGens
     )
     val cBreed    = Negatum.Breeding(
-      selectFrac  = attr.$[DoubleObj ](attrBreedSelectFrac).map(_.value).getOrElse(breed.selectFrac),
+      selectFraction  = attr.$[DoubleObj ](attrBreedSelectFraction).map(_.value).getOrElse(breed.selectFraction),
       elitism     = attr.$[IntObj    ](attrBreedElitism   ).map(_.value).getOrElse(breed.elitism),
       minMut      = attr.$[IntObj    ](attrBreedMinMut    ).map(_.value).getOrElse(breed.minMut),
       maxMut      = attr.$[IntObj    ](attrBreedMaxMut    ).map(_.value).getOrElse(breed.maxMut),
@@ -90,7 +90,7 @@ object NegatumImpl {
 
     // --- rendering ---
 
-    final def run(config: Config, iter: Int)
+    final def run(config: Config, iterations: Int)
                  (implicit tx: S#Tx, universe: Universe[S]): Rendering[S, Unit] = {
       val popIn = population.iterator.collect {
         case p: Proc[S] =>
@@ -104,7 +104,7 @@ object NegatumImpl {
       val templateV   = template.value
       val populationH = tx.newHandle(population)
       import universe.cursor
-      val r = new NegatumRenderingImpl[S](config = config, template = templateV, popIn = popIn, numIter = iter,
+      val r = new NegatumRenderingImpl[S](config = config, template = templateV, popIn = popIn, numIterations = iterations,
         populationH = populationH)
       r.startTx()
       r

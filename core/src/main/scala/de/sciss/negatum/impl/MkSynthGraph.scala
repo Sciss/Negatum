@@ -90,7 +90,7 @@ object MkSynthGraph {
                 case UGenSpec.ArgumentType.Int =>
                   val v = arg.defaults.get(UndefinedRate) match {
                     case Some(UGenSpec.ArgumentValue.Int(i)) => i
-                    case _ => 1 // rrand(1, 2)
+                    case _ => 1 // rangeRand(1, 2)
                   }
                   (v.asInstanceOf[AnyRef], classOf[Int])
 

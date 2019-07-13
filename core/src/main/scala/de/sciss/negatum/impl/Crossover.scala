@@ -87,10 +87,10 @@ object Crossover {
     }
     val severedHeads2   = Chromosome.sortedVertices(top2, severedHeads2s)
 
-    @tailrec def shrinkTop(top: SynthGraphT, target: Int, iter: Int): SynthGraphT =
-      if (top.vertices.size <= target || iter == maxVertices) top else {
+    @tailrec def shrinkTop(top: SynthGraphT, target: Int, iteration: Int): SynthGraphT =
+      if (top.vertices.size <= target || iteration == maxVertices) top else {
         val (top1, _) = Mutation.removeVertex1(config, top)
-        shrinkTop(top1, target = target, iter = iter + 1)
+        shrinkTop(top1, target = target, iteration = iteration + 1)
       }
 
     def mkTop(vertices1: Vec[Vertex], edges1: Seq[Edge], vertices2: Vec[Vertex], edges2: Seq[Edge]): SynthGraphT = {

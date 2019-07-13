@@ -25,9 +25,9 @@ object Selection {
    * are chromosomes paired with their fitness values.
    */
   def apply(config: Config, all: IndexedSeq[Individual])(implicit random: Random): Vec[Individual] = {
-    import config.breed.selectFrac
+    import config.breed.selectFraction
     val pop   = all.size
-    val n     = (pop * selectFrac + 0.5).toInt
+    val n     = (pop * selectFraction + 0.5).toInt
     val outB  = Vector.newBuilder[Individual]
     outB.sizeHint(n)
 
@@ -42,7 +42,7 @@ object Selection {
         } else {
           val inIdx       = in.zipWithIndex // [Individual, Array[(Individual, Int)]](breakOut)
           val norm        = inIdx.map {
-            case (indiv, j) => (j, indiv.fitness / sum)
+            case (individual, j) => (j, individual.fitness / sum)
           }
           val sorted      = norm.sortBy(_._2)
           val acc         = sorted.scanLeft(0.0) { case (a, (_, f)) => a + f } .tail
@@ -56,7 +56,7 @@ object Selection {
         }
       }
 
-    loop(n, all.filterNot { indiv => indiv.fitness.isInfinity|| indiv.fitness.isNaN })
+    loop(n, all.filterNot { i => i.fitness.isInfinity|| i.fitness.isNaN })
     val sel = outB.result().distinct
     // val remove  = all -- sel
     // remove.foreach(prev.remove)
@@ -75,10 +75,10 @@ object Selection {
       var sz = 0
       var fl = Double.NaN
       while (sz < numElitism && it.hasNext) {
-        val indiv = it.next()
-        val f     = indiv.fitness
+        val individual = it.next()
+        val f = individual.fitness
         if (f != fl) {
-          res += indiv
+          res += individual
           sz  += 1
           fl   = f
         }

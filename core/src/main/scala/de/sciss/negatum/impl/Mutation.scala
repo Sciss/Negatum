@@ -52,8 +52,8 @@ object Mutation {
           attempt -= 1
           if (attempt == 0) {
             Console.err.println(s"Mutation - giving up with individual ${off % sq.size}")
-            val newIndiv = Chromosome.mkIndividual(config)
-            sq1 = sq1.patch(off, newIndiv :: Nil, 1)
+            val newIndividual = Chromosome.mkIndividual(config)
+            sq1 = sq1.patch(off, newIndividual :: Nil, 1)
 //            if (off == sq.size - 1 && res.isEmpty) {
 //              Console.err.println("Mutation - WTF - could not mutate even one individual.")
 //              return Vector.empty
@@ -78,14 +78,14 @@ object Mutation {
       MkSynthGraph(chosenT)
     } catch {
       case ex: MkSynthGraph.Incomplete =>
-        println("AQUI")
+        println("tryMutate - incomplete graph")
         println(ex)
 //        MkTopology(chosen)
     }
 
-    val mutationIter  = rangeRand(minMut, maxMut)
-    require(mutationIter > 0)
-    val res = (1 to mutationIter).foldLeft(chosenT) { case (pred, _ /*iter*/) =>
+    val mutationIterations = rangeRand(minMut, maxMut)
+    require(mutationIterations > 0)
+    val res = (1 to mutationIterations).foldLeft(chosenT) { case (pred, _ /* iteration */) =>
       val tpe = random.nextInt(7)
       val TEST = if (!DEBUG) 0L else {
         val n = random.nextLong()
@@ -107,7 +107,7 @@ object Mutation {
           MkSynthGraph(next)
         } catch {
           case ex: MkSynthGraph.Incomplete =>
-            println(s"AQUI - tpe = $tpe")
+            println(s"HERE - tpe = $tpe")
             println("----before----")
             println(TopologyDOT(pred))
             println("----after----")

@@ -44,7 +44,7 @@ object Evaluation {
         numMFCC = eval.numMFCC,
         numMel  = eval.numMel
       )
-      Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputExtr = inputExtr,
+      Features.correlate(bounceF = audioF, inputSpec = inputSpec, inputFeatureF = inputExtr,
         config = featCfg, maxBoost = maxBoost, temporalWeight = timeWeight)
     }
     val res = simFut.map { sim0 =>

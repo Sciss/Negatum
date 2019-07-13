@@ -53,12 +53,12 @@ object Features {
       cache.acquire(key)
     }
     val res       = futMeta.map { v =>
-      val inputExtr = v.feature
+      val featureF  = v.feature
       val inputSpec = blocking(AudioFile.readSpec(input))
       TxnExecutor.defaultAtomic { implicit tx =>
         cache.release(key)
       }
-      (inputExtr, inputSpec)
+      (featureF, inputSpec)
     }
     // res.onComplete(_ => TxnExecutor.defaultAtomic { implicit tx => cache.release(key) })
     res
@@ -66,7 +66,7 @@ object Features {
 
   private[this] final val DEBUG = false
 
-  def correlate(bounceF: File, inputSpec: AudioFileSpec, inputExtr: File,
+  def correlate(bounceF: File, inputSpec: AudioFileSpec, inputFeatureF: File,
                 config: Config, maxBoost: Double, temporalWeight: Double): Future[Double] = {
 
   // XXX TODO -- would be faster if we could use a Poll during
@@ -102,11 +102,11 @@ object Features {
     val pRes = Promise[Vec[Double]]()
 
     val g = Graph {
-      val specFeat = AudioFile.readSpec(inputExtr)
+      val specFeat = AudioFile.readSpec(inputFeatureF)
       require (specFeat.numChannels == 1)
       import de.sciss.fscape.graph._
       val (featSize, _ /*sampleRate*/, loudA0, mfccA0) = mkExtraction(bounceF, config)
-      val sigB: GE = AudioFileIn(inputExtr, numChannels = 1)
+      val sigB: GE = AudioFileIn(inputFeatureF, numChannels = 1)
 //      sigA.poll(sigA.isNaN, "sigA-NaN")
 //      sigB.poll(sigB.isNaN, "sigB-NaN")
 
@@ -125,8 +125,8 @@ object Features {
 
       def mkCorr(a: GE, b: GE, isLoud: Boolean): GE = {
 
-        val label = if (isLoud) "loud" else "mfcc"
-
+//        val label = if (isLoud) "loud" else "mfcc"
+//
 //        aMean.poll(0, s"aMean-$label")
 //        bMean.poll(0, s"bMean-$label")
 
@@ -146,8 +146,8 @@ object Features {
         val num   = RunningSum(aDif * bDif).last
         val rmsA  = RunningSum(aDif.squared).last.sqrt
         val rmsB  = RunningSum(bDif.squared).last.sqrt
-        val denom = rmsA * rmsB
-        val v     = num / denom
+        val den   = rmsA * rmsB
+        val v     = num / den
 
 //        v.poll(0, s"corr-$label")
 
@@ -257,7 +257,7 @@ object Features {
     val g = Graph {
       import de.sciss.fscape.graph._
       val (featSize, sampleRate, loud, mfcc) = mkExtraction(fIn, config)
-      // XXX TODO wo kommt denn dieser scheiss elastic buffer schon wieder her?
+      // XXX TODO why do we need this amount of buffers? seems a short coming of ResizeWindow
       val sig = ResizeWindow(mfcc.elastic(numMFCC), numMFCC, start = -1) + ResizeWindow(loud, 1, stop = +numMFCC)
       //      val sig: GE = loud +: Vector.tabulate(numMFCC)(ch => WindowApply(mfcc, numMFCC, index = ch))
 

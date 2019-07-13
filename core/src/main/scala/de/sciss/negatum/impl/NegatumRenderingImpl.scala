@@ -38,13 +38,14 @@ import scala.util.control.NonFatal
 //  var instance: NegatumRenderingImpl[_] = null
 //}
 final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
-                                              popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]], numIter: Int)
+                                              popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]],
+                                              numIterations: Int)
                                              (implicit protected val cursor: stm.Cursor[S])
   extends RenderingImpl[S, Unit, Vec[Individual]] {
 
 //  NegatumRenderingImpl.instance = this
 
-  private[this] val STORE_BAD_DEFS = false
+  private[this] val STORE_BAD_DEFINITIONS = false
 
   @volatile
   private[this] var _shouldStop   = false
@@ -63,12 +64,12 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
       i += 1
     }
     while (i < population) {
-      val indiv = mkIndividual()
-      pop(i) = indiv
+      val individual = mkIndividual()
+      pop(i) = individual
       i += 1
     }
 
-    val inputExtr: File = {
+    val inputFeatureF: File = {
       val e = config.eval
       val featCfg = Features.Config(
         minFreq = e.minFreq,
@@ -80,21 +81,20 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
       Await.result(fut, Duration(6 /* 30 */, TimeUnit.SECONDS))._1
     }
 
-    val INIT_COUNT  = pop.count(_.fitness.isNaN)
-    val PROG_WEIGHT = 1.0 / (numIter.toLong * pop.length + INIT_COUNT)
-
-    var iter = 0
-    var PROG_COUNT = 0L
+    val INIT_COUNT      = pop.count(_.fitness.isNaN)
+    val PROGRESS_WEIGHT = 1.0 / (numIterations.toLong * pop.length + INIT_COUNT)
+    var iteration       = 0
+    var PROGRESS_COUNT  = 0L
 
     def evalPop(): Unit = {
       var ii = 0
       while (ii < pop.length) {
-        val indiv = pop(ii)
-        if (indiv.fitness.isNaN) {
-          val graph       = indiv.graph
+        val individual = pop(ii)
+        if (individual.fitness.isNaN) {
+          val graph       = individual.graph
           val numVertices = graph.sources.size  // XXX TODO -- ok?
           val fut = Evaluation(config, graph = graph, inputSpec = template.spec,
-            inputExtr = inputExtr, numVertices = numVertices)
+            inputExtr = inputFeatureF, numVertices = numVertices)
           // XXX TODO --- Mutagen used four parallel processes; should we do the same?
           val sim = try {
             Await.result(fut, Duration(6 /* 30 */, TimeUnit.SECONDS))
@@ -106,7 +106,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
                 s"failed - ${ex.getClass.getSimpleName}${if (ex.getMessage == null) "" else " - " + ex.getMessage}"
               }
               Console.err.println(s"Negatum: evaluation $message")
-              if (STORE_BAD_DEFS) {
+              if (STORE_BAD_DEFINITIONS) {
                 val dir = userHome / "Documents" / "temp" / "negatum_broken"
                 dir.mkdirs()
                 val source = MkSynthGraphSource(graph)
@@ -127,10 +127,10 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
           }
           // negative correlations are not nice because they
           // mess up the roulette selection; so clip them to zero
-          indiv.fitness = math.max(0.0, sim)
+          individual.fitness = math.max(0.0, sim)
           checkAborted()
-          PROG_COUNT += 1
-          progress = PROG_COUNT * PROG_WEIGHT
+          PROGRESS_COUNT += 1
+          progress = PROGRESS_COUNT * PROGRESS_WEIGHT
         }
         ii += 1
       }
@@ -139,7 +139,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
     // evaluate those that haven't been
     evalPop()
 
-    while (iter < numIter && !_shouldStop) {
+    while (iteration < numIterations && !_shouldStop) {
       val el    = Selection.elitism(config, pop)
       val _sel0 = Selection(config, pop)
       val sel   = scramble(_sel0)
@@ -157,28 +157,28 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
       val golems    = Vector.fill(numGolem1)(mkIndividual())
 
       i = 0
-      el.foreach { indiv =>
-        pop(i) = indiv
+      el.foreach { individual =>
+        pop(i) = individual
         i += 1
       }
-      mut.foreach { indiv =>
-        pop(i) = indiv
+      mut.foreach { individual =>
+        pop(i) = individual
         i += 1
       }
-      cross.foreach { indiv =>
-        pop(i) = indiv
+      cross.foreach { individual =>
+        pop(i) = individual
         i += 1
       }
-      golems.foreach { indiv =>
-        pop(i) = indiv
+      golems.foreach { individual =>
+        pop(i) = individual
         i += 1
       }
 
       evalPop()
 
-      iter += 1
-      PROG_COUNT  = iter.toLong * pop.length + INIT_COUNT
-      progress    = PROG_COUNT * PROG_WEIGHT
+      iteration += 1
+      PROGRESS_COUNT  = iteration.toLong * pop.length + INIT_COUNT
+      progress    = PROGRESS_COUNT * PROGRESS_WEIGHT
       checkAborted()
     }
 
@@ -202,16 +202,16 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
 
   protected def fillResult(popOut: Vec[Individual])(implicit tx: S#Tx): Unit = {
     val folder = populationH()
-    folder.clear()  // XXX TODO --- re-use existing procs?
-    popOut.foreach { indiv =>
-      val gObj  = SynthGraphObj.newConst[S](indiv.graph)
+    folder.clear()  // XXX TODO --- re-use existing processes?
+    popOut.foreach { individual =>
+      val gObj  = SynthGraphObj.newConst[S](individual.graph)
       val p     = Proc[S]
       import proc.Implicits._
       val attr  = p.attr
-      p.name    = mkGraphName(indiv.graph)
+      p.name    = mkGraphName(individual.graph)
       p.graph() = gObj
-      if (!indiv.fitness.isNaN) {
-        attr.put(Negatum.attrFitness, DoubleObj.newConst[S](indiv.fitness))
+      if (!individual.fitness.isNaN) {
+        attr.put(Negatum.attrFitness, DoubleObj.newConst[S](individual.fitness))
       }
       // XXX TODO --- should we store fitness or not?
       folder.addLast(p)

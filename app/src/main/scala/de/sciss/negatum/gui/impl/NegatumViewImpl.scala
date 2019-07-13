@@ -108,7 +108,7 @@ object NegatumViewImpl {
       val fEvalTempWeight     = mkDoubleField ("Temporal Weight"        , attrEvalTimeWeight, eval.timeWeight)
       val gridEval = Seq(fEvalMinFreq, fEvalNumMFCC, fEvalMaxFreq, fEvalNumMel, fEvalMaxBoost, fEvalTempWeight)
 
-      val fBreedSelFrac       = mkDoubleField ("Selection Fraction"     , attrBreedSelectFrac  , breed.selectFrac)
+      val fBreedSelFrac       = mkDoubleField ("Selection Fraction"     , attrBreedSelectFraction  , breed.selectFraction)
       val fBreedElitism       = mkIntField    ("Elitism"                , attrBreedElitism  , breed.elitism)
       val fBreedMinMut        = mkIntField    ("Min. # of Mutations"    , attrBreedMinMut   , breed.minMut)
       val fBreedMaxMut        = mkIntField    ("Max. # of Mutations"    , attrBreedMaxMut   , breed.maxMut)
@@ -195,7 +195,7 @@ object NegatumViewImpl {
                 // allowedUGens
               )
               val cBreed    = Negatum.Breeding(
-                selectFrac  = attr.$[DoubleObj ](attrBreedSelectFrac).map(_.value).getOrElse(breed.selectFrac),
+                selectFraction  = attr.$[DoubleObj ](attrBreedSelectFraction).map(_.value).getOrElse(breed.selectFraction),
                 elitism     = attr.$[IntObj    ](attrBreedElitism   ).map(_.value).getOrElse(breed.elitism),
                 minMut      = attr.$[IntObj    ](attrBreedMinMut    ).map(_.value).getOrElse(breed.minMut),
                 maxMut      = attr.$[IntObj    ](attrBreedMaxMut    ).map(_.value).getOrElse(breed.maxMut),
@@ -223,7 +223,7 @@ object NegatumViewImpl {
                 }
               }
 
-              val rendering = obj.run(config, iter = numIter)
+              val rendering = obj.run(config, iterations = numIter)
               /* val obs = */ rendering.reactNow { implicit tx => {
                 case Rendering.Completed(Success(_)) => finished()
                 case Rendering.Completed(Failure(Rendering.Cancelled())) => finished()

@@ -387,7 +387,7 @@ object ParamRanges {
     )),
     "Median" -> Info(params = Map(
       "in"      -> Spec(),
-      "length"  -> Spec(lo = 3.0, hi = 31.0),
+      "length"  -> Spec(lo = 3.0, hi = 31.0)
     )),
     "FreqShift" -> Info(dynamic = true, params = Map(
       "in"      -> Spec(dynamic = true),

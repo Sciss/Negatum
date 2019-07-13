@@ -91,7 +91,7 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
 
     logComp("Starting Negatum rendering...")
     implicit val u: Universe[S] = universe
-    val renderNeg = neg.run(negCfg, iter = numIter)
+    val renderNeg = neg.run(negCfg, iterations = numIter)
     val selfH = tx.newHandle(self)
     var lastProg = 0
     renderNeg.reactNow { implicit tx => {

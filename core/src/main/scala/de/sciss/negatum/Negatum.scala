@@ -123,25 +123,25 @@ object Negatum extends Obj.Type {
 
   object Breeding {
     def apply(
-               selectFrac  : Double  = 0.33,
-               elitism     : Int     = 3,
-               minMut      : Int     = 2,
-               maxMut      : Int     = 4,
-               probMut     : Double  = 0.75,
-               golem       : Int     = 15
-    ): Breeding = new Impl(selectFrac = selectFrac, elitism = elitism,
+               selectFraction : Double  = 0.33,
+               elitism        : Int     = 3,
+               minMut         : Int     = 2,
+               maxMut         : Int     = 4,
+               probMut        : Double  = 0.75,
+               golem          : Int     = 15
+    ): Breeding = new Impl(selectFraction = selectFraction, elitism = elitism,
       minMut = minMut, maxMut = maxMut, probMut = probMut, golem = golem)
 
-    private class Impl(val selectFrac: Double, val elitism: Int, val minMut: Int, val maxMut: Int,
+    private class Impl(val selectFraction: Double, val elitism: Int, val minMut: Int, val maxMut: Int,
                        val probMut: Double, val golem: Int) extends Breeding
   }
   trait Breeding {
-    def selectFrac   : Double
-    def elitism      : Int
-    def minMut       : Int
-    def maxMut       : Int
-    def probMut      : Double
-    def golem        : Int
+    def selectFraction: Double
+    def elitism       : Int
+    def minMut        : Int
+    def maxMut        : Int
+    def probMut       : Double
+    def golem         : Int
   }
 
   object Config {
@@ -217,7 +217,7 @@ object Negatum extends Obj.Type {
   final val attrEvalTimeWeight    = "eval-time-weight"
 
   /** Attribute for breeding config defaults. Type `Double` */
-  final val attrBreedSelectFrac   = "breed-select-frac"
+  final val attrBreedSelectFraction = "breed-select-frac"
 
   /** Attribute for breeding config defaults. Type `Int` */
   final val attrBreedElitism      = "breed-elitism"
@@ -236,7 +236,7 @@ object Negatum extends Obj.Type {
 }
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
 
-  def run(config: Negatum.Config, iter: Int = 1)
+  def run(config: Negatum.Config, iterations: Int = 1)
          (implicit tx: S#Tx, universe: Universe[S]): Rendering[S, Unit]
 
   def template: AudioCue.Obj.Var[S]
