@@ -27,5 +27,5 @@ object NegatumView {
 trait NegatumView[S <: Sys[S]] extends UniverseView[S] with View.Editable[S] {
   def negatum(implicit tx: S#Tx): Negatum[S]
 
-  def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]
+//  def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]
 }

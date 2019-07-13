@@ -17,7 +17,7 @@ package impl
 
 import de.sciss.desktop.UndoManager
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
+import de.sciss.lucre.expr.{CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
@@ -49,7 +49,7 @@ object NegatumViewImpl {
       val attr  = n.attr
       implicit val intEx    : IntObj    .type = IntObj
       implicit val doubleEx : DoubleObj .type = DoubleObj
-      implicit val booleanEx: BooleanObj.type = BooleanObj
+//      implicit val booleanEx: BooleanObj.type = BooleanObj
 
       class Field(name: String, view: View[S]) {
         lazy val label : Label      = new Label(s"$name:")
@@ -108,13 +108,13 @@ object NegatumViewImpl {
       val fEvalTempWeight     = mkDoubleField ("Temporal Weight"        , attrEvalTimeWeight, eval.timeWeight)
       val gridEval = Seq(fEvalMinFreq, fEvalNumMFCC, fEvalMaxFreq, fEvalNumMel, fEvalMaxBoost, fEvalTempWeight)
 
-      val fBreedSelFrac       = mkDoubleField ("Selection Fraction"     , attrBreedSelectFraction  , breed.selectFraction)
+      val fBreedSelFraction   = mkDoubleField ("Selection Fraction"     , attrBreedSelectFraction, breed.selectFraction)
       val fBreedElitism       = mkIntField    ("Elitism"                , attrBreedElitism  , breed.elitism)
       val fBreedMinMut        = mkIntField    ("Min. # of Mutations"    , attrBreedMinMut   , breed.minMut)
       val fBreedMaxMut        = mkIntField    ("Max. # of Mutations"    , attrBreedMaxMut   , breed.maxMut)
       val fBreedProbMut       = mkDoubleField ("Prob. of Mutation"      , attrBreedProbMut  , breed.probMut)
       val fBreedGolem         = mkIntField    ("# of Golems"            , attrBreedGolem    , breed.golem)
-      val gridBreed = Seq(fBreedSelFrac, fBreedProbMut, fBreedElitism, fBreedMinMut, fBreedGolem, fBreedMaxMut)
+      val gridBreed = Seq(fBreedSelFraction, fBreedProbMut, fBreedElitism, fBreedMinMut, fBreedGolem, fBreedMaxMut)
 
       deferTx {
         def mkGrid(title: String, grid: Seq[Field]): Component = {
@@ -171,13 +171,13 @@ object NegatumViewImpl {
       val ggCancel  = GUI.toolButton(actionCancel, raphael.Shapes.Cross        , tooltip = "Abort Rendering")
       val ggStop    = GUI.toolButton(actionStop  , raphael.Shapes.TransportStop, tooltip = "Stop Rendering and Update Table")
 
-      val mNumIter  = new SpinnerNumberModel(1, 1, 65536, 1)
-      val ggNumIter = new Spinner(mNumIter)
+      val mNumIterations  = new SpinnerNumberModel(1, 1, 65536, 1)
+      val ggNumIterations = new Spinner(mNumIterations)
 
       // XXX TODO --- should use custom view so we can cancel upon `dispose`
       val actionRender = new swing.Action("Evolve") { self =>
         def apply(): Unit = {
-          val numIter = mNumIter.getNumber.intValue()
+          val numIterations = mNumIterations.getNumber.intValue()
           val ok = cursor.step { implicit tx =>
             renderRef.get(tx.peer).isEmpty && {
               val obj   = negatumH()
@@ -223,7 +223,7 @@ object NegatumViewImpl {
                 }
               }
 
-              val rendering = obj.run(config, iterations = numIter)
+              val rendering = obj.run(config, iterations = numIterations)
               /* val obs = */ rendering.reactNow { implicit tx => {
                 case Rendering.Completed(Success(_)) => finished()
                 case Rendering.Completed(Failure(Rendering.Cancelled())) => finished()
@@ -265,7 +265,7 @@ object NegatumViewImpl {
       //            }
 
       val panelControl = new FlowPanel(new Label("Iterations:"),
-        ggNumIter, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze)
+        ggNumIterations, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze)
       component = new BorderPanel {
         add(panelParams , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )

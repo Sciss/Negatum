@@ -27,16 +27,17 @@ import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{AudioCue, Proc, SynthGraphObj}
 import de.sciss.synth.{SynthGraph, proc}
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, blocking}
-import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.util.Random
 import scala.util.control.NonFatal
 
-//object NegatumRenderingImpl {
-//  /** DEBUGGING*/
-//  var instance: NegatumRenderingImpl[_] = null
-//}
+object NegatumRenderingImpl {
+  /** DEBUGGING*/
+  var STORE_BAD_DEFINITIONS = false // if `true`, writes to `~Documents/temp/negatum_broken`
+  var REPORT_TIME_OUT       = false
+}
 final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
                                               popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]],
                                               numIterations: Int)
@@ -45,7 +46,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
 
 //  NegatumRenderingImpl.instance = this
 
-  private[this] val STORE_BAD_DEFINITIONS = false
+  import NegatumRenderingImpl._
 
   @volatile
   private[this] var _shouldStop   = false
@@ -101,11 +102,11 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
           } catch {
             case NonFatal(ex) =>
               val message = if (ex.isInstanceOf[TimeoutException]) {
-                "timeout"
+                if (REPORT_TIME_OUT) "timeout" else ""
               } else {
                 s"failed - ${ex.getClass.getSimpleName}${if (ex.getMessage == null) "" else " - " + ex.getMessage}"
               }
-              Console.err.println(s"Negatum: evaluation $message")
+              if (!message.isEmpty) Console.err.println(s"Negatum: evaluation $message")
               if (STORE_BAD_DEFINITIONS) {
                 val dir = userHome / "Documents" / "temp" / "negatum_broken"
                 dir.mkdirs()
@@ -176,9 +177,9 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
 
       evalPop()
 
-      iteration += 1
+      iteration      += 1
       PROGRESS_COUNT  = iteration.toLong * pop.length + INIT_COUNT
-      progress    = PROGRESS_COUNT * PROGRESS_WEIGHT
+      progress        = PROGRESS_COUNT * PROGRESS_WEIGHT
       checkAborted()
     }
 

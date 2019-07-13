@@ -27,7 +27,8 @@ object MkSynthGraph {
   final case class Incomplete(in: SynthGraphT, vertex: Vertex.UGen, arg: String, argList: Seq[String])
     extends Exception {
 
-    override def toString = s"$productPrefix(\n  in = $in,\n  vertex = $vertex,\n  arg = $arg\n,  argList = $argList\n)"
+    override def toString =
+      s"$productPrefix(\n  in = $in,\n  vertex = $vertex,\n  arg = $arg\n,  argList = $argList\n)"
   }
 
   def isDynamic(in: GE): Boolean = in match {
