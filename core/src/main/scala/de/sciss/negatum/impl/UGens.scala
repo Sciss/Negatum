@@ -141,7 +141,18 @@ object UGens {
   var seq: Vec[UGenSpec] = ugens1
   var map: Map[String, UGenSpec] = seq.iterator.map(s => s.name -> s).toMap
 
-  val mapAll: Map[String, UGenSpec] = map0
+//  private val protectSpec = UGenSpec(
+//    name        = "Protect",
+//    attr        = Set(UGenSpec.Attribute.IsHelper),
+//    rates       = UGenSpec.Rates.Implied(audio, UGenSpec.RateMethod.Custom("apply")),
+//    args        = Vec.empty[UGenSpec.Argument],
+//    inputs      = Vec.empty[UGenSpec.Input  ],
+//    outputs     = Vec.empty[UGenSpec.Output ],
+//    doc         = None,
+//    elemOption  = None
+//  )
+
+  val mapAll: Map[String, UGenSpec] = map0 // + (protectSpec.name -> protectSpec)
 
 
   // val index: Map[Int, UGenSpec] = seq.zipWithIndex.map(_.swap)(breakOut)

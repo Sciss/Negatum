@@ -66,32 +66,38 @@ object Optimize extends ProcessorFactory {
       import config.{graph => graphIn}
       var idxMap      = Map.empty[Int, Int] // channels to indices in synth-graph sources
       var idxGE       = 0
-      var idxLazy     = 0
       val graphAdd = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
         val sigB    = List.newBuilder[GE]
-        graphIn.sources.foreach {
-          case _: NegatumOut | _: NegatumIn | _: Protect | _: Mix =>  // these are filtered by MkTopology
-            idxLazy += 1
-          case lz =>
-            lz match {
-              case in: GE =>
-                sigB    += in
-                idxMap  += idxGE -> idxLazy
+        graphIn.sources.iterator.zipWithIndex.foreach { case (lz, idxLazy) =>
+          lz match {
+            case _: NegatumOut | _: NegatumIn /*| _: Protect*/ | _: Mix =>  // these are filtered by MkTopology
+            case p @ Protect(in, _, _, _) =>
+              val idxPeer = graphIn.sources.indexOf(in)
+              // assert (idxPeer >= 0, in.toString)
+              if (idxPeer >= 0) { // ignore constants for now
+                sigB    += p
+                idxMap  += idxGE -> idxPeer
                 idxGE   += 1
-              case _ =>
-            }
-            idxLazy += 1
+              }
+
+            case in: GE =>
+              sigB    += in
+              idxMap  += idxGE -> idxLazy
+              idxGE   += 1
+
+            case _ =>
+          }
         }
         val sig     = sigB.result()
 //        (numSignals: GE).poll(0, "numSignals")
         ReplaceOut.ar(0, sig)
       }
 
-      val numSignals        = idxGE
-      val (topIn, srcMapIn) = MkTopology.withSourceMap(graphIn)
-      assert (srcMapIn.size == numSignals)
+      val numSignals = idxGE
+      val (topIn, srcMapIn) = MkTopology.withSourceMap(graphIn /*, removeProtect = false*/)
+//      assert (srcMapIn.size == numSignals)
 
 //      val DEBUG_IDX = idxMap  .toList.sortBy(_._1)
 //      val DEBUG_SRC = srcMapIn.toList.sortBy(_._1)
@@ -167,9 +173,13 @@ object Optimize extends ProcessorFactory {
           // lower indices leaves an incomplete graph. works
           // correctly in normal order (we use the indices only
           // in static maps, so they remain valid anyway)
-          val analysis = analysisMap.toList.sortBy(_._1)
+          val analysis    = analysisMap.toList.sortBy(_._1) .take(21)
+          val countConst  = analysis.count(_._2.isLeft  )
+          val countEqual  = analysis.count(_._2.isRight )
+          println(s"countConst = $countConst, countEqual = $countEqual")
 
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
+          val LAST = analysis.last._1
 
           val topOut = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>
@@ -183,6 +193,9 @@ object Optimize extends ProcessorFactory {
 //                  assert (topTemp.vertices.contains(_vNew))
                   _vNew
               }
+              if (ch == LAST) {
+                println("---here")
+              }
               println(s"Replace $vOld by $vNew")
               // Note: a UGen vNew may also not be in the current topology,
               // because it may have been removed before as an orphan in the
@@ -192,14 +205,14 @@ object Optimize extends ProcessorFactory {
               } else {
                 topTemp
               }
-              val topTemp2 = Chromosome.replaceVertex(topTemp1, vOld = vOld, vNew = vNew)
+              val topTemp2 = if (vOld == vNew) topTemp1 else {
+                Chromosome.replaceVertex(topTemp1, vOld = vOld, vNew = vNew)
+              }
 //              Chromosome.checkComplete(topTemp2, "Oh noes")
               topTemp2
           }
 
           val graphOut    = MkSynthGraph(topOut)
-          val countConst  = analysis.count(_._2.isLeft  )
-          val countEqual  = analysis.count(_._2.isRight )
           progress = 1.0
           Result(graphOut, numConst = countConst, numEqual = countEqual)
 
