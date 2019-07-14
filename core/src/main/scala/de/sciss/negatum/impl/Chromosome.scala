@@ -162,10 +162,11 @@ object Chromosome {
     *
     * @param  vOld  the vertex to remove
     * @param  vNew  the vertex to put in place of the old one.
-    *               this vertex must have already been added to the topology
     */
   def replaceVertex(top: SynthGraphT, vOld: Vertex, vNew: Vertex): SynthGraphT = {
-    require (top.vertices.contains(vNew))
+    // note: if the vertex is not contained, we simply get
+    // empty inlets and outlets, and this is a no-op
+    // require (top.vertices.contains(vNew))
     val outlet  = getArgUsages(top, vOld)
     val top1    = outlet.foldLeft(top)(_ removeEdge _)
 
@@ -173,17 +174,19 @@ object Chromosome {
     def removeRecursive(topIn: SynthGraphT, vIn: Vertex): SynthGraphT = {
       val inletsIn  = sortedEdges (topIn, vIn)
       val topIn1    = inletsIn.foldLeft(topIn)(_ removeEdge _)
-      val topIn2    = topIn1.removeVertex(vOld)
+      val topIn2    = topIn1.removeVertex(vIn)
       val vsIn1     = inletsIn.map(_.targetVertex).distinct
-      val vsIn2     = vsIn1.filter(vPar => getArgUsages(topIn2, vPar).isEmpty)  // orphans
+      // `vPar != vNew` ensures, we don't partially disconnect it
+      // but simply skip it in the recursion
+      val vsIn2     = vsIn1.filter(vPar => vPar != vNew && getArgUsages(topIn2, vPar).isEmpty)  // orphans
       vsIn2.foldLeft(topIn2)(removeRecursive)
     }
 
     val top2      = removeRecursive(top1, vOld)
     val outletNew = outlet.map(_.copy(targetVertex = vNew))
-    val top3      = outletNew.foldLeft(top2)((topTemp, e) => (topTemp addEdge e).get._1)
-
-    val succ    = top3
+    val top3      = top2 // if (top2.vertices.contains(vNew)) top2 else top2.addVertex(vNew)
+    val top4      = outletNew.foldLeft(top3)((topTemp, e) => (topTemp addEdge e).get._1)
+    val succ      = top4
     succ
   }
 }

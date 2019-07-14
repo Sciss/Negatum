@@ -159,10 +159,15 @@ object Optimize extends ProcessorFactory {
             progress = 0.5 + 0.5 * ch1 / numSignals
           }
 
-          // highest indices first, so the successive indices
+          // _NOT_: highest indices first, so the successive indices
           // stay valid while we manipulate the topology
           println("DEBUGGING -- CONTINUE HERE")
-          val analysis = analysisMap.toList.sortBy(-_._1)  .take(2) // XXX TODO DEBUG
+//          val analysis = analysisMap.toList.sortBy(-_._1)
+          // without further analysis, removing from higher to
+          // lower indices leaves an incomplete graph. works
+          // correctly in normal order (we use the indices only
+          // in static maps, so they remain valid anyway)
+          val analysis = analysisMap.toList.sortBy(_._1)
 
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
 
@@ -174,10 +179,19 @@ object Optimize extends ProcessorFactory {
                 case Left  (value) => Vertex.Constant(value)
                 case Right (chTgt) =>
                   val srcIdxTgt = idxMap(chTgt)
-                  srcMapIn(srcIdxTgt)
+                  val _vNew = srcMapIn(srcIdxTgt)
+//                  assert (topTemp.vertices.contains(_vNew))
+                  _vNew
               }
               println(s"Replace $vOld by $vNew")
-              val topTemp1 = if (vNew.isConstant) topTemp.addVertex(vNew) else topTemp
+              // Note: a UGen vNew may also not be in the current topology,
+              // because it may have been removed before as an orphan in the
+              // process. Thus, always ensure it is added to the topology
+              val topTemp1 = if (vNew.isConstant || !topTemp.vertices.contains(vNew)) {
+                topTemp.addVertex(vNew)
+              } else {
+                topTemp
+              }
               val topTemp2 = Chromosome.replaceVertex(topTemp1, vOld = vOld, vNew = vNew)
 //              Chromosome.checkComplete(topTemp2, "Oh noes")
               topTemp2
