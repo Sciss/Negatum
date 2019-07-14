@@ -15,7 +15,7 @@ package de.sciss.negatum
 package impl
 
 import de.sciss.lucre.stm.Sys
-import de.sciss.negatum.impl.Chromosome.SynthGraphT
+import de.sciss.negatum.Negatum.SynthGraphT
 import de.sciss.negatum.impl.ParamRanges.Dynamic
 import de.sciss.negatum.impl.Util.{getGraphRoots, graphElemName}
 import de.sciss.synth.ugen.{Constant, Protect}

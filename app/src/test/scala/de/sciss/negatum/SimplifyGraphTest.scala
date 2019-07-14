@@ -4,14 +4,17 @@ import de.sciss.file.File
 import de.sciss.lucre.synth
 import de.sciss.lucre.synth.{InMemory, Synth, Txn}
 import de.sciss.model.Model
+import de.sciss.numbers.Implicits._
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
+import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{AuralSystem, Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext
 
 object SimplifyGraphTest {
   // "original" graph coming out of Negatum.
@@ -333,7 +336,21 @@ object SimplifyGraphTest {
 
   def main(args: Array[String]): Unit = {
 //    mkReduction2()
-    play(graphReduce2)
+//    play(graphReduce2)
+    testOptimize()
+  }
+
+  def testOptimize(): Unit = {
+    val graphIn = graphOrig
+    val cfg     = Optimize.Config(graphIn, sampleRate = 44100, analysisDur = 2.0)
+    val opt     = Optimize(cfg)
+    import ExecutionContext.Implicits.global
+    opt.start()
+    val res     = Await.result(opt, Duration.Inf)
+    println(s"numConst = ${res.numConst}, numEqual = ${res.numEqual}")
+    val sourceOut = MkSynthGraphSource(res.graph)
+    println()
+    println(sourceOut)
   }
 
   def play(g: SynthGraph): Unit = {
@@ -393,7 +410,7 @@ object SimplifyGraphTest {
   def mkReduction2(): Unit = {
     val testDur = 2.0
 
-    val g0 = graphReduce1
+    val g0 = graphOrig  // graphReduce1
     var numSignals = 0
     val g1 = SynthGraph {
       import de.sciss.synth._
@@ -425,6 +442,7 @@ object SimplifyGraphTest {
     bCfg.realtime = false
     bCfg.span     = Span(0L, (testDur * TimeRef.SampleRate).toLong)
     bCfg.server.outputBusChannels = numSignals
+    bCfg.server.audioBusChannels  = math.max(128, numSignals.nextPowerOfTwo)
     bCfg.server.sampleRate        = 44100
     bCfg.group    = system.step { implicit tx =>
       val p = Proc[S]
@@ -434,7 +452,7 @@ object SimplifyGraphTest {
 
     // DO NOT USE THIS -- IT CREATES THREAD STARVATION
 //    import de.sciss.synth.proc.SoundProcesses.executionContext
-    import scala.concurrent.ExecutionContext.Implicits.global
+    import ExecutionContext.Implicits.global
 
     val noObs: Model.Listener[Any] = { case _ => () }
     val r: Future[File] = b.run(bCfg)(noObs)
@@ -446,20 +464,31 @@ object SimplifyGraphTest {
         println(f"Bounce length: ${af.numFrames / af.sampleRate}%1.1f sec.")
         val buf = af.buffer(af.numFrames.toInt)
         af.read(buf)
-        var sameMap = Map.empty[Int, Int]
+        var sameMap = Map.empty[Int, Either[Float, Int]]
         for (ch1 <- buf.indices) {
-          for (ch2 <- 0 until ch1; if !sameMap.contains(ch1) && !sameMap.contains(ch2)) {
-            val b1 = buf(ch1)
-            val b2 = buf(ch2)
-            if (b1 sameElements b2) {
-              sameMap += ch1 -> ch2
+          val b1 = buf(ch1)
+          val v0 = b1(0)
+          if (b1.forall(_ == v0)) {
+            sameMap += ch1 -> Left(v0)
+          } else {
+            for (ch2 <- 0 until ch1; if !sameMap.contains(ch1) && !sameMap.contains(ch2)) {
+              val b2 = buf(ch2)
+              if (b1 sameElements b2) {
+                sameMap += ch1 -> Right(ch2)
+              }
             }
           }
         }
-        val info = sameMap.toList.sorted.map { case (ch1, ch2) => (ch1 + 1, ch2 + 1) }
-        println("Equal channels:")
-        info.foreach { case (ch1, ch2) =>
-          println(s"idx $ch1 == idx $ch2 (${g0.sources(ch1).productPrefix} == ${g0.sources(ch2).productPrefix})")
+        val info = sameMap.toList.sortBy(_._1).map {
+          case (ch1, Right(ch2))  => (ch1 + 1, Right(ch2 + 1))
+          case (ch1, Left(v))     => (ch1 + 1, Left(v))
+        }
+        println("Constant and redundant channels:")
+        info.foreach {
+          case (ch1, Right(ch2)) =>
+            println(s"idx $ch1 == idx $ch2 (${g0.sources(ch1).productPrefix} == ${g0.sources(ch2).productPrefix})")
+          case (ch1, Left(v)) =>
+            println(s"idx $ch1 == $v (${g0.sources(ch1).productPrefix})")
         }
 
       } finally {
@@ -468,7 +497,7 @@ object SimplifyGraphTest {
       }
     }
 
-    r.onComplete {
+    val done: Try[File] => Unit = {
       case Success(f) =>
 //        println(s"Bounce: $f")
         var attempt = 0
@@ -486,8 +515,14 @@ object SimplifyGraphTest {
           processBounce(f)
         }
 
-      case Failure(ex) => ex.printStackTrace()
+      case Failure(ex) =>
+        println(ex)
+        ex.printStackTrace()
+        Thread.sleep(1000)
     }
+
+    // bullshit: execution deferred even when completed, and JVM exits
+    if (r.isCompleted) done(r.value.get) else r.onComplete(done)
     // println(txt.split("\n").sorted.mkString("\n"))
   }
 }

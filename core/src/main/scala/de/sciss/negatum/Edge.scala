@@ -12,7 +12,6 @@
  */
 
 package de.sciss.negatum
-package impl
 
 import de.sciss.topology
 

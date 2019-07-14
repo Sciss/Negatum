@@ -14,18 +14,16 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.negatum.Negatum.Config
+import de.sciss.negatum.Negatum.{Config, SynthGraphT}
+import de.sciss.negatum.impl.Util._
 import de.sciss.synth.{SynthGraph, UGenSpec, UndefinedRate}
 import de.sciss.topology.Topology
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.util.Random
-import de.sciss.negatum.impl.Util._
 
 object Chromosome {
-  type SynthGraphT = Topology[Vertex, Edge]
-
   def mkIndividual(config: Config)(implicit random: Random): Individual =
     new Individual(mkGraph(config))
 
@@ -96,7 +94,8 @@ object Chromosome {
       case _ =>
     }
 
-  def completeUGenInputs(config: Config, t1: SynthGraphT, v: Vertex.UGen)(implicit random: Random): SynthGraphT = {
+  def completeUGenInputs(config: Config, t1: SynthGraphT, v: Vertex.UGen)
+                        (implicit random: Random): SynthGraphT = {
     import config.gen.probDefault
 
     val spec      = v.info
@@ -152,8 +151,39 @@ object Chromosome {
     inc.map(_.name)
   }
 
+  /** Inverse edge look-up: Creates a list of edges that use a given vertex as their argument. */
   def getArgUsages(top: SynthGraphT, arg: Vertex): List[Edge] = {
     val set = top.edges.filter(_.targetVertex == arg)
     sortedEdges(top, set)
+  }
+
+  /** Removes a vertex from the chromosome along with all its dependents,
+    * and replaces it by another one.
+    *
+    * @param  vOld  the vertex to remove
+    * @param  vNew  the vertex to put in place of the old one.
+    *               this vertex must have already been added to the topology
+    */
+  def replaceVertex(top: SynthGraphT, vOld: Vertex, vNew: Vertex): SynthGraphT = {
+    require (top.vertices.contains(vNew))
+    val outlet  = getArgUsages(top, vOld)
+    val top1    = outlet.foldLeft(top)(_ removeEdge _)
+
+    // remove orphaned inputs (does not look at outlet!)
+    def removeRecursive(topIn: SynthGraphT, vIn: Vertex): SynthGraphT = {
+      val inletsIn  = sortedEdges (topIn, vIn)
+      val topIn1    = inletsIn.foldLeft(topIn)(_ removeEdge _)
+      val topIn2    = topIn1.removeVertex(vOld)
+      val vsIn1     = inletsIn.map(_.targetVertex).distinct
+      val vsIn2     = vsIn1.filter(vPar => getArgUsages(topIn2, vPar).isEmpty)  // orphans
+      vsIn2.foldLeft(topIn2)(removeRecursive)
+    }
+
+    val top2      = removeRecursive(top1, vOld)
+    val outletNew = outlet.map(_.copy(targetVertex = vNew))
+    val top3      = outletNew.foldLeft(top2)((topTemp, e) => (topTemp addEdge e).get._1)
+
+    val succ    = top3
+    succ
   }
 }

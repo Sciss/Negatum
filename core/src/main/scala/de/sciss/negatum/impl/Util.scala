@@ -13,7 +13,8 @@
 
 package de.sciss.negatum.impl
 
-import de.sciss.negatum.impl.Chromosome.SynthGraphT
+import de.sciss.negatum.Negatum.SynthGraphT
+import de.sciss.negatum.Vertex
 import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
 
 import scala.collection.generic.CanBuildFrom

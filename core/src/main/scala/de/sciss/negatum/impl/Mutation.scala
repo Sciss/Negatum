@@ -14,8 +14,7 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.negatum.Negatum.Config
-import de.sciss.negatum.impl.Chromosome.SynthGraphT
+import de.sciss.negatum.Negatum.{Config, SynthGraphT}
 import de.sciss.negatum.impl.Util._
 
 import scala.annotation.{switch, tailrec}

@@ -19,11 +19,14 @@ import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc.{AudioCue, Universe}
+import de.sciss.topology.Topology
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Negatum extends Obj.Type {
   final val typeId = 0x40000
+
+  type SynthGraphT = Topology[Vertex, Edge]
 
 //  /** Initializes this type and other related type such as `SVMModel`. */
 //  override def init(): Unit = {
@@ -32,8 +35,12 @@ object Negatum extends Obj.Type {
 //    SOM     .init()
 //  }
 
+  // ---- creation ----
+
   def apply[S <: Sys[S]](template: AudioCue.Obj[S]   )(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
   def read [S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Negatum[S] = Impl.read(in, access)
+
+  // ----
 
   def attrToConfig[S <: Sys[S]](obj: Obj[S])(implicit tx: S#Tx): Config = Impl.attrToConfig(obj)
 
