@@ -188,58 +188,47 @@ object SimplifyGraphTest {
     import de.sciss.synth._
     import de.sciss.synth.ugen._
     NegatumIn()
-    val lFCub         = LFCub.ar(freq = 0.2, iphase = 0.0)
-    val c             = lFCub min 0.2
-    val linCongC      = LinCongC.ar(freq = 18344.684, a = 0.2, c = c, m = 0.2, xi = 0.2)
-    val min_0         = lFCub min linCongC
-    val min_1         = min_0 min c
-    val freq_0        = min_1 min 0.0
-    val in_0          = Protect(freq_0, -inf, inf, true)
-    val delay2        = Delay2.ar(in_0)
-    val min_2         = delay2 min 0.0
-    val min_3         = min_2 min min_1
-    val in_1          = Protect(min_3, -inf, inf, true)
-    val bPZ2          = BPZ2.ar(in_1)
-    val min_4         = 0.0 min bPZ2
-    val min_5         = linCongC min min_4
-    val in_2          = Protect(freq_0, -inf, inf, true)
-    val freq_1        = Protect(freq_0, 10.0, 20000.0, false)
-    val rq_0          = Protect(min_0, 0.01, 100.0, false)
-    val gain          = Protect(freq_0, -144.0, 144.0, false)
-    val k             = MidEQ.ar(in_2, freq = freq_1, rq = rq_0, gain = gain)
-    val min_6         = 0.0 min k
-    val scaleneg      = min_6 scaleNeg freq_0
-    val xi_0          = Protect(scaleneg, -inf, inf, false)
-    val standardL     = StandardL.ar(freq = freq_0, k = k, xi = xi_0, yi = 0.0)
-    val in_3          = Protect(standardL, -inf, inf, true)
-    val maxDelayTime  = Protect(freq_0, 0.0, 20.0, false)
-    val delayTime     = 0.0 min maxDelayTime
-    val delayC        = DelayC.ar(in_3, maxDelayTime = maxDelayTime, delayTime = delayTime)
-    val min_7         = min_6 min delayC
-    val min_8         = min_7 min min_5
-    val in_4          = Protect(freq_0, -inf, inf, true)
-    val timeUp        = Protect(standardL, 0.0, 30.0, false)
-    val timeDown      = Protect(k, 0.0, 30.0, false)
-    val lag2UD        = Lag2UD.ar(in_4, timeUp = timeUp, timeDown = timeDown)
-    val in_5          = Protect(standardL, -inf, inf, true)
-    val freq_2        = Protect(0.0, 10.0, 20000.0, false)
-    val rq_1          = Protect(lag2UD, 0.01, 100.0, false)
-    val bPF           = BPF.ar(in_5, freq = freq_2, rq = rq_1)
-    val m_0           = freq_0 min bPF
-    val freq_3        = Protect(m_0, -inf, inf, false)
-    val xi_1          = Protect(bPZ2, -inf, inf, false)
-    val linCongL      = LinCongL.ar(freq = freq_3, a = 1.1, c = 0.0, m = m_0, xi = xi_1)
-    val freq_4        = Protect(m_0, 0.01, 20000.0, false)
-    val iphase_0      = Protect(min_3, 0.0, 4.0, false)
-    val lFTri         = LFTri.ar(freq = freq_4, iphase = iphase_0)
-    val in_6          = Protect(min_1, -inf, inf, true)
-    val coeff_0       = Protect(freq_0, -0.999, 0.999, false)
-    val integrator    = Integrator.ar(in_6, coeff = coeff_0)
-    val in_7          = freq_0 min standardL
-    val coeff_1       = Protect(delayC, 0.8, 0.99, false)
-    val leakDC        = LeakDC.ar(in_7, coeff = coeff_1)
-    val mod           = freq_0 % min_3
-    val mix           = Mix(Seq[GE](min_8, linCongL, lFTri, integrator, leakDC, mod))
+    val lFCub       = LFCub.ar(freq = 0.2, iphase = 0.0)
+    val c           = lFCub min 0.2
+    val linCongC    = LinCongC.ar(freq = 18344.684, a = 0.2, c = c, m = 0.2, xi = 0.2)
+    val in_0        = lFCub min linCongC
+    val in_1        = Clip.ar(in_0, lo = 0.01, hi = 100.0)
+    val in_2        = in_0 min c
+    val in_3        = LeakDC.ar(in_2, coeff = 0.995)
+    val min_0       = in_2 min 0.0
+    val in_4        = LeakDC.ar(min_0, coeff = 0.995)
+    val delay2      = Delay2.ar(in_4)
+    val min_1       = delay2 min 0.0
+    val in_5        = min_1 min in_2
+    val in_6        = LeakDC.ar(in_5, coeff = 0.995)
+    val xi_0        = BPZ2.ar(in_6)
+    val min_2       = 0.0 min xi_0
+    val min_3       = linCongC min min_2
+    val rq_0        = Clip.ar(in_1, lo = 0.01, hi = 100.0)
+    val gain        = Clip.ar(min_0, lo = -144.0, hi = 144.0)
+    val midEQ       = MidEQ.ar(in_4, freq = 10.0, rq = rq_0, gain = gain)
+    val min_4       = 0.0 min midEQ
+    val xi_1        = min_4 scaleNeg min_0
+    val in_7        = StandardL.ar(freq = min_0, k = midEQ, xi = xi_1, yi = 0.0)
+    val in_8        = LeakDC.ar(in_7, coeff = 0.995)
+    val delayC      = DelayC.ar(in_8, maxDelayTime = 0.0, delayTime = 0.0)
+    val min_5       = min_4 min delayC
+    val min_6       = min_5 min min_3
+    val in_9        = min_0 min in_7
+    val in_10       = Clip.ar(min_0, lo = -0.999, hi = 0.999)
+    val coeff_0     = Clip.ar(in_10, lo = -0.999, hi = 0.999)
+    val integrator  = Integrator.ar(in_3, coeff = coeff_0)
+    val in_11       = Clip.ar(midEQ, lo = 0.0, hi = 30.0)
+    val timeDown    = Clip.ar(in_11, lo = 0.0, hi = 30.0)
+    val in_12       = Lag2UD.ar(in_4, timeUp = 0.0, timeDown = timeDown)
+    val in_13       = Clip.ar(in_12, lo = 0.01, hi = 100.0)
+    val rq_1        = Clip.ar(in_13, lo = 0.01, hi = 100.0)
+    val bPF         = BPF.ar(in_8, freq = 10.0, rq = rq_1)
+    val min_7       = min_0 min bPF
+    val lFTri       = LFTri.ar(freq = 0.01, iphase = 0.0)
+    val leakDC      = LeakDC.ar(in_9, coeff = 0.8)
+    val linCongL    = LinCongL.ar(freq = min_7, a = 1.1, c = 0.0, m = min_7, xi = xi_0)
+    val mix         = Mix(Seq[GE](min_6, integrator, lFTri, leakDC, linCongL))
     NegatumOut(mix)
   }
 
@@ -400,9 +389,9 @@ object SimplifyGraphTest {
   }
 
   def testOptimize(): Unit = {
-//    val graphIn = graphOrig
-    val graphIn = graphOpt1
-    val cfg     = Optimize.Config(graphIn, sampleRate = 44100, analysisDur = 2.0)
+    val graphIn = graphOrig
+//    val graphIn = graphOpt1
+    val cfg     = Optimize.Config(graphIn, sampleRate = 44100, analysisDur = 2.0 /*, expandProtect = false*/)
     val opt     = Optimize(cfg)
     import ExecutionContext.Implicits.global
     opt.start()

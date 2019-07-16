@@ -65,14 +65,17 @@ object MkSynthGraph {
   /** Creates a synth graph from a chromosome, possibly inserting safety
     * measures such as removal of NaNs or protected against out-of-range parameters.
     *
-    * @param c            the chromosome that shall be converted
-    * @param specialOut   if `true`, adds a `NegatumOut`
-    * @param ranges       if `true`, inserts range protection checks for known parameters
-    * @param mono         if `true`, adds a `Mix.mono` (only used when `!specialOut`)
-    * @param removeNaNs   if `true`, adds a bad-value check and a gate that stops NaNs (only used when `!specialOut`)
+    * @param c              the chromosome that shall be converted
+    * @param specialOut     if `true`, adds a `NegatumOut`
+    * @param protect        if `true`, inserts range protection checks for known parameters
+    * @param mono           if `true`, adds a `Mix.mono` (only used when `!specialOut`)
+    * @param removeNaNs     if `true`, adds a bad-value check and a gate that stops NaNs (only used when `!specialOut`)
+    * @param expandProtect  if `true`, expands the range protecting UGens that would otherwise be
+    *                       encapsulated in a `Protect` graph element.
     */
   def apply[S <: Sys[S]](c: SynthGraphT, specialOut: Boolean = true,
-                         ranges: Boolean = true, mono: Boolean = true, removeNaNs: Boolean = true): SynthGraph = {
+                         protect: Boolean = true, mono: Boolean = true, removeNaNs: Boolean = true,
+                         expandProtect: Boolean = false): SynthGraph = {
     @tailrec def loop(remRev: List[Vertex], real: Map[Vertex, GE]): Map[Vertex, GE] = remRev match {
       case last :: init =>
         lazy val lastE = c.edgeMap.getOrElse(last, Set.empty) // top.targets(last)
@@ -98,7 +101,7 @@ object MkSynthGraph {
                 case UGenSpec.ArgumentType.GE(_, _) =>
                   val inGEOpt0 = getReal(arg.name)
 
-                  val inGEOpt: Option[GE] = if (!ranges) inGEOpt0 else inGEOpt0.map { inGE0 =>
+                  val inGEOpt: Option[GE] = if (!protect) inGEOpt0 else inGEOpt0.map { inGE0 =>
                     ParamRanges.map.get(spec.name).fold(inGE0) { pInfo =>
                       pInfo.params.get(arg.name).fold(inGE0) { pSpec =>
                         val inInfoOpt = ParamRanges.map.get(graphElemName(inGE0))
@@ -116,10 +119,13 @@ object MkSynthGraph {
                         val loOk      = inLoOpt.exists(_ >= loThresh)
                         val hiOk      = inHiOpt.exists(_ <= hiThresh)
 
-                        val inGE2: GE = if (loOk && hiOk && (!pSpec.dynamic || isDynamic(inGE0)))
-                            inGE0
-                          else
-                            Protect(inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
+                        val inGE2: GE = if (loOk && hiOk && (!pSpec.dynamic || isDynamic(inGE0))) {
+                          inGE0
+                        } else if (expandProtect) {
+                          Protect.expand(inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
+                        } else {
+                          Protect.apply (inGE0, lo = loThresh, hi = hiThresh, dynamic = pSpec.dynamic)
+                        }
 
                         inGE2
                       }
@@ -127,7 +133,8 @@ object MkSynthGraph {
                   }
 
                   val inGE = inGEOpt.getOrElse {
-                    val xOpt = arg.defaults.get(UndefinedRate)
+                    val rate = spec.rates.set.max
+                    val xOpt = arg.defaults.get(rate).orElse(arg.defaults.get(UndefinedRate))
                     val x    = xOpt.getOrElse {
                       val inc = Chromosome.findIncompleteUGenInputs(c, u)
 //                      println("INCOMPLETE:")
@@ -202,7 +209,7 @@ object MkSynthGraph {
             Gate.ar(sig1, isOk)
           }
           val sig3  = Limiter.ar(LeakDC.ar(sig2))
-          val sig   = if (mono)   sig3 else Pan2.ar(sig3) // SplayAz.ar(numChannels = 2, in = sig3)
+          val sig   = if (mono) sig3 else Pan2.ar(sig3) // SplayAz.ar(numChannels = 2, in = sig3)
           Out.ar(0, sig)
         }
       }

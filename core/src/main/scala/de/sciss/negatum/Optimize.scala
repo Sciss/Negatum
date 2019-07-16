@@ -24,6 +24,7 @@ import de.sciss.processor.{Processor, ProcessorFactory}
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
+import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.synth.ugen.Protect
 
@@ -32,6 +33,8 @@ import scala.concurrent.blocking
 
 object Optimize extends ProcessorFactory {
   type Repr = Generic
+
+  var DEBUG = false
 
   /** The processor result.
     *
@@ -51,8 +54,14 @@ object Optimize extends ProcessorFactory {
     * @param  sampleRate    the sample rate to use during internal bouncing
     * @param  analysisDur   the duration of the signal analysis in seconds. The process only
     *                       looks at this interval to determine which UGens are identical
+    * @param  expandProtect if `true` (default), replaces `Protect` elements in the graph by their
+    *                       expanded elements before running the optimization.
     */
-  final case class Config(graph: SynthGraph, sampleRate: Double, analysisDur: Double = 2.0) {
+  final case class Config(graph         : SynthGraph,
+                          sampleRate    : Double,
+                          analysisDur   : Double = 2.0,
+                          expandProtect : Boolean = true,
+                         ) {
     require (analysisDur > 0.0)
 
     override def toString = s"$productPrefix(SynthGraph@${graph.hashCode().toHexString}, $sampleRate, $analysisDur)"
@@ -66,9 +75,21 @@ object Optimize extends ProcessorFactory {
     with Processor[Product] {
 
     protected def body(): Product = {
-      import config.{graph => graphIn}
+      import config.{graph => graphIn0}
       var idxMap      = Map.empty[Int, Int] // channels to indices in synth-graph sources
       var idxGE       = 0
+      val graphIn     = if (!config.expandProtect ||
+        !graphIn0.sources.exists { case _: Protect => true; case _ => false }) graphIn0 else {
+
+        val topTmp    = MkTopology(graphIn0)
+        val _graphIn  = MkSynthGraph(topTmp, protect = true, expandProtect = true)
+        val sourceTmp = MkSynthGraphSource(_graphIn)
+        if (DEBUG) {
+          println("AFTER EXPAND-PROTECT:")
+          println(sourceTmp)
+        }
+        _graphIn
+      }
       val graphAdd = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
@@ -110,7 +131,7 @@ object Optimize extends ProcessorFactory {
 //      val DEBUG_SRC = srcMapIn.toList.sortBy(_._1)
 
       if (numSignals == 0) throw new IllegalArgumentException("Input graph is empty")
-      println(s"numSignals = $numSignals")
+      if (DEBUG) println(s"numSignals = $numSignals")
 
       // XXX TODO -- we don't know the limit; let's just print a warning for now
       if (numSignals > 1024) {
@@ -175,7 +196,6 @@ object Optimize extends ProcessorFactory {
 
           // _NOT_: highest indices first, so the successive indices
           // stay valid while we manipulate the topology
-          println("DEBUGGING -- CONTINUE HERE")
 //          val analysis = analysisMap.toList.sortBy(-_._1)
           // without further analysis, removing from higher to
           // lower indices leaves an incomplete graph. works
@@ -184,18 +204,20 @@ object Optimize extends ProcessorFactory {
           val analysis    = analysisMap.toList.sortBy(_._1) // .take(21)
           val countConst  = analysis.count(_._2.isLeft  )
           val countEqual  = analysis.count(_._2.isRight )
-          println(s"countConst = $countConst, countEqual = $countEqual")
+          if (DEBUG) println(s"countConst = $countConst, countEqual = $countEqual")
 
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
 //          val LAST = analysis.last._1
 
           val rootsIn       = Util.getGraphRoots(topIn)
           var rootsOutSet   = rootsIn.toSet
-          println(s"---- ${rootsIn.size} ROOTS IN ----")
-          rootsIn.foreach { v =>
-            println(v)
+          if (DEBUG) {
+            println(s"---- ${rootsIn.size} ROOTS IN ----")
+            rootsIn.foreach { v =>
+              println(v)
+            }
+            println()
           }
-          println()
 
           val topOut0 = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>
@@ -220,7 +242,7 @@ object Optimize extends ProcessorFactory {
 //              if (ch == LAST) {
 //                println("---here")
 //              }
-              println(s"Replace $vOld by $vNew")
+              if (DEBUG) println(s"Replace $vOld by $vNew")
               // Note: a UGen vNew may also not be in the current topology,
               // because it may have been removed before as an orphan in the
               // process. Thus, always ensure it is added to the topology
@@ -239,8 +261,9 @@ object Optimize extends ProcessorFactory {
           val protects = topOut0.vertices.collect {
             case v: Vertex.UGen if v.info.name == "Protect" => v
           }
+          if (config.expandProtect) assert (protects.isEmpty)
 
-          println(s"Removing ${protects.size} Protect elements now")
+          if (DEBUG) println(s"Removing ${protects.size} Protect elements now")
           val topOut1 = protects.foldLeft(topOut0) { (topTmp1, pr) =>
             Chromosome.removeVertex(topTmp1, pr)
           }
@@ -260,9 +283,9 @@ object Optimize extends ProcessorFactory {
           }
 
           val topOut      = removeOrphans(topOut1)
-          val graphOut    = MkSynthGraph(topOut)
+          val graphOut    = MkSynthGraph(topOut, expandProtect = config.expandProtect)
 
-          {
+          if (DEBUG) {
             val rootsOutTest = Util.getGraphRoots(topOut)
             println(s"---- ${rootsOutTest.size} ROOTS OUT ----")
             rootsOutTest.foreach { v =>

@@ -17,10 +17,8 @@ package ugen
 import de.sciss.negatum.impl.Util.graphElemName
 import de.sciss.negatum.impl.{MkSynthGraph, ParamRanges}
 
-final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) extends GE.Lazy {
-  def rate: MaybeRate = in.rate
-
-  protected def makeUGens: UGenInLike = {
+object Protect {
+  def expand(in: GE, lo: Double, hi: Double, dynamic: Boolean): GE = {
     val inInfoOpt = ParamRanges.map.get(graphElemName(in))
 
     lazy val inLoOpt: Option[Double] = in match {
@@ -42,9 +40,12 @@ final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) exten
       case (_ , false) if !hiThresh.isInfinity && (loOk || loThresh.isInfinity) =>
         in.min(hiThresh)
       case (false, false) if !hiThresh.isInfinity && !loThresh.isInfinity =>
+        // XXX TODO: Is this still the case in 2019?
         // N.B. Clip.ar seems to be broken
         // inGE0.clip(loThresh, hiThresh)
-        in.max(loThresh).min(hiThresh)
+//        in.max(loThresh).min(hiThresh)
+        in.clip(loThresh, hiThresh)
+
       case _ => in
     }
     // `lessThan` -> see below
@@ -52,4 +53,9 @@ final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) exten
     val inGE2: GE = if (!dynamic || MkSynthGraph.isDynamic(inGE1)) inGE1 else LeakDC.ar(inGE1)
     inGE2
   }
+}
+final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) extends GE.Lazy {
+  def rate: MaybeRate = in.rate
+
+  protected def makeUGens: UGenInLike = Protect.expand(in = in, lo = lo, hi = hi, dynamic = dynamic)
 }
