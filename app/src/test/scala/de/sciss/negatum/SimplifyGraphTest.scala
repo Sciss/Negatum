@@ -184,6 +184,65 @@ object SimplifyGraphTest {
     NegatumOut(mix)
   }
 
+  def graphOpt1: SynthGraph = SynthGraph {
+    import de.sciss.synth._
+    import de.sciss.synth.ugen._
+    NegatumIn()
+    val lFCub         = LFCub.ar(freq = 0.2, iphase = 0.0)
+    val c             = lFCub min 0.2
+    val linCongC      = LinCongC.ar(freq = 18344.684, a = 0.2, c = c, m = 0.2, xi = 0.2)
+    val min_0         = lFCub min linCongC
+    val min_1         = min_0 min c
+    val freq_0        = min_1 min 0.0
+    val in_0          = Protect(freq_0, -inf, inf, true)
+    val delay2        = Delay2.ar(in_0)
+    val min_2         = delay2 min 0.0
+    val min_3         = min_2 min min_1
+    val in_1          = Protect(min_3, -inf, inf, true)
+    val bPZ2          = BPZ2.ar(in_1)
+    val min_4         = 0.0 min bPZ2
+    val min_5         = linCongC min min_4
+    val in_2          = Protect(freq_0, -inf, inf, true)
+    val freq_1        = Protect(freq_0, 10.0, 20000.0, false)
+    val rq_0          = Protect(min_0, 0.01, 100.0, false)
+    val gain          = Protect(freq_0, -144.0, 144.0, false)
+    val k             = MidEQ.ar(in_2, freq = freq_1, rq = rq_0, gain = gain)
+    val min_6         = 0.0 min k
+    val scaleneg      = min_6 scaleNeg freq_0
+    val xi_0          = Protect(scaleneg, -inf, inf, false)
+    val standardL     = StandardL.ar(freq = freq_0, k = k, xi = xi_0, yi = 0.0)
+    val in_3          = Protect(standardL, -inf, inf, true)
+    val maxDelayTime  = Protect(freq_0, 0.0, 20.0, false)
+    val delayTime     = 0.0 min maxDelayTime
+    val delayC        = DelayC.ar(in_3, maxDelayTime = maxDelayTime, delayTime = delayTime)
+    val min_7         = min_6 min delayC
+    val min_8         = min_7 min min_5
+    val in_4          = Protect(freq_0, -inf, inf, true)
+    val timeUp        = Protect(standardL, 0.0, 30.0, false)
+    val timeDown      = Protect(k, 0.0, 30.0, false)
+    val lag2UD        = Lag2UD.ar(in_4, timeUp = timeUp, timeDown = timeDown)
+    val in_5          = Protect(standardL, -inf, inf, true)
+    val freq_2        = Protect(0.0, 10.0, 20000.0, false)
+    val rq_1          = Protect(lag2UD, 0.01, 100.0, false)
+    val bPF           = BPF.ar(in_5, freq = freq_2, rq = rq_1)
+    val m_0           = freq_0 min bPF
+    val freq_3        = Protect(m_0, -inf, inf, false)
+    val xi_1          = Protect(bPZ2, -inf, inf, false)
+    val linCongL      = LinCongL.ar(freq = freq_3, a = 1.1, c = 0.0, m = m_0, xi = xi_1)
+    val freq_4        = Protect(m_0, 0.01, 20000.0, false)
+    val iphase_0      = Protect(min_3, 0.0, 4.0, false)
+    val lFTri         = LFTri.ar(freq = freq_4, iphase = iphase_0)
+    val in_6          = Protect(min_1, -inf, inf, true)
+    val coeff_0       = Protect(freq_0, -0.999, 0.999, false)
+    val integrator    = Integrator.ar(in_6, coeff = coeff_0)
+    val in_7          = freq_0 min standardL
+    val coeff_1       = Protect(delayC, 0.8, 0.99, false)
+    val leakDC        = LeakDC.ar(in_7, coeff = coeff_1)
+    val mod           = freq_0 % min_3
+    val mix           = Mix(Seq[GE](min_8, linCongL, lFTri, integrator, leakDC, mod))
+    NegatumOut(mix)
+  }
+
   // first reduction: replace all constant signals by constants,
   // eliminate silence from mix
   def graphReduce1: SynthGraph = SynthGraph {
@@ -341,7 +400,8 @@ object SimplifyGraphTest {
   }
 
   def testOptimize(): Unit = {
-    val graphIn = graphOrig
+//    val graphIn = graphOrig
+    val graphIn = graphOpt1
     val cfg     = Optimize.Config(graphIn, sampleRate = 44100, analysisDur = 2.0)
     val opt     = Optimize(cfg)
     import ExecutionContext.Implicits.global

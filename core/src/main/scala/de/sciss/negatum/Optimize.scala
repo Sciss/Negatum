@@ -25,6 +25,7 @@ import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
+import de.sciss.synth.ugen.Protect
 
 import scala.annotation.tailrec
 import scala.concurrent.blocking
@@ -75,14 +76,14 @@ object Optimize extends ProcessorFactory {
         graphIn.sources.iterator.zipWithIndex.foreach { case (lz, idxLazy) =>
           lz match {
             case _: NegatumOut | _: NegatumIn /*| _: Protect*/ | _: Mix =>  // these are filtered by MkTopology
-            case p @ Protect(in, _, _, _) =>
-              val idxPeer = graphIn.sources.indexOf(in)
-              // assert (idxPeer >= 0, in.toString)
-              if (idxPeer >= 0) { // ignore constants for now
-                sigB    += p
-                idxMap  += idxGE -> idxPeer
-                idxGE   += 1
-              }
+//            case p @ Protect(in, _, _, _) =>
+//              val idxPeer = graphIn.sources.indexOf(in)
+//              // assert (idxPeer >= 0, in.toString)
+//              if (idxPeer >= 0) { // ignore constants for now
+//                sigB    += p
+//                idxMap  += idxGE -> idxPeer
+//                idxGE   += 1
+//              }
 
             case in: GE =>
               sigB    += in
@@ -98,7 +99,11 @@ object Optimize extends ProcessorFactory {
       }
 
       val numSignals = idxGE
-      val (topIn, srcMapIn) = MkTopology.withSourceMap(graphIn /*, removeProtect = false*/)
+      // we do not remove the `Protect` elements, because we may want to replace them.
+      // what is important is that we explicitly remove them from the topology after
+      // the optimization, before calling `MkSynthGraph` which cannot handle them
+      // (it inserts them again by itself where needed).
+      val (topIn, srcMapIn) = MkTopology.withSourceMap(graphIn, removeProtect = false)
 //      assert (srcMapIn.size == numSignals)
 
 //      val DEBUG_IDX = idxMap  .toList.sortBy(_._1)
@@ -182,25 +187,39 @@ object Optimize extends ProcessorFactory {
           println(s"countConst = $countConst, countEqual = $countEqual")
 
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
-          val LAST = analysis.last._1
+//          val LAST = analysis.last._1
 
-          val roots = Util.getGraphRoots(topIn)
+          val rootsIn       = Util.getGraphRoots(topIn)
+          var rootsOutSet   = rootsIn.toSet
+          println(s"---- ${rootsIn.size} ROOTS IN ----")
+          rootsIn.foreach { v =>
+            println(v)
+          }
+          println()
 
           val topOut0 = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>
               val srcIdx  = idxMap(ch)
               val vOld    = srcMapIn(srcIdx)
               val vNew    = eth match {
-                case Left  (value) => Vertex.Constant(value)
+                case Left  (value) =>
+                  val _vNew = Vertex.Constant(value)
+                  if (rootsOutSet.contains(vOld)) {
+                    rootsOutSet -= vOld
+                  }
+                  _vNew
                 case Right (chTgt) =>
                   val srcIdxTgt = idxMap(chTgt)
-                  val _vNew = srcMapIn(srcIdxTgt)
+                  val _vNew: Vertex.UGen = srcMapIn(srcIdxTgt)
+                  if (rootsOutSet.contains(vOld)) {
+                    rootsOutSet = rootsOutSet - vOld + _vNew
+                  }
 //                  assert (topTemp.vertices.contains(_vNew))
                   _vNew
               }
-              if (ch == LAST) {
-                println("---here")
-              }
+//              if (ch == LAST) {
+//                println("---here")
+//              }
               println(s"Replace $vOld by $vNew")
               // Note: a UGen vNew may also not be in the current topology,
               // because it may have been removed before as an orphan in the
@@ -217,20 +236,40 @@ object Optimize extends ProcessorFactory {
               topTemp2
           }
 
+          val protects = topOut0.vertices.collect {
+            case v: Vertex.UGen if v.info.name == "Protect" => v
+          }
+
+          println(s"Removing ${protects.size} Protect elements now")
+          val topOut1 = protects.foldLeft(topOut0) { (topTmp1, pr) =>
+            Chromosome.removeVertex(topTmp1, pr)
+          }
+
+          val rootsOut = rootsOutSet.toList
+
           @tailrec
           def removeOrphans(topTmp: SynthGraphT): SynthGraphT = {
-            val rootsDirty = Util.getGraphRoots(topIn)
-            val orphans = rootsDirty diff roots
+            val rootsDirty = Util.getGraphRoots(topTmp)
+            val orphans = rootsDirty diff rootsOut /* rootsIn */
             if (orphans.isEmpty) topTmp else {
-              val topTmp1 = orphans.foldLeft(topOut0) { (topTmp1, orphan) =>
+              val topTmp1 = orphans.foldLeft(topTmp) { (topTmp1, orphan) =>
                 Chromosome.removeVertex(topTmp1, orphan)
               }
               removeOrphans(topTmp1)
             }
           }
 
-          val topOut      = removeOrphans(topOut0)
+          val topOut      = removeOrphans(topOut1)
           val graphOut    = MkSynthGraph(topOut)
+
+          {
+            val rootsOutTest = Util.getGraphRoots(topOut)
+            println(s"---- ${rootsOutTest.size} ROOTS OUT ----")
+            rootsOutTest.foreach { v =>
+              println(v)
+            }
+            println()
+          }
 
           progress = 1.0
           Result(graphOut, numConst = countConst, numEqual = countEqual)

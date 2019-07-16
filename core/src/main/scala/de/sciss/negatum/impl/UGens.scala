@@ -14,6 +14,7 @@
 package de.sciss.negatum
 package impl
 
+import de.sciss.synth.UGenSpec.{ArgumentType, SignalShape}
 import de.sciss.synth.ugen.{BinaryOpUGen, EnvGen_ADSR, EnvGen_ASR, EnvGen_CutOff, EnvGen_DADSR, EnvGen_Linen, EnvGen_Perc, EnvGen_Sine, EnvGen_Triangle, UnaryOpUGen}
 import de.sciss.synth.{UGenSpec, UndefinedRate, audio, demand, scalar}
 
@@ -141,18 +142,19 @@ object UGens {
   var seq: Vec[UGenSpec] = ugens1
   var map: Map[String, UGenSpec] = seq.iterator.map(s => s.name -> s).toMap
 
-//  private val protectSpec = UGenSpec(
-//    name        = "Protect",
-//    attr        = Set(UGenSpec.Attribute.IsHelper),
-//    rates       = UGenSpec.Rates.Implied(audio, UGenSpec.RateMethod.Custom("apply")),
-//    args        = Vec.empty[UGenSpec.Argument],
-//    inputs      = Vec.empty[UGenSpec.Input  ],
-//    outputs     = Vec.empty[UGenSpec.Output ],
-//    doc         = None,
-//    elemOption  = None
-//  )
+  private val protectSpec = UGenSpec(
+    name        = "Protect",
+    attr        = Set(UGenSpec.Attribute.IsHelper),
+    rates       = UGenSpec.Rates.Implied(audio, UGenSpec.RateMethod.Custom("apply")),
+    args        = Vec(UGenSpec.Argument("in", ArgumentType.GE(SignalShape.Generic),
+      defaults = Map.empty, rates = Map.empty)),
+    inputs      = Vec(UGenSpec.Input("in", UGenSpec.Input.Single)),
+    outputs     = Vec(UGenSpec.Output(name = None, shape = SignalShape.Generic, variadic = None)),
+    doc         = None,
+    elemOption  = None
+  )
 
-  val mapAll: Map[String, UGenSpec] = map0 // + (protectSpec.name -> protectSpec)
+  val mapAll: Map[String, UGenSpec] = map0 + (protectSpec.name -> protectSpec)
 
 
   // val index: Map[Int, UGenSpec] = seq.zipWithIndex.map(_.swap)(breakOut)

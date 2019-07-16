@@ -22,10 +22,10 @@ import de.sciss.topology.Topology
 
 object MkTopology {
   /** Maps from a synth-graph's sources index to vertices. */
-  type SourceMap = Map[Int, Vertex]
+  type SourceMap = Map[Int, Vertex.UGen]
 
   def apply(g: SynthGraph): SynthGraphT =
-    applyImpl(g, mkMap = false /*, removeProtect = true*/)._1
+    applyImpl(g, mkMap = false, removeProtect = true)._1
 
   /** Converts a synth-graph to a topology representation,
     * automatically taking care of filtering elements such
@@ -39,19 +39,19 @@ object MkTopology {
     * more vertices in the topology than sources, since the
     * latter does not include constants and zero-output elements).
     */
-  def withSourceMap(g: SynthGraph /*, removeProtect: Boolean*/): (SynthGraphT, SourceMap) =
-    applyImpl(g, mkMap = true /*, removeProtect = removeProtect*/)
+  def withSourceMap(g: SynthGraph, removeProtect: Boolean): (SynthGraphT, SourceMap) =
+    applyImpl(g, mkMap = true, removeProtect = removeProtect)
 
-  private def applyImpl(g: SynthGraph, mkMap: Boolean /*, removeProtect: Boolean*/): (SynthGraphT, SourceMap) = {
+  private def applyImpl(g: SynthGraph, mkMap: Boolean, removeProtect: Boolean): (SynthGraphT, SourceMap) = {
     var top       = Topology.empty[Vertex, Edge]
     var vertexMap = Map.empty[Product, Vertex]
-    var sourceMap = Map.empty[Int, Vertex]
+    var sourceMap = Map.empty[Int, Vertex.UGen]
     g.sources.iterator.zipWithIndex.foreach { case (lz, lzIdx) =>
       lz match {
         // `Nyquist` is not lazy, thus can never appear in the `sources`
         // case Nyquist() =>
-        case _: NegatumOut | _: NegatumIn | _: Protect =>
-//        case _: Protect if removeProtect =>
+        case _: NegatumOut | _: NegatumIn /*| _: Protect */ =>
+        case _: Protect if removeProtect =>
         case _: Mix =>  // N.B.: `Mix` is only ever used to group the inputs before they go into `NegatumOut`
         case _ =>
           val name  = graphElemName(lz)
