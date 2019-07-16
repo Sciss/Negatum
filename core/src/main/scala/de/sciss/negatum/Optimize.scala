@@ -16,7 +16,8 @@ package de.sciss.negatum
 import de.sciss.file.File
 import de.sciss.lucre.synth.InMemory
 import de.sciss.model.Model
-import de.sciss.negatum.impl.{Chromosome, MkSynthGraph, MkTopology}
+import de.sciss.negatum.Negatum.SynthGraphT
+import de.sciss.negatum.impl.{Chromosome, MkSynthGraph, MkTopology, Util}
 import de.sciss.numbers
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.processor.{Processor, ProcessorFactory}
@@ -25,6 +26,7 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 
+import scala.annotation.tailrec
 import scala.concurrent.blocking
 
 object Optimize extends ProcessorFactory {
@@ -103,6 +105,7 @@ object Optimize extends ProcessorFactory {
 //      val DEBUG_SRC = srcMapIn.toList.sortBy(_._1)
 
       if (numSignals == 0) throw new IllegalArgumentException("Input graph is empty")
+      println(s"numSignals = $numSignals")
 
       // XXX TODO -- we don't know the limit; let's just print a warning for now
       if (numSignals > 1024) {
@@ -173,7 +176,7 @@ object Optimize extends ProcessorFactory {
           // lower indices leaves an incomplete graph. works
           // correctly in normal order (we use the indices only
           // in static maps, so they remain valid anyway)
-          val analysis    = analysisMap.toList.sortBy(_._1) .take(21)
+          val analysis    = analysisMap.toList.sortBy(_._1) // .take(21)
           val countConst  = analysis.count(_._2.isLeft  )
           val countEqual  = analysis.count(_._2.isRight )
           println(s"countConst = $countConst, countEqual = $countEqual")
@@ -181,7 +184,9 @@ object Optimize extends ProcessorFactory {
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
           val LAST = analysis.last._1
 
-          val topOut = analysis.foldLeft(topIn) {
+          val roots = Util.getGraphRoots(topIn)
+
+          val topOut0 = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>
               val srcIdx  = idxMap(ch)
               val vOld    = srcMapIn(srcIdx)
@@ -200,7 +205,7 @@ object Optimize extends ProcessorFactory {
               // Note: a UGen vNew may also not be in the current topology,
               // because it may have been removed before as an orphan in the
               // process. Thus, always ensure it is added to the topology
-              val topTemp1 = if (vNew.isConstant || !topTemp.vertices.contains(vNew)) {
+              val topTemp1 = if (vNew.isConstant /*|| !topTemp.vertices.contains(vNew)*/) {
                 topTemp.addVertex(vNew)
               } else {
                 topTemp
@@ -212,7 +217,21 @@ object Optimize extends ProcessorFactory {
               topTemp2
           }
 
+          @tailrec
+          def removeOrphans(topTmp: SynthGraphT): SynthGraphT = {
+            val rootsDirty = Util.getGraphRoots(topIn)
+            val orphans = rootsDirty diff roots
+            if (orphans.isEmpty) topTmp else {
+              val topTmp1 = orphans.foldLeft(topOut0) { (topTmp1, orphan) =>
+                Chromosome.removeVertex(topTmp1, orphan)
+              }
+              removeOrphans(topTmp1)
+            }
+          }
+
+          val topOut      = removeOrphans(topOut0)
           val graphOut    = MkSynthGraph(topOut)
+
           progress = 1.0
           Result(graphOut, numConst = countConst, numEqual = countEqual)
 

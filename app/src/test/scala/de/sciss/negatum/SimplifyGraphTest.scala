@@ -416,7 +416,7 @@ object SimplifyGraphTest {
       import de.sciss.synth._
       import de.sciss.synth.ugen._
 //      val poll = T2A.ar(Done.kr(Line.kr(0, 0, dur = 1.0)))
-      var sigB = List.newBuilder[GE]
+      val sigB = List.newBuilder[GE]
       g0.sources.zipWithIndex.foreach {
         case (_: NegatumIn, _) | (_: Mix, _) =>
         case (in: GE, _ /*idx*/) =>
