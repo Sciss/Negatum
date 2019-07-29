@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
 object SimplifyGraphTest {
   // "original" graph coming out of Negatum.
   // `negatum-94fb0dd8`
-  def graphOrig: SynthGraph = SynthGraph {
+  def graphOrig1: SynthGraph = SynthGraph {
     import de.sciss.synth._
     import de.sciss.synth.ugen._
     // source code automatically extracted
@@ -181,6 +181,117 @@ object SimplifyGraphTest {
     val min_65        = min_40 min min_57
     val mix           = Mix(
       Seq[GE](henonC, roundTo, decay2, integrator, min_59, lFTri, leakDC, linCongL, min_65))
+    NegatumOut(mix)
+  }
+
+  // "original" graph coming out of Negatum.
+  // `negatum-b48b6d0`
+  def graphOrig2: SynthGraph = SynthGraph {
+    import de.sciss.synth._
+    import de.sciss.synth.ugen._
+    // source code automatically extracted
+
+    NegatumIn()
+    val quadC         = QuadC.ar(freq = 0.021992043, a = 68.003334, b = 15.73315, c = 68.003334,
+      xi = 68.003334)
+    val min_0         = 68.003334 min quadC
+    val b_0           = min_0 min 971.386
+    val min_1         = b_0 min quadC
+    val tailLevel     = 68.003334 * min_0
+    val freq_0        = Protect(tailLevel, -inf, inf, false)
+    val freq_1        = LFDNoise3.ar(freq_0)
+    val a_0           = b_0 min freq_1
+    val henonL        = HenonL.ar(freq = freq_1, a = a_0, b = b_0, x0 = 0.0, x1 = 68.003334)
+    val min_2         = henonL min quadC
+    val min_3         = min_2 min 68.003334
+    val min_4         = tailLevel min min_3
+    val min_5         = min_1 min min_4
+    val in_0          = Protect(0.021992043, -inf, inf, true)
+    val rq            = Protect(henonL, 0.01, 100.0, false)
+    val rLPF          = RLPF.ar(in_0, freq = 971.386, rq = rq)
+    val min_6         = 0.021992043 min rLPF
+    val freq_2        = Protect(min_6, 10.0, 20000.0, false)
+    val width_0       = Protect(15.73315, 0.0, 1.0, false)
+    val pulse_0       = Pulse.ar(freq = freq_2, width = width_0)
+    val in_1          = Protect(pulse_0, -inf, inf, true)
+    val coeff         = Protect(min_5, -0.999, 0.999, false)
+    val integrator    = Integrator.ar(in_1, coeff = coeff)
+    val min_7         = quadC min integrator
+    val min_8         = min_7 min tailLevel
+    val min_9         = 971.386 min min_8
+    val min_10        = min_9 min tailLevel
+    val min_11        = min_6 min a_0
+    val earlyRefLevel = min_9 min min_11
+    val min_12        = min_8 min rLPF
+    val min_13        = min_3 min min_12
+    val min_14        = min_13 min min_2
+    val min_15        = min_14 min min_13
+//    val dryLevel      = b_0 % min_4
+    val in_2          = Protect(min_10, -inf, inf, true)
+//    val protect       = Protect(min_11, 0.55, inf, false)
+//    val revTime       = Protect(min_5, 0.0, 100.0, false)
+//    val damping       = Protect(min_6, 0.0, 1.0, false)
+//    val inputBW       = Protect(min_9, 0.0, 1.0, false)
+//    val spread        = Protect(min_15, 0.0, 43.0, false)
+//    val maxRoomSize   = Protect(min_4, 0.55, 300.0, false)
+//    val roomSize      = protect min maxRoomSize
+    val gVerb         = FreeVerb.ar(in_2)
+//in_2
+//      GVerb.ar(in_2, roomSize = roomSize, revTime = revTime, damping = damping,
+//      inputBW = inputBW, spread = spread, dryLevel = dryLevel,
+//      earlyRefLevel = earlyRefLevel, tailLevel = tailLevel, maxRoomSize = maxRoomSize)
+    val in_3          = Protect(min_7, -inf, inf, true)
+    val freq_3        = Protect(min_8, 10.0, 20000.0, false)
+    val radius        = Protect(gVerb, 0.0, 1.0, false)
+    val twoZero       = TwoZero.ar(in_3, freq = freq_3, radius = radius)
+    val min_16        = rLPF min twoZero
+    val min_17        = min_16 min min_15
+    val excess        = min_12 excess min_17
+    val min_18        = gVerb min min_16
+    val amclip        = min_18 amClip excess
+    val min_19        = excess min amclip
+    val min_20        = excess min min_19
+    val min_21        = 15.73315 min min_17
+    val min_22        = min_21 min min_3
+    val min_23        = henonL min min_22
+    val freq_4        = Protect(min_19, 10.0, 20000.0, false)
+    val width_1       = Protect(min_23, 0.0, 1.0, false)
+    val pulse_1       = Pulse.ar(freq = freq_4, width = width_1)
+    val min_24        = min_20 min pulse_1
+    val min_25        = min_23 min min_15
+    val min_26        = min_24 min min_25
+    val min_27        = min_25 min min_16
+    val min_28        = min_10 min min_27
+    val min_29        = min_28 min tailLevel
+    val min_30        = twoZero min gVerb
+    val min_31        = min_27 min rLPF
+    val in_4          = Protect(pulse_1, -inf, inf, true)
+    val timeUp_0      = Protect(min_27, 0.0, 30.0, false)
+    val timeDown      = Protect(min_22, 0.0, 30.0, false)
+    val lag2UD        = Lag2UD.ar(in_4, timeUp = timeUp_0, timeDown = timeDown)
+    val min_32        = lag2UD min pulse_0
+    val lFDNoise3     = LFDNoise3.ar(freq_1)
+    val min_33        = lFDNoise3 min min_32
+    val eq            = min_33 sig_== min_19
+    val min_34        = min_17 min min_19
+    val geq           = min_20 >= pulse_0
+    val freq_5        = Protect(excess, 10.0, 20000.0, false)
+    val width_2       = Protect(min_10, 0.0, 1.0, false)
+    val pulse_2       = Pulse.ar(freq = freq_5, width = width_2)
+    val min_35        = pulse_2 min min_8
+    val in_5          = Protect(excess, -inf, inf, true)
+    val timeUp_1      = Protect(pulse_2, 0.0, 30.0, false)
+    val lag3UD        = Lag3UD.ar(in_5, timeUp = timeUp_1, timeDown = 0.1)
+    val min_36        = min_35 min lag3UD
+    val freq_6        = Protect(earlyRefLevel, 0.01, 20000.0, false)
+    val iphase        = Protect(min_28, 0.0, 4.0, false)
+    val lFTri         = LFTri.ar(freq = freq_6, iphase = iphase)
+    val ring4         = lag3UD ring4 lFTri
+    val min_37        = ring4 min twoZero
+    val min_38        = min_23 min min_13
+    val min_39        = min_38 min min_23
+    val mix           = Mix(
+      Seq[GE](min_26, min_29, min_30, min_31, eq, min_34, geq, min_36, min_37, min_39))
     NegatumOut(mix)
   }
 
@@ -382,14 +493,110 @@ object SimplifyGraphTest {
     NegatumOut(mix)
   }
 
+  def graphReduce3: SynthGraph = SynthGraph {
+    import de.sciss.synth._
+    import de.sciss.synth.ugen._
+    NegatumIn()
+
+    val quadC         = QuadC.ar(freq = 0.021992043, a = 68.003334, b = 15.73315, c = 68.003334, xi = 68.003334)
+    val min_0         = 68.003334 // 68.003334 min quadC
+    val b_0           = 68.003334 // min_0 min 971.386
+    val min_1         = 68.003334 // b_0 min quadC
+    val tailLevel     = 4624.4536 // 68.003334 * min_0
+    val freq_0        = 4624.4536 // Protect(tailLevel, -inf, inf, false)
+    val freq_1        = LFDNoise3.ar(freq_0)
+    val a_0           = freq_1  // b_0 min freq_1
+    val henonL        = HenonL.ar(freq = freq_1, a = a_0, b = b_0, x0 = 0.0, x1 = 68.003334)
+    val min_2         = henonL  // henonL min quadC
+    val min_3         = henonL  // min_2 min 68.003334
+    val min_4         = henonL  // tailLevel min min_3
+    val min_5         = henonL  // min_1 min min_4
+    val in_0          = 0.0 // Protect(0.021992043, -inf, inf, true)
+    val rq            = Protect(henonL, 0.01, 100.0, false)
+    val rLPF          = 0.0 // RLPF.ar(in_0, freq = 971.386, rq = rq)
+    val min_6         = 0.0 // 0.021992043 min rLPF
+    val freq_2        = 10.0  // Protect(min_6, 10.0, 20000.0, false)
+    val width_0       = 1.0   // Protect(15.73315, 0.0, 1.0, false)
+    val pulse_0       = Pulse.ar(freq = freq_2, width = width_0) // XXX TODO wrong: const 0.0
+    val in_1          = Protect(pulse_0, -inf, inf, true)
+    val coeff         = Protect(min_5, -0.999, 0.999, false)
+    val integrator    = Integrator.ar(in_1, coeff = coeff)
+    val min_7         = quadC min integrator
+    val min_8         = min_7 min tailLevel
+    val min_9         = 971.386 min min_8
+    val min_10        = min_9 min tailLevel
+    val min_11        = min_6 min a_0
+    val earlyRefLevel = min_9 min min_11
+    val min_12        = min_8 min rLPF
+    val min_13        = min_3 min min_12
+    val min_14        = min_13 min min_2
+    val min_15        = min_14 min min_13
+    val in_2          = Protect(min_10, -inf, inf, true)
+    val gVerb         = FreeVerb.ar(in_2)
+    val in_3          = Protect(min_7, -inf, inf, true)
+    val freq_3        = Protect(min_8, 10.0, 20000.0, false)
+    val radius        = Protect(gVerb, 0.0, 1.0, false)
+    val twoZero       = TwoZero.ar(in_3, freq = freq_3, radius = radius)
+    val min_16        = rLPF min twoZero
+    val min_17        = min_16 min min_15
+    val excess        = min_12 excess min_17
+    val min_18        = gVerb min min_16
+    val amclip        = min_18 amClip excess
+    val min_19        = excess min amclip
+    val min_20        = excess min min_19
+    val min_21        = 15.73315 min min_17
+    val min_22        = min_21 min min_3
+    val min_23        = henonL min min_22
+    val freq_4        = Protect(min_19, 10.0, 20000.0, false)
+    val width_1       = Protect(min_23, 0.0, 1.0, false)
+    val pulse_1       = Pulse.ar(freq = freq_4, width = width_1)
+    val min_24        = min_20 min pulse_1
+    val min_25        = min_23 min min_15
+    val min_26        = min_24 min min_25
+    val min_27        = min_25 min min_16
+    val min_28        = min_10 min min_27
+    val min_29        = min_28 min tailLevel
+    val min_30        = twoZero min gVerb
+    val min_31        = min_27 min rLPF
+    val in_4          = Protect(pulse_1, -inf, inf, true)
+    val timeUp_0      = Protect(min_27, 0.0, 30.0, false)
+    val timeDown      = Protect(min_22, 0.0, 30.0, false)
+    val lag2UD        = Lag2UD.ar(in_4, timeUp = timeUp_0, timeDown = timeDown)
+    val min_32        = lag2UD min pulse_0
+    val lFDNoise3     = LFDNoise3.ar(freq_1)
+    val min_33        = lFDNoise3 min min_32
+    val eq            = min_33 sig_== min_19
+    val min_34        = min_17 min min_19
+    val geq           = min_20 >= pulse_0
+    val freq_5        = Protect(excess, 10.0, 20000.0, false)
+    val width_2       = Protect(min_10, 0.0, 1.0, false)
+    val pulse_2       = Pulse.ar(freq = freq_5, width = width_2)
+    val min_35        = pulse_2 min min_8
+    val in_5          = Protect(excess, -inf, inf, true)
+    val timeUp_1      = Protect(pulse_2, 0.0, 30.0, false)
+    val lag3UD        = Lag3UD.ar(in_5, timeUp = timeUp_1, timeDown = 0.1)
+    val min_36        = min_35 min lag3UD
+    val freq_6        = Protect(earlyRefLevel, 0.01, 20000.0, false)
+    val iphase        = Protect(min_28, 0.0, 4.0, false)
+    val lFTri         = LFTri.ar(freq = freq_6, iphase = iphase)
+    val ring4         = lag3UD ring4 lFTri
+    val min_37        = ring4 min twoZero
+    val min_38        = min_23 min min_13
+    val min_39        = min_38 min min_23
+    val mix           = Mix(
+      Seq[GE](min_26, min_29, min_30, min_31, eq, min_34, geq, min_36, min_37, min_39))
+    NegatumOut(mix)
+  }
+
   def main(args: Array[String]): Unit = {
-//    mkReduction2()
-//    play(graphReduce2)
-    testOptimize()
+    mkReduction2()
+//    play(graphOrig2)
+//    play(graphReduce3)
+//    testOptimize()
   }
 
   def testOptimize(): Unit = {
-    val graphIn = graphOrig
+    val graphIn = graphOrig1
 //    val graphIn = graphOpt1
     val cfg     = Optimize.Config(graphIn, sampleRate = 44100, analysisDur = 2.0 /*, expandProtect = false*/)
     val opt     = Optimize(cfg)
@@ -419,7 +626,7 @@ object SimplifyGraphTest {
   }
 
   def mkReduction1(): Unit = {
-    val g0 = graphOrig // graphReduce1
+    val g0 = graphOrig1 // graphReduce1
     val g1 = SynthGraph {
       import de.sciss.synth._
       import de.sciss.synth.ugen._
@@ -459,7 +666,7 @@ object SimplifyGraphTest {
   def mkReduction2(): Unit = {
     val testDur = 2.0
 
-    val g0 = graphOrig  // graphReduce1
+    val g0 = graphOrig2  // graphReduce1
     var numSignals = 0
     val g1 = SynthGraph {
       import de.sciss.synth._
@@ -470,7 +677,9 @@ object SimplifyGraphTest {
         case (_: NegatumIn, _) | (_: Mix, _) =>
         case (in: GE, _ /*idx*/) =>
           sigB += in
-        case _ =>
+        case _ => // e.g. NegatumOut
+//        case (in, idx) =>
+//          println(s"Woops. ${in.productPrefix} at index $idx")
       }
       val sig = sigB.result()
       numSignals = sig.size
@@ -491,7 +700,7 @@ object SimplifyGraphTest {
     bCfg.realtime = false
     bCfg.span     = Span(0L, (testDur * TimeRef.SampleRate).toLong)
     bCfg.server.outputBusChannels = numSignals
-    bCfg.server.audioBusChannels  = math.max(128, numSignals.nextPowerOfTwo)
+    bCfg.server.audioBusChannels  = math.max(128, (numSignals + 1).nextPowerOfTwo)
     bCfg.server.sampleRate        = 44100
     bCfg.group    = system.step { implicit tx =>
       val p = Proc[S]
