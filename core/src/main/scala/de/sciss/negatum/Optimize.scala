@@ -153,8 +153,9 @@ object Optimize extends ProcessorFactory {
       bCfg.span     = Span(0L, (config.analysisDur * TimeRef.SampleRate).toLong)
       bCfg.server.outputBusChannels = numSignals
       import numbers.Implicits._
-      bCfg.server.audioBusChannels  = math.max(128, numSignals.nextPowerOfTwo)  // ScalaCollider #84
+      bCfg.server.audioBusChannels  = math.max(128, (numSignals + 1).nextPowerOfTwo)  // ScalaCollider #84
       bCfg.server.sampleRate        = config.sampleRate.toInt
+      bCfg.server.wireBuffers       = 1024  // crude guess :-/
       bCfg.group    = cursor.step { implicit tx =>
         val p = Proc[S]
         p.graph() = graphBnc

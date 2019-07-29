@@ -17,10 +17,15 @@ To contact the author, send an email to `contact at sciss.de`
 
 ## requirements / installation
 
-This project builds against Scala 2.12 using sbt.
+This project builds against Scala 2.13, 2.12, 2.11 using sbt.
 To build the application:
 
     sbt assembly
+
+## project structure
+
+An attempt at isolating components that could go "as a library" into Mellite is made in the module `core`,
+whereas "the rest", including the piece from "Imperfect...", is contained in module `app`.
 
 ## contributing
 

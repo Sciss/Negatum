@@ -11,25 +11,30 @@
  *  contact@sciss.de
  */
 
-package de.sciss.negatum
-package gui
-package impl
+package de.sciss.negatum.gui.impl
 
 import de.sciss.desktop.UndoManager
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.{CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.TxnLike.{peer => txPeer}
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{DoubleSpinnerView, IntSpinnerView, View}
+import de.sciss.lucre.swing.{DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.GUI
+import de.sciss.mellite.gui.impl.proc.ProcObjView
+import de.sciss.mellite.gui.{DragAndDrop, GUI, ObjView}
+import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
+import de.sciss.negatum.{Negatum, Optimize, Rendering}
+import de.sciss.processor.Processor
 import de.sciss.swingplus.{GroupPanel, Spinner}
-import de.sciss.synth.proc.Universe
-import javax.swing.SpinnerNumberModel
+import de.sciss.synth.proc.{Proc, Universe}
+import javax.swing.TransferHandler.TransferSupport
+import javax.swing.{JLabel, SpinnerNumberModel, TransferHandler}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.Ref
-import scala.swing.{BorderPanel, BoxPanel, Component, FlowPanel, Label, Orientation, ProgressBar, Swing}
+import scala.swing.{BorderPanel, BoxPanel, Component, Dimension, FlowPanel, Graphics2D, Label, Orientation, ProgressBar, Swing}
 import scala.util.{Failure, Success}
 
 object NegatumViewImpl {
@@ -44,6 +49,90 @@ object NegatumViewImpl {
     extends NegatumView[S] with ComponentHolder[Component] {
 
     type C = Component
+
+    private[this] val renderRef   = Ref(Option.empty[Rendering[S, Unit]])
+    private[this] val optimizeRef = Ref(Option.empty[Processor[Any]])
+
+    private final class DropProcLabel extends Label {
+      override lazy val peer: JLabel = new JLabel(" ") with SuperMixin {
+        // XXX TODO --- hack to avoid too narrow buttons under certain look-and-feel
+        override def getPreferredSize: Dimension = {
+          val d = super.getPreferredSize
+          if (!isPreferredSizeSet) {
+            val e     = math.max(24, math.max(d.width, d.height))
+            d.width   = e
+            d.height  = e
+          }
+          d
+        }
+      }
+
+      override protected def paintComponent(g: Graphics2D): Unit = {
+        super.paintComponent(g)
+        val p       = peer
+        val w       = p.getWidth
+        val h       = p.getHeight
+        val extent  = math.min(w, h)
+        if (extent > 0) {
+          TargetIcon.paint(g, x = (w - extent) >> 1, y = (h - extent) >> 1, extent = extent, enabled = enabled)
+        }
+      }
+
+      private object TH extends TransferHandler {
+        override def canImport (support: TransferSupport): Boolean = enabled && {
+          val t = support.getTransferable
+          t.isDataFlavorSupported(ObjView.Flavor)
+        }
+
+        override def importData(support: TransferSupport): Boolean = enabled && {
+          val t = support.getTransferable
+          val td = DragAndDrop.getTransferData(t, ObjView.Flavor)
+          td.universe.workspace == universe.workspace && (td.view match {
+            case p: ProcObjView[S] =>
+              val procH = p.objH
+              universe.cursor.step { implicit tx =>
+                optimizeRef().isEmpty && {
+                  val gIn = procH().graph().value
+                  val t   = negatum.template()
+                  val sr  = t.sampleRate
+                  val dur = math.max(2.0, t.numFrames / sr)
+                  val cfg = Optimize.Config(
+                    graph = gIn, sampleRate = sr, analysisDur = dur, expandProtect = true
+                  )
+                  val o = Optimize(cfg)
+                  optimizeRef() = Some(o)
+                  import ExecutionContext.Implicits.global
+                  o.onComplete {
+                    case Success(res) =>
+                      println(s"Optimization found ${res.numConst} constant replacement and ${res.numEqual} redundant elements.")
+                      universe.cursor.step { implicit tx =>
+                        optimizeRef() = None
+                        val p         = procH()
+                        p.graph()     = res.graph
+                        p.attr.remove(Proc.attrSource)  // make sure it's regenerated if the editor is opened
+                      }
+
+                    case Failure(ex) =>
+                      println("Optimize failed")
+                      ex.printStackTrace()
+                      universe.cursor.step { implicit tx =>
+                        optimizeRef() = None
+                      }
+                  }
+                  o.start()
+                  true
+
+                }
+              }
+
+            case _ => false
+          })
+        }
+      }
+
+      peer.setTransferHandler(TH)
+      tooltip = "Drop Proc to optimize"
+    }
 
     def init(n: Negatum[S])(implicit tx: S#Tx): this.type = {
       val attr  = n.attr
@@ -144,10 +233,8 @@ object NegatumViewImpl {
       this
     }
 
-    private[this] val renderRef = Ref(Option.empty[Rendering[S, Unit]])
-
     def negatum  (implicit tx: S#Tx): Negatum[S]                  = negatumH()
-    def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]  = renderRef.get(tx.peer)
+    def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]  = renderRef()
 
     private def guiInit(panelParams: Component): Unit = {
 
@@ -156,14 +243,14 @@ object NegatumViewImpl {
 
       val actionCancel: swing.Action = new swing.Action(null) {
         def apply(): Unit = cursor.step { implicit tx =>
-          renderRef.swap(None)(tx.peer).foreach(_.cancel())
+          renderRef.swap(None).foreach(_.cancel())
         }
         enabled = false
       }
 
       val actionStop: swing.Action = new swing.Action(null) {
         def apply(): Unit = cursor.step { implicit tx =>
-          renderRef.swap(None)(tx.peer).foreach(_.stop())
+          renderRef.swap(None).foreach(_.stop())
         }
         enabled = false
       }
@@ -174,12 +261,11 @@ object NegatumViewImpl {
       val mNumIterations  = new SpinnerNumberModel(1, 1, 65536, 1)
       val ggNumIterations = new Spinner(mNumIterations)
 
-      // XXX TODO --- should use custom view so we can cancel upon `dispose`
       val actionRender = new swing.Action("Evolve") { self =>
         def apply(): Unit = {
           val numIterations = mNumIterations.getNumber.intValue()
           val ok = cursor.step { implicit tx =>
-            renderRef.get(tx.peer).isEmpty && {
+            renderRef().isEmpty && {
               val obj   = negatumH()
               val attr  = obj.attr
               import Negatum.Config.default._
@@ -215,7 +301,7 @@ object NegatumViewImpl {
                 penalty = cPenalty)
 
               def finished()(implicit tx: S#Tx): Unit = {
-                renderRef.set(None)(tx.peer)
+                renderRef() = None
                 deferTx {
                   actionCancel.enabled  = false
                   actionStop  .enabled  = false
@@ -235,7 +321,7 @@ object NegatumViewImpl {
                     ggProgress.value = (amt * ggProgress.max).toInt
                   }
               }}
-              renderRef.set(Some(rendering))(tx.peer)
+              renderRef() = Some(rendering)
               true
             }
           }
@@ -264,14 +350,19 @@ object NegatumViewImpl {
       //              }
       //            }
 
+      val ggDropProc = new DropProcLabel
+
       val panelControl = new FlowPanel(new Label("Iterations:"),
-        ggNumIterations, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze)
+        ggNumIterations, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze, ggDropProc)
       component = new BorderPanel {
         add(panelParams , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )
       }
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = rendering.foreach(_.cancel())
+    def dispose()(implicit tx: S#Tx): Unit = {
+      renderRef   .swap(None).foreach(_.cancel ())
+      optimizeRef .swap(None).foreach(_.abort  ())
+    }
   }
 }
