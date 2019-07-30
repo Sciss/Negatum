@@ -231,12 +231,14 @@ object Optimize extends ProcessorFactory {
                   val _vNew = Vertex.Constant(value)
                   if (rootsOutSet.contains(vOld)) {
                     rootsOutSet -= vOld
+                    ??? // if (value != 0.0) create synthetic DC root
                   }
                   _vNew
                 case Right (chTgt) =>
                   val srcIdxTgt = idxMap(chTgt)
                   val _vNew: Vertex.UGen = srcMapIn(srcIdxTgt)
                   if (rootsOutSet.contains(vOld)) {
+                    ??? // if rootsOutSet.contains(_vNew), add counter
                     rootsOutSet = rootsOutSet - vOld + _vNew
                   }
 //                  assert (topTemp.vertices.contains(_vNew))
