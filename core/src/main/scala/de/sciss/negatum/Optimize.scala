@@ -59,7 +59,8 @@ object Optimize extends ProcessorFactory {
     */
   final case class Config(graph         : SynthGraph,
                           sampleRate    : Double,
-                          analysisDur   : Double = 2.0,
+                          analysisDur   : Double  = 2.0,
+                          blockSize     : Int     = 64,
                           expandProtect : Boolean = true,
                          ) {
     require (analysisDur > 0.0)
@@ -156,6 +157,7 @@ object Optimize extends ProcessorFactory {
       bCfg.server.audioBusChannels  = math.max(128, (numSignals + 1).nextPowerOfTwo)  // ScalaCollider #84
       bCfg.server.sampleRate        = config.sampleRate.toInt
       bCfg.server.wireBuffers       = 1024  // crude guess :-/
+      bCfg.server.blockSize         = config.blockSize
       bCfg.group    = cursor.step { implicit tx =>
         val p = Proc[S]
         p.graph() = graphBnc

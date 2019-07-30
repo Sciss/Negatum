@@ -22,6 +22,7 @@ import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
 import de.sciss.lucre.synth.Sys
+import de.sciss.mellite.Prefs
 import de.sciss.mellite.gui.impl.proc.ProcObjView
 import de.sciss.mellite.gui.{DragAndDrop, GUI, ObjView}
 import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
@@ -95,9 +96,10 @@ object NegatumViewImpl {
                   val gIn = procH().graph().value
                   val t   = negatum.template()
                   val sr  = t.sampleRate
+                  val bs  = Prefs.audioBlockSize.getOrElse(Prefs.defaultAudioBlockSize)
                   val dur = math.max(2.0, t.numFrames / sr)
                   val cfg = Optimize.Config(
-                    graph = gIn, sampleRate = sr, analysisDur = dur, expandProtect = true
+                    graph = gIn, sampleRate = sr, blockSize = bs, analysisDur = dur, expandProtect = true
                   )
                   val o = Optimize(cfg)
                   optimizeRef() = Some(o)

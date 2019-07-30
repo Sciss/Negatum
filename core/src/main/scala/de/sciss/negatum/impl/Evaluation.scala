@@ -116,7 +116,7 @@ object Evaluation {
     sCfg.inputBusChannels   = 0
     sCfg.outputBusChannels  = 1
     sCfg.wireBuffers        = 1024 // higher than default
-    sCfg.blockSize          = 64   // keep it compatible to real-time
+    sCfg.blockSize          = 64   // keep it compatible to real-time. XXX TODO --- should be configurable to match Mellite preferences
     sCfg.sampleRate         = sampleRate
     // bc.init : (S#Tx, Server) => Unit
     bncCfg.span             = Span(0L, (duration * TimeRef.SampleRate).toLong)
