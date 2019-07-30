@@ -17,7 +17,7 @@ import de.sciss.file.File
 import de.sciss.lucre.synth.InMemory
 import de.sciss.model.Model
 import de.sciss.negatum.Negatum.SynthGraphT
-import de.sciss.negatum.impl.{Chromosome, MkSynthGraph, MkTopology, Util}
+import de.sciss.negatum.impl.{Chromosome, MkSynthGraph, MkTopology, UGens, Util}
 import de.sciss.numbers
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.processor.{Processor, ProcessorFactory}
@@ -26,7 +26,7 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
-import de.sciss.synth.ugen.Protect
+import de.sciss.synth.ugen.{BinaryOpUGen, Protect}
 
 import scala.annotation.tailrec
 import scala.concurrent.blocking
@@ -212,8 +212,8 @@ object Optimize extends ProcessorFactory {
 //          println(s"srcMapIn.size = ${srcMapIn.size}")
 //          val LAST = analysis.last._1
 
-          val rootsIn       = Util.getGraphRoots(topIn)
-          var rootsOutSet   = rootsIn.toSet
+          val rootsIn     : Seq[Vertex.UGen]      = Util.getGraphRoots(topIn)
+          var rootsOutMap : Map[Vertex.UGen, Int] = rootsIn.iterator.map(v => (v, 1)).toMap
           if (DEBUG) {
             println(s"---- ${rootsIn.size} ROOTS IN ----")
             rootsIn.foreach { v =>
@@ -222,6 +222,8 @@ object Optimize extends ProcessorFactory {
             println()
           }
 
+          var rootsOutDC = 0.0
+
           val topOut0 = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>
               val srcIdx  = idxMap(ch)
@@ -229,17 +231,19 @@ object Optimize extends ProcessorFactory {
               val vNew    = eth match {
                 case Left  (value) =>
                   val _vNew = Vertex.Constant(value)
-                  if (rootsOutSet.contains(vOld)) {
-                    rootsOutSet -= vOld
-                    ??? // if (value != 0.0) create synthetic DC root
+                  if (rootsOutMap.contains(vOld)) {
+                    rootsOutMap -= vOld
+                    rootsOutDC  += value
                   }
                   _vNew
                 case Right (chTgt) =>
                   val srcIdxTgt = idxMap(chTgt)
                   val _vNew: Vertex.UGen = srcMapIn(srcIdxTgt)
-                  if (rootsOutSet.contains(vOld)) {
-                    ??? // if rootsOutSet.contains(_vNew), add counter
-                    rootsOutSet = rootsOutSet - vOld + _vNew
+                  if (rootsOutMap.contains(vOld)) {
+                    val cOld = rootsOutMap(vOld) - 1
+                    if (cOld == 0) rootsOutMap -= vOld else rootsOutMap += (vOld -> cOld)
+                    val cNew = rootsOutMap.getOrElse(_vNew, 0) + 1
+                    rootsOutMap += (_vNew -> cNew)
                   }
 //                  assert (topTemp.vertices.contains(_vNew))
                   _vNew
@@ -273,7 +277,33 @@ object Optimize extends ProcessorFactory {
             Chromosome.removeVertex(topTmp1, pr)
           }
 
-          val rootsOut = rootsOutSet.toList
+          val topOut2 = if (rootsOutDC == 0.0) topOut1 else {
+            // XXX TODO: could look for existing DC in roots
+            val vArg  = Vertex.Constant(rootsOutDC.toFloat)
+            val vDC   = Vertex.UGen(UGens.mapAll("DC"))
+            val e     = Edge(vDC, vArg, inlet = "in")
+            rootsOutMap += (vDC -> 1)
+            topOut1.addVertex(vArg).addVertex(vDC).addEdge(e).get._1
+          }
+
+          val (rootsSingleM, rootsMultiM) = rootsOutMap.partition(_._2 == 1)
+          val rootsSingle = rootsSingleM.keys.toList
+          val (topOut3: SynthGraphT, rootsOut: Seq[Vertex.UGen]) =
+            if (rootsMultiM.isEmpty) (topOut2, rootsSingle) else {
+              rootsMultiM.foldLeft((topOut2, rootsSingle)) { case ((topTmp, rootsTmp), (vBase, count)) =>
+                val vArg      = Vertex.Constant(count.toFloat)
+                val vMul      = Vertex.UGen(UGens.map(s"Bin_${BinaryOpUGen.Times.id}"))
+                val eA        = Edge(vMul, vBase, inlet = "a")
+                val eB        = Edge(vMul, vArg , inlet = "b")
+                var topTmp1   = topTmp  .addVertex(vArg)
+                topTmp1       = topTmp1 .addVertex(vMul)
+                topTmp1       = topTmp1 .addEdge(eA).get._1
+                topTmp1       = topTmp1 .addEdge(eB).get._1
+//                val rootsTmp1 = vMul :: rootsTmp
+                val rootsTmp1 = rootsTmp :+ vMul  // nicer if they appear at the end
+                (topTmp1, rootsTmp1)
+              }
+            }
 
           @tailrec
           def removeOrphans(topTmp: SynthGraphT): SynthGraphT = {
@@ -287,7 +317,7 @@ object Optimize extends ProcessorFactory {
             }
           }
 
-          val topOut      = removeOrphans(topOut1)
+          val topOut      = removeOrphans(topOut3)
           val graphOut    = MkSynthGraph(topOut, expandProtect = config.expandProtect)
 
           if (DEBUG) {
