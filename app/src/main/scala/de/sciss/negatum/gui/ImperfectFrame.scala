@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v3+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -21,7 +21,7 @@ import javax.swing.Timer
 
 import de.sciss.desktop.{DialogSource, Window, WindowHandler}
 import de.sciss.lucre.synth.Txn
-import de.sciss.mellite.gui.MainFrame
+import de.sciss.mellite.MainFrame
 import de.sciss.osc.UDP
 import de.sciss.synth.proc.SoundProcesses
 import de.sciss.{desktop, numbers, osc}

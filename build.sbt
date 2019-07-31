@@ -2,13 +2,13 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.8.0-SNAPSHOT",
+  version             := "0.8.0",
   organization        := "de.sciss",
   scalaVersion        := "2.12.8",
   crossScalaVersions  := Seq("2.13.0", "2.12.8", "2.11.12"),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xsource:2.13", "-encoding", "utf8", "-Xlint"),
   homepage            := Some(url(s"https://git.iem.at/sciss/${name.value}")),
-  licenses            := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
+  licenses            := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   resolvers           += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions       := updateOptions.value.withLatestSnapshots(false)
 )
@@ -20,7 +20,7 @@ lazy val deps = new {
     val soundProcesses          = "3.30.0"
   }
   val views = new {
-    val mellite                 = "2.38.0-SNAPSHOT"
+    val mellite                 = "2.38.0"
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v3+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -15,6 +15,7 @@ package de.sciss.negatum
 package gui
 
 import java.awt.Color
+import java.io.File
 import java.util.Locale
 
 import javax.swing.UIManager
@@ -25,7 +26,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
-import de.sciss.mellite.gui._
+import de.sciss.mellite._
 import de.sciss.mellite.{Application, GUI, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
@@ -163,7 +164,7 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
 
     if (LOG_FRAME) LogFrame.instance    // init
 
-    val mf = new mellite.gui.MainFrame
+    val mf = new MainFrame
 
     if (config.playEnsemble) uOpt.foreach { implicit u =>
       startEnsemble[S](hibernation = config.hibernation)
@@ -228,4 +229,5 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
   def objectFilter    : String => Boolean = Mellite.objectFilter
   def auralSystem     : AuralSystem       = Mellite.auralSystem
   def compiler        : Code.Compiler     = Mellite.compiler
+  def cacheDir        : File              = Mellite.cacheDir
 }

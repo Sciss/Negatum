@@ -11,7 +11,7 @@ In the future, its extensions to SoundProcesses will become part of
 SoundProcesses/Mellite.
 
 This project is (C)opyright 2016&ndash;2019 by Hanns Holger Rutz. All rights reserved.
-It is released under the [GNU General Public License](https://git.iem.at/sciss/Negatum/raw/master/LICENSE) v3+
+It is released under the [GNU Affero General Public License](https://git.iem.at/sciss/Negatum/raw/master/LICENSE) v3+
 and comes with absolutely no warranties. 
 To contact the author, send an email to `contact at sciss.de`
 
