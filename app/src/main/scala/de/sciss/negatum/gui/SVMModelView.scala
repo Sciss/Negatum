@@ -15,9 +15,9 @@ package de.sciss.negatum
 package gui
 
 import de.sciss.lucre.stm.Sys
+import de.sciss.mellite.UniverseView
 import de.sciss.negatum.gui.impl.{SVMModelViewImpl => Impl}
 import de.sciss.synth.proc.Universe
-import de.sciss.synth.proc.gui.UniverseView
 
 object SVMModelView {
   def apply[S <: Sys[S]](m: SVMModel[S])(implicit tx: S#Tx, universe: Universe[S]): SVMModelView[S] = Impl(m)

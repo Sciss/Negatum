@@ -26,7 +26,7 @@ import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.{DragAndDrop, GUI, ObjListView, ObjView}
+import de.sciss.mellite.{DragAndDrop, GUI, ObjListView, ObjView}
 import de.sciss.numbers
 import de.sciss.synth.proc.Universe
 import javax.swing.TransferHandler

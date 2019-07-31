@@ -39,7 +39,7 @@ object Chromosome {
 
   def mkGraph(config: Config)(implicit random: Random): SynthGraph = {
     val t0  = mkGraphT(config)
-    val g   = MkSynthGraph(t0, mono = true, removeNaNs = true, specialOut = true, protect = true)
+    val g   = MkSynthGraph(t0, mono = true, removeNaNs = true, specialIO = true, protect = true)
     g
   }
 

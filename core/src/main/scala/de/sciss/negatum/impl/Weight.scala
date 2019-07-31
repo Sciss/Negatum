@@ -1,5 +1,5 @@
 /*
- *  SOMEval.scala
+ *  Weight.scala
  *  (Negatum)
  *
  *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
@@ -15,76 +15,10 @@ package de.sciss.negatum.impl
 
 import de.sciss.dsp
 import de.sciss.file.File
+import de.sciss.negatum.impl.Util.{add, dct, energy, mul}
 import de.sciss.synth.io.AudioFile
 
-// XXX TODO --- the naming is weird; all this is independent of SOM
-object SOMEval {
-  final class Weight(val spectral: Array[Double], val temporal: Array[Double]) {
-    override def toString: String = spectral.map(d => f"$d%1.3f").mkString("[", ", ", "]")
-  }
-
-  def dct(in: Array[Double], off: Int, len: Int, numCoeff: Int): Array[Double] = {
-    val c = new Array[Double](numCoeff)
-    var n = 0
-    val r = math.Pi / len
-    while (n < numCoeff) {
-      var i = 0
-      val s = r * n
-      while (i < len) {
-        c(n) += in(i + off) * math.cos(s * (i + 0.5))
-        i += 1
-      }
-      n += 1
-    }
-    c
-  }
-
-  /** Mutates `a` by multiplying its contents with `b`. */
-  def mul(a: Array[Float], aOff: Int, b: Array[Float], bOff: Int, len: Int): Unit = {
-    var ai = aOff
-    val stop = ai + len
-    var bi = bOff
-    while (ai < stop) {
-      a(ai) *= b(bi)
-      ai += 1
-      bi += 1
-    }
-  }
-
-  /** Mutates `a` by adding `b` to it. */
-  def add(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, len: Int): Unit = {
-    var ai = aOff
-    val stop = ai + len
-    var bi = bOff
-    while (ai < stop) {
-      a(ai) += b(bi)
-      ai += 1
-      bi += 1
-    }
-  }
-
-  /** Mutates `a` by multiplying each element with `f` */
-  def mul(a: Array[Double], off: Int, len: Int, f: Double): Unit = {
-    var ai = off
-    val stop = ai + len
-    while (ai < stop) {
-      a(ai) *= f
-      ai += 1
-    }
-  }
-
-  /** Calculates RMS */
-  def energy(in: Array[Float], off: Int, len: Int): Double = {
-    var sum = 0.0
-    var i = off
-    val j = i + len
-    while (i < j) {
-      sum += in(i) * in(i)
-      i += 1
-    }
-    math.sqrt(sum / len)
-  }
-
+object Weight {
   def apply(f: File, numCoeff: Int = 24 /* 13 */): Option[Weight] = {
     val mCfgB = dsp.MFCC.Config()
     mCfgB.fftSize   = 1024
@@ -151,4 +85,7 @@ object SOMEval {
       af.cleanUp()
     }
   }
+}
+final class Weight(val spectral: Array[Double], val temporal: Array[Double]) {
+  override def toString: String = spectral.map(d => f"$d%1.3f").mkString("[", ", ", "]")
 }

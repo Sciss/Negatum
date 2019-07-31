@@ -23,15 +23,14 @@ import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
-import de.sciss.mellite.gui.impl.objview.ObjViewImpl
-import de.sciss.mellite.gui.impl.{ObjViewCmdLineParser, WindowImpl}
-import de.sciss.mellite.gui.{GUI, ObjListView, ObjView}
+import de.sciss.mellite.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
+import de.sciss.mellite.impl.{ObjViewCmdLineParser, WindowImpl}
+import de.sciss.mellite.{GUI, ObjListView, ObjView, UniverseView}
+import de.sciss.mellite.impl.objview.ObjViewImpl
 import de.sciss.processor.Processor.Aborted
 import de.sciss.swingplus.{GroupPanel, Spinner}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Universe
-import de.sciss.synth.proc.gui.UniverseView
 import javax.swing.{Icon, SpinnerNumberModel}
 
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Label, TextField}

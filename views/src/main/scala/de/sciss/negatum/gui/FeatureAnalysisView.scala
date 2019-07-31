@@ -11,17 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.negatum
-package gui
+package de.sciss.negatum.gui
 
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.negatum.gui.impl.{FeatureAnalysisViewImpl => Impl}
+import de.sciss.mellite.UniverseView
+import de.sciss.negatum.Negatum
+import de.sciss.negatum.gui.impl.FeatureAnalysisViewImpl
 import de.sciss.synth.proc.Universe
-import de.sciss.synth.proc.gui.UniverseView
 
 object FeatureAnalysisView {
   def apply[S <: SSys[S]](negatum: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): FeatureAnalysisView[S] =
-    Impl[S](negatum)
+    FeatureAnalysisViewImpl[S](negatum)
 }
 trait FeatureAnalysisView[S <: Sys[S]] extends UniverseView[S]

@@ -15,16 +15,14 @@ package de.sciss.negatum.gui.impl
 
 import de.sciss.desktop.UndoManager
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{CellView, DoubleObj, IntObj}
+import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.TxnLike.{peer => txPeer}
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
+import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.Prefs
-import de.sciss.mellite.gui.impl.proc.ProcObjView
-import de.sciss.mellite.gui.{DragAndDrop, GUI, ObjView}
+import de.sciss.mellite.{DragAndDrop, GUI, ObjView, Prefs}
 import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
 import de.sciss.negatum.{Negatum, Optimize, Rendering}
 import de.sciss.processor.Processor
@@ -35,7 +33,7 @@ import javax.swing.{JLabel, SpinnerNumberModel, TransferHandler}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.Ref
-import scala.swing.{BorderPanel, BoxPanel, Component, Dimension, FlowPanel, Graphics2D, Label, Orientation, ProgressBar, Swing}
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Dimension, FlowPanel, Graphics2D, Label, Orientation, ProgressBar, Swing}
 import scala.util.{Failure, Success}
 
 object NegatumViewImpl {
@@ -53,6 +51,12 @@ object NegatumViewImpl {
 
     private[this] val renderRef   = Ref(Option.empty[Rendering[S, Unit]])
     private[this] val optimizeRef = Ref(Option.empty[Processor[Any]])
+
+    private def defaultOptAnaDur(n: Negatum[S])(implicit tx: S#Tx): Double = {
+      val t     = n.template()
+      val sr    = t.sampleRate
+      math.max(2.0, t.numFrames / sr)
+    }
 
     private final class DropProcLabel extends Label {
       override lazy val peer: JLabel = new JLabel(" ") with SuperMixin {
@@ -88,30 +92,41 @@ object NegatumViewImpl {
         override def importData(support: TransferSupport): Boolean = enabled && {
           val t = support.getTransferable
           val td = DragAndDrop.getTransferData(t, ObjView.Flavor)
-          td.universe.workspace == universe.workspace && (td.view match {
-            case p: ProcObjView[S] =>
-              val procH = p.objH
-              universe.cursor.step { implicit tx =>
-                optimizeRef().isEmpty && {
-                  val gIn = procH().graph().value
-                  val t   = negatum.template()
-                  val sr  = t.sampleRate
-                  val bs  = Prefs.audioBlockSize.getOrElse(Prefs.defaultAudioBlockSize)
-                  val dur = math.max(2.0, t.numFrames / sr)
+          td.universe.workspace == universe.workspace && (td.view.factory.tpe == Proc && {
+            universe.cursor.step { implicit tx =>
+              optimizeRef().isEmpty && (td.view.asInstanceOf[ObjView[S]].obj match {
+                case p: Proc[S] =>
+                  import Negatum._
+                  val obj   = negatumH()
+                  val attr  = obj.attr
+                  val gIn   = p.graph().value
+                  val t     = obj.template()
+                  val sr    = t.sampleRate
+                  val bs    = Prefs.audioBlockSize.getOrElse(Prefs.defaultAudioBlockSize)
+                  val dur   = attr.$[DoubleObj ](attrOptDuration      ).map(_.value).getOrElse(defaultOptAnaDur(obj))
+                  val expPr = attr.$[BooleanObj](attrOptExpandProtect ).forall(_.value)
+                  val expIO = attr.$[BooleanObj](attrOptExpandIO      ).forall(_.value)
+
                   val cfg = Optimize.Config(
-                    graph = gIn, sampleRate = sr, blockSize = bs, analysisDur = dur, expandProtect = true
+                    graph         = gIn,
+                    sampleRate    = sr,
+                    blockSize     = bs,
+                    analysisDur   = dur,
+                    expandProtect = expPr,
+                    expandIO      = expIO
                   )
                   val o = Optimize(cfg)
                   optimizeRef() = Some(o)
+                  val procH = tx.newHandle(p: Proc[S])
                   import ExecutionContext.Implicits.global
                   o.onComplete {
                     case Success(res) =>
                       println(s"Optimization found ${res.numConst} constant replacement and ${res.numEqual} redundant elements.")
                       universe.cursor.step { implicit tx =>
                         optimizeRef() = None
-                        val p         = procH()
-                        p.graph()     = res.graph
-                        p.attr.remove(Proc.attrSource)  // make sure it's regenerated if the editor is opened
+                        val p1        = procH()
+                        p1.graph()    = res.graph
+                        p1.attr.remove(Proc.attrSource)  // make sure it's regenerated if the editor is opened
                       }
 
                     case Failure(ex) =>
@@ -121,13 +136,13 @@ object NegatumViewImpl {
                         optimizeRef() = None
                       }
                   }
-                  o.start()
+                  tx.afterCommit(o.start())
                   true
 
-                }
-              }
-
-            case _ => false
+                case _ =>
+                  false
+              })
+            }
           })
         }
       }
@@ -159,17 +174,17 @@ object NegatumViewImpl {
         new Field(name, view)
       }
 
-//      def mkBooleanField(name: String, key: String, default: Boolean): Field = {
-//        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
-//          name = name, default = default)
-//        new Field(name, view) {
-//          override lazy val editor: Component = {
-//            val res = view.component
-//            res.text = null
-//            res
-//          }
-//        }
-//      }
+      def mkBooleanField(name: String, key: String, default: Boolean): Field = {
+        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
+          name = name, default = default)
+        new Field(name, view) {
+          override lazy val editor: Component = {
+            val res = view.component
+            res.text = null
+            res
+          }
+        }
+      }
 
       // def mkEmptyField(): Field = new Field("", View.wrap[S](Swing.HGlue))
 
@@ -207,17 +222,25 @@ object NegatumViewImpl {
       val fBreedGolem         = mkIntField    ("# of Golems"            , attrBreedGolem    , breed.golem)
       val gridBreed = Seq(fBreedSelFraction, fBreedProbMut, fBreedElitism, fBreedMinMut, fBreedGolem, fBreedMaxMut)
 
+      val fOptDuration        = mkDoubleField ("Analysis Duration [s]"  , attrOptDuration     , defaultOptAnaDur(n))
+      val fOptExpandProtect   = mkBooleanField("Expand Protect Elements", attrOptExpandProtect, true)
+      val fOptExpandIO        = mkBooleanField("Expand I/O Elements"    , attrOptExpandIO     , true)
+      val gridOpt = Seq(fOptDuration, fOptExpandProtect, fOptExpandIO)
+
       deferTx {
-        def mkGrid(title: String, grid: Seq[Field]): Component = {
+        def mkGrid(title: String, grid: Seq[Field], columns: Int = 2): Component = {
           val gridSz  = grid.size
           val gridC0  = grid.flatMap(v => v.label :: v.editor :: Nil)
-          val gridC   = if (gridSz % 2 == 0) gridC0 else gridC0 ++ (Swing.HGlue :: Swing.HGlue :: Nil)
-          val gridV   = gridC.grouped(4).toSeq
+          val gridC   = if (gridSz % columns == 0) gridC0 else gridC0 ++ (Swing.HGlue :: Swing.HGlue :: Nil)
+          val gridV   = gridC.grouped(columns * 2).toSeq
           val gridH   = gridV.transpose
           new GroupPanel {
             horizontal = Seq(gridH.map(col => Par          (col.map(c => GroupPanel.Element(c)): _*)): _*)
             vertical   = Seq(gridV.map(row => Par(Baseline)(row.map(c => GroupPanel.Element(c)): _*)): _*)
-            border     = Swing.TitledBorder(Swing.EmptyBorder(4), s"<HTML><BODY><B>$title</B></BODY>")
+            border     = {
+              val empty = Swing.EmptyBorder(4)
+              if (title.isEmpty) empty else Swing.TitledBorder(empty, s"<HTML><BODY><B>$title</B></BODY>")
+            }
           }
         }
         val panelGen    = mkGrid("Generation", gridGen)
@@ -230,7 +253,10 @@ object NegatumViewImpl {
           contents += panelBreed
           border = Swing.EmptyBorder(4, 0, 4, 0)
         }
-        guiInit(panelParams)
+
+        val panelOpt = mkGrid("", gridOpt, columns = 1)
+
+        guiInit(panelParams, panelOpt)
       }
       this
     }
@@ -238,7 +264,7 @@ object NegatumViewImpl {
     def negatum  (implicit tx: S#Tx): Negatum[S]                  = negatumH()
     def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]  = renderRef()
 
-    private def guiInit(panelParams: Component): Unit = {
+    private def guiInit(panelParams: Component, panelOpt: Component): Unit = {
 
       val ggProgress: ProgressBar = new ProgressBar
       ggProgress.max = 160
@@ -353,9 +379,19 @@ object NegatumViewImpl {
       //            }
 
       val ggDropProc = new DropProcLabel
+      val ggOptimize = Button("Optimize…") {
+        Dialog.showMessage(
+          parent      = null,
+          title       = "Optimize Settings",
+          messageType = Dialog.Message.Plain,
+          message     = panelOpt.peer
+        )
+      }
+      ggOptimize.tooltip = "Click to configure"
+      ggOptimize.peer.putClientProperty("styleId", "icon-hover")
 
       val panelControl = new FlowPanel(new Label("Iterations:"),
-        ggNumIterations, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze, ggDropProc)
+        ggNumIterations, ggProgress, ggCancel, ggStop, ggRender, ggAnalyze, ggOptimize, ggDropProc)
       component = new BorderPanel {
         add(panelParams , BorderPanel.Position.Center)
         add(panelControl, BorderPanel.Position.South )

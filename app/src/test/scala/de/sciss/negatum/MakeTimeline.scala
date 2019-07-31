@@ -5,8 +5,7 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.mellite.Mellite
-import de.sciss.mellite.gui.ObjTimelineView
+import de.sciss.mellite.{Mellite, ObjTimelineView}
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
 import de.sciss.synth.proc.{FadeSpec, ObjKeys, Proc, TimeRef, Timeline, Workspace}

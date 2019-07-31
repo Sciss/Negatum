@@ -14,6 +14,10 @@
 package de.sciss.synth
 package ugen
 
+object NegatumIn {
+  def expand(): Unit =
+    RandSeed.ir()
+}
 final case class NegatumIn() extends Lazy.Expander[Unit] {
   protected def makeUGens: Unit =
     RandSeed.ir().expand  // `.expand` to make sure the UGen is first!

@@ -26,10 +26,10 @@ import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.synth.Sys
 import de.sciss.mellite
 import de.sciss.mellite.gui._
-import de.sciss.mellite.{Application, Mellite, Prefs}
+import de.sciss.mellite.{Application, GUI, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Durable, Ensemble, SynthGraphObj, Universe, Workspace}
+import de.sciss.synth.proc.{AuralSystem, Code, Durable, Ensemble, SynthGraphObj, Universe, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.swing.Action
@@ -117,7 +117,7 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
     }
 
     // XXX TODO --- this should be fixed in Submin
-    if (Mellite.isDarkSkin) {
+    if (GUI.isDarkSkin) {
       // for titled border
       UIManager.put("TitledBorder.titleColor" , new ColorUIResource(216, 220, 224))
       // for lucre matrix
@@ -221,6 +221,8 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
 
   // ---- Application trait ----
 
-  def topLevelObjects: ISeq[String]      = Mellite.topLevelObjects
-  def objectFilter   : String => Boolean = Mellite.objectFilter
+  def topLevelObjects : ISeq[String]      = Mellite.topLevelObjects
+  def objectFilter    : String => Boolean = Mellite.objectFilter
+  def auralSystem     : AuralSystem       = Mellite.auralSystem
+  def compiler        : Code.Compiler     = Mellite.compiler
 }

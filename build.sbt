@@ -15,28 +15,32 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val core = new {
-    val fileCache           = "0.5.1"
-    val fscape              = "2.27.1-SNAPSHOT"
-    val soundProcesses      = "3.29.4-SNAPSHOT"
-//    val strugatzki          = "2.19.0"
+    val fileCache               = "0.5.1"
+    val fscape                  = "2.27.1-SNAPSHOT"
+    val soundProcesses          = "3.29.4-SNAPSHOT"
+  }
+  val views = new {
+    val mellite                 = "2.38.0-SNAPSHOT"
+    val sonogram                = "1.11.2"
+    def soundProcesses: String  = core.soundProcesses
   }
   val app = new {
-    val dsp                 = "1.3.2"
-    val fileUtil            = "1.1.3"
-    val kollFlitz           = "0.2.3"
-    val libSVM              = "3.23"
-    val mellite             = "2.37.0"
-    val scalaCollider       = "1.28.4"
-    val scalaColliderUGens  = "1.19.5"
-    val scopt               = "3.7.1"
+    val dsp                     = "1.3.2"
+    val fileUtil                = "1.1.3"
+    val kollFlitz               = "0.2.3"
+    val libSVM                  = "3.23"
+    def mellite: String         = views.mellite
+    val scalaCollider           = "1.28.4"
+    val scalaColliderUGens      = "1.19.5"
+    val scopt                   = "3.7.1"
   }
   val test = new {
-    val trace               = "0.4.0"
+    val trace                   = "0.4.0"
   }
 }
 
 lazy val root = project.in(file("."))
-  .aggregate(core, app)
+  .aggregate(core, views, app)
   .settings(
     name              := baseName,
     description       := "Genetic Algorithms",
@@ -45,21 +49,33 @@ lazy val root = project.in(file("."))
 
 lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
   .settings(commonSettings)
-  .settings(assemblySettings)
   .settings(publishSettings)
   .settings(
-    name        := s"$baseName-Core",
+    name        := s"$baseName-core",
     description := "Genetic Algorithms (core abstractions)",
     libraryDependencies ++= Seq(
       "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
       "de.sciss"        %% "filecache-txn"              % deps.core.fileCache,
       "de.sciss"        %% "fscape-lucre"               % deps.core.fscape,
-//      "de.sciss"        %% "strugatzki"                 % deps.core.strugatzki,
+    )
+  )
+
+lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
+  .dependsOn(core)
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name        := s"$baseName-views",
+    description := "Genetic Algorithms (GUI components)",
+    libraryDependencies ++= Seq(
+      "de.sciss"        %% "mellite-core"               % deps.views.mellite,
+      "de.sciss"        %% "sonogramoverview"           % deps.views.sonogram,
+      "de.sciss"        %% "soundprocesses-views"       % deps.views.soundProcesses,
     )
   )
 
 lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
-  .dependsOn(core)
+  .dependsOn(core, views)
   .settings(commonSettings)
   .settings(assemblySettings)
   .settings(

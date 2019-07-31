@@ -22,7 +22,7 @@ import de.sciss.lucre.expr.{BooleanObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
-import de.sciss.negatum.SVMConfig.{Type, Weight}
+import de.sciss.negatum.SVMConfig.{Type, Weight => SVMWeight}
 import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
@@ -167,8 +167,8 @@ object SVMModelImpl {
 
       val config   = config0.tpe match {
         case tpe @ Type.CSVC(_, Nil) =>
-          val w0      = Weight(label = 0, value = statSel.toFloat / statCount)
-          val w1      = Weight(label = 1, value = (statCount - statSel).toFloat / statCount)
+          val w0      = SVMWeight(label = 0, value = statSel.toFloat / statCount)
+          val w1      = SVMWeight(label = 1, value = (statCount - statSel).toFloat / statCount)
           val weights = List(w0, w1)
           val tpe1    = tpe.copy(weights = weights)
           val res     = SVMConfig()

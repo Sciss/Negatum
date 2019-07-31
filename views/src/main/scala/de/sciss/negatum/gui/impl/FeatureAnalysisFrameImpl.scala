@@ -16,7 +16,7 @@ package gui
 package impl
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.impl.WindowImpl
+import de.sciss.mellite.impl.WindowImpl
 import de.sciss.synth.proc.Universe
 
 object FeatureAnalysisFrameImpl {

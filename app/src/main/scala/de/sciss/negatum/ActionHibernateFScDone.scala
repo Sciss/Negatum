@@ -18,7 +18,7 @@ import de.sciss.lucre.artifact.Artifact
 import de.sciss.lucre.expr.{BooleanObj, IntObj, StringObj}
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.mellite.gui.ObjTimelineView
+import de.sciss.mellite.ObjTimelineView
 import de.sciss.negatum.Hibernation.logComp
 import de.sciss.numbers.Implicits._
 import de.sciss.span.Span

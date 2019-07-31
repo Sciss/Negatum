@@ -56,12 +56,15 @@ object Optimize extends ProcessorFactory {
     *                       looks at this interval to determine which UGens are identical
     * @param  expandProtect if `true` (default), replaces `Protect` elements in the graph by their
     *                       expanded elements before running the optimization.
+    * @param  expandIO      if `true` (default), replaces `NegatumIn` and `NegatumOut` elements
+    *                       in the graph by their expanded elements before returning the optimization.
     */
   final case class Config(graph         : SynthGraph,
                           sampleRate    : Double,
                           analysisDur   : Double  = 2.0,
                           blockSize     : Int     = 64,
                           expandProtect : Boolean = true,
+                          expandIO      : Boolean = true
                          ) {
     require (analysisDur > 0.0)
 
@@ -272,10 +275,11 @@ object Optimize extends ProcessorFactory {
           }
           if (config.expandProtect) assert (protects.isEmpty)
 
-          if (DEBUG) println(s"Removing ${protects.size} Protect elements now")
-          val topOut1 = protects.foldLeft(topOut0) { (topTmp1, pr) =>
-            Chromosome.removeVertex(topTmp1, pr)
-          }
+//          if (DEBUG) println(s"Removing ${protects.size} Protect elements now")
+//          val topOut1 = protects.foldLeft(topOut0) { (topTmp1, pr) =>
+//            Chromosome.removeVertex(topTmp1, pr)
+//          }
+          val topOut1 = topOut0
 
           val topOut2 = if (rootsOutDC == 0.0) topOut1 else {
             // XXX TODO: could look for existing DC in roots
@@ -290,7 +294,10 @@ object Optimize extends ProcessorFactory {
           val rootsSingle = rootsSingleM.keys.toList
           val (topOut3: SynthGraphT, rootsOut: Seq[Vertex.UGen]) =
             if (rootsMultiM.isEmpty) (topOut2, rootsSingle) else {
-              rootsMultiM.foldLeft((topOut2, rootsSingle)) { case ((topTmp, rootsTmp), (vBase, count)) =>
+              rootsMultiM.foldLeft((topOut2, rootsSingle)) { case ((topTmp, rootsTmp), (vBase0, count)) =>
+                val vBase     = if (vBase0.info.name != "Protect") vBase0 else {
+                  topTmp.edgeMap(vBase0).head.targetVertex
+                }
                 val vArg      = Vertex.Constant(count.toFloat)
                 val vMul      = Vertex.UGen(UGens.map(s"Bin_${BinaryOpUGen.Times.id}"))
                 val eA        = Edge(vMul, vBase, inlet = "a")
@@ -305,6 +312,11 @@ object Optimize extends ProcessorFactory {
               }
             }
 
+          if (DEBUG) println(s"Removing ${protects.size} Protect elements now")
+          val topOut4 = protects.foldLeft(topOut3) { (topTmp1, pr) =>
+            Chromosome.removeVertex(topTmp1, pr)
+          }
+
           @tailrec
           def removeOrphans(topTmp: SynthGraphT): SynthGraphT = {
             val rootsDirty = Util.getGraphRoots(topTmp)
@@ -317,8 +329,8 @@ object Optimize extends ProcessorFactory {
             }
           }
 
-          val topOut      = removeOrphans(topOut3)
-          val graphOut    = MkSynthGraph(topOut, expandProtect = config.expandProtect)
+          val topOut      = removeOrphans(topOut4)
+          val graphOut    = MkSynthGraph(topOut, expandProtect = config.expandProtect, expandIO = config.expandIO)
 
           if (DEBUG) {
             val rootsOutTest = Util.getGraphRoots(topOut)

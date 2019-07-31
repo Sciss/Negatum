@@ -16,9 +16,9 @@ package gui
 
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.mellite.UniverseView
 import de.sciss.negatum.gui.impl.{SOMViewImpl => Impl}
 import de.sciss.synth.proc.Universe
-import de.sciss.synth.proc.gui.UniverseView
 
 object SOMView {
   def apply[S <: SSys[S]](map: SOM[S])(implicit tx: S#Tx, universe: Universe[S]): SOMView[S] = Impl(map)

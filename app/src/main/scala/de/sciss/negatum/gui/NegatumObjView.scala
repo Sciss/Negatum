@@ -21,11 +21,11 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.impl.WindowImpl
+import de.sciss.mellite.{ObjListView, ObjView}
 import de.sciss.mellite.gui.impl.audiocue.AudioCueObjView
-import de.sciss.mellite.gui.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
-import de.sciss.mellite.gui.impl.objview.ObjViewImpl
-import de.sciss.mellite.gui.{ObjListView, ObjView}
+import de.sciss.mellite.impl.WindowImpl
+import de.sciss.mellite.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
+import de.sciss.mellite.impl.objview.ObjViewImpl
 import de.sciss.negatum.Negatum
 import de.sciss.processor.Processor.Aborted
 import de.sciss.synth.proc.{AudioCue, Universe}

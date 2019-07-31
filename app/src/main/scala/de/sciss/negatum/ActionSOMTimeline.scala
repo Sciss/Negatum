@@ -17,7 +17,7 @@ import de.sciss.kollflitz.Vec
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.mellite.gui.ObjTimelineView
+import de.sciss.mellite.ObjTimelineView
 import de.sciss.negatum.Composition.{logComp, mkDateString}
 import de.sciss.negatum.Delaunay.Vector2
 import de.sciss.negatum.ScanSOM.Input

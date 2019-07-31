@@ -240,6 +240,15 @@ object Negatum extends Obj.Type {
 
   /** Attribute for breeding config defaults. Type `Int` */
   final val attrBreedGolem        = "breed-golem"
+
+  /** Attribute for optimize settings: analysis duration in seconds. Type `Double` */
+  final val attrOptDuration       = "optimize-duration"
+
+  /** Attribute for optimize settings: whether to expand `Protect` elements. Type `Boolean` */
+  final val attrOptExpandProtect  = "optimize-expand-protect"
+
+  /** Attribute for optimize settings: whether to expand IO elements. Type `Boolean` */
+  final val attrOptExpandIO       = "optimize-expand-io"
 }
 trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
 

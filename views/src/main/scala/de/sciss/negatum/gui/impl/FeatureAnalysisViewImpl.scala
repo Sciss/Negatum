@@ -11,9 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.negatum
-package gui
-package impl
+package de.sciss.negatum.gui.impl
 
 import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
@@ -29,14 +27,16 @@ import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
-import de.sciss.mellite.Mellite
-import de.sciss.mellite.gui.{CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
-import de.sciss.negatum.impl.{Evaluation, SOMEval}
+import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
+import de.sciss.negatum.Negatum
+import de.sciss.negatum.gui.FeatureAnalysisView
+import de.sciss.negatum.impl.{Evaluation, Weight}
+import de.sciss.sonogram
 import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{AudioCue, Proc, Universe}
 import de.sciss.synth.{SynthGraph, proc}
-import de.sciss.{desktop, numbers, sonogram}
+import de.sciss.{desktop, numbers}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import javax.swing.{JComponent, JTable, TransferHandler}
 
@@ -169,7 +169,7 @@ object FeatureAnalysisViewImpl {
       
       var rendered  = Option.empty[Future[AudioCue]]
       var son       = Option.empty[sonogram.Overview]
-      var features  = Option.empty[SOMEval.Weight]
+      var features  = Option.empty[Weight]
       
       // def dispose()(implicit tx: S#Tx): Unit = observer.dispose()  
     }
@@ -201,7 +201,7 @@ object FeatureAnalysisViewImpl {
           case 1 => classOf[String]
           case 2 => classOf[java.lang.Double]
           case 3 => classOf[sonogram.Overview]
-          case 4 => classOf[SOMEval.Weight]
+          case 4 => classOf[Weight]
           case 5 => classOf[java.lang.Boolean]
         }
 
@@ -287,7 +287,7 @@ object FeatureAnalysisViewImpl {
     }
 
     private[this] object featuresRenderer extends TableCellRenderer {
-      private[this] var features  = Option.empty[SOMEval.Weight]
+      private[this] var features  = Option.empty[Weight]
       private[this] val minMaxS   = mutable.Map.empty[Int, (Double, Double)]
       private[this] val minMaxT   = mutable.Map.empty[Int, (Double, Double)]
       private[this] val comp: Component = new Component {
@@ -366,7 +366,7 @@ object FeatureAnalysisViewImpl {
       def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean,
                                         row: Int, column: Int): java.awt.Component = {
         val featOpt = value match {
-          case w: SOMEval.Weight => Some(w)
+          case w: Weight => Some(w)
           case _ => None
         }
         features = featOpt
@@ -481,7 +481,7 @@ object FeatureAnalysisViewImpl {
         selectedRow.foreach { r =>
           atomic { implicit itx =>
             implicit val tx: Txn = Txn.wrap(itx)
-            Mellite.auralSystem.serverOption.foreach { s =>
+            Application.auralSystem.serverOption.foreach { s =>
               synthRef.swap(None).foreach(_.dispose())
               val syn = Synth.play(r.graph, nameHint = Some(r.name))(s.defaultGroup)
               synthRef() = Some(syn)
@@ -494,7 +494,7 @@ object FeatureAnalysisViewImpl {
           cursor.step { implicit tx =>
             negatumH().population.apply(r.folderIdx) match {
               case p: Proc[S] =>
-                import de.sciss.mellite.Mellite.compiler
+                import Application.compiler
                 CodeFrame.proc(p)
               case _ =>
                 println(s"Error. No Proc in folder at index ${r.folderIdx}")
@@ -553,7 +553,7 @@ object FeatureAnalysisViewImpl {
 
           val fut2: Future[AudioCue] = fut1.flatMap { cue =>
             if (_disposedGUI) Future.successful(cue) else {
-              val futFeat = Future(blocking(SOMEval(audioF)))
+              val futFeat = Future(blocking(Weight(audioF)))
               futFeat.onComplete {
                 case Failure(ex) => println("Features failed:")
                   ex.printStackTrace()

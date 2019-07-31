@@ -66,16 +66,23 @@ object MkSynthGraph {
     * measures such as removal of NaNs or protected against out-of-range parameters.
     *
     * @param c              the chromosome that shall be converted
-    * @param specialOut     if `true`, adds a `NegatumOut`
-    * @param protect        if `true`, inserts range protection checks for known parameters
-    * @param mono           if `true`, adds a `Mix.mono` (only used when `!specialOut`)
-    * @param removeNaNs     if `true`, adds a bad-value check and a gate that stops NaNs (only used when `!specialOut`)
-    * @param expandProtect  if `true`, expands the range protecting UGens that would otherwise be
-    *                       encapsulated in a `Protect` graph element.
+    * @param specialIO     if `true`, adds a `NegatumIn` and `NegatumOut`
+    * @param protect       if `true`, inserts range protection checks for known parameters
+    * @param mono          if `true`, adds a `Mix.mono` (only used when `!specialIO`)
+    * @param removeNaNs    if `true`, adds a bad-value check and a gate that stops NaNs (only used when `!specialOut`)
+    * @param expandProtect if `true`, expands the range protecting UGens that would otherwise be
+    *                      encapsulated in a `Protect` graph element.
+    * @param expandIO      if `true`, expands the UGens that would otherwise be
+    *                      encapsulated in the `NegatumIn` and `NegatumOut` graph element.
     */
-  def apply[S <: Sys[S]](c: SynthGraphT, specialOut: Boolean = true,
-                         protect: Boolean = true, mono: Boolean = true, removeNaNs: Boolean = true,
-                         expandProtect: Boolean = false): SynthGraph = {
+  def apply[S <: Sys[S]](c            : SynthGraphT,
+                         specialIO    : Boolean = true,
+                         protect      : Boolean = true,
+                         mono         : Boolean = true,
+                         removeNaNs   : Boolean = true,
+                         expandProtect: Boolean = false,
+                         expandIO     : Boolean = false
+                        ): SynthGraph = {
     @tailrec def loop(remRev: List[Vertex], real: Map[Vertex, GE]): Map[Vertex, GE] = remRev match {
       case last :: init =>
         lazy val lastE = c.edgeMap.getOrElse(last, Set.empty) // top.targets(last)
@@ -188,8 +195,9 @@ object MkSynthGraph {
 
     SynthGraph {
       import de.sciss.synth.ugen._
-      if (specialOut) {
-        NegatumIn()
+      if (specialIO) {
+        if (expandIO) NegatumIn.expand()
+        else          NegatumIn.apply()
       }
       val vertices    = c.vertices
       val verticesRev = vertices.reverseIterator.toList
@@ -200,8 +208,9 @@ object MkSynthGraph {
       if (ugens.nonEmpty) {
         val roots = getGraphRoots(c)
         val sig0: GE = if (roots.isEmpty) map(ugens.head /* choose(ugens) */) else Mix(roots.map(map.apply))
-        if (specialOut) {
-          NegatumOut(sig0)
+        if (specialIO) {
+          if (expandIO) NegatumOut.expand(sig0)
+          else          NegatumOut.apply (sig0)
         } else {
           val sig1  = /* if (mono) */ Mix.mono(sig0) /* else sig0 */
           val sig2  = if (!removeNaNs) sig1 else {

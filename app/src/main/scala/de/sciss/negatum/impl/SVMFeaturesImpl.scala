@@ -71,7 +71,7 @@ object SVMFeaturesImpl {
             val proc = Evaluation.bounce(graph = r.graph, audioF = audioF, inputSpec = template.spec)
             Await.result(proc, Duration(bncTimeOut, TimeUnit.SECONDS))
             // val spec = AudioFile.readSpec(audioF)
-            val wOpt = SOMEval(audioF, numCoeff = numCoeff)
+            val wOpt = Weight(audioF, numCoeff = numCoeff)
             wOpt.foreach { w =>
               r.result = w.spectral.toVector ++ w.temporal.toVector
             }

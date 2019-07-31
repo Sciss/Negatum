@@ -23,19 +23,20 @@ import de.sciss.lucre.swing.LucreSwing.{defer, deferTx}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.gui.impl.WindowImpl
-import de.sciss.mellite.gui.impl.objview.ObjListViewImpl.NonEditable
-import de.sciss.mellite.gui.impl.objview.{ObjListViewImpl, ObjViewImpl}
-import de.sciss.mellite.gui.{GUI, ObjListView, ObjView}
+import de.sciss.mellite.impl.WindowImpl
+import de.sciss.mellite.impl.objview.ObjListViewImpl.NonEditable
+import de.sciss.mellite.{GUI, ObjListView, ObjView, UniverseView}
+import de.sciss.mellite.impl.objview.{ObjListViewImpl, ObjViewImpl}
 import de.sciss.negatum.SVMConfig.{Kernel, Type}
+import de.sciss.negatum.SVMModel.Trained
 import de.sciss.processor.Processor
 import de.sciss.swingplus.{ComboBox, GroupPanel, ListView, Separator, Spinner}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Universe
-import de.sciss.synth.proc.gui.UniverseView
 import javax.swing.TransferHandler.TransferSupport
 import javax.swing.{Icon, SpinnerNumberModel, TransferHandler}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.{InTxn, Ref}
 import scala.swing.event.SelectionChanged
 import scala.swing.{Action, BorderPanel, BoxPanel, CheckBox, Component, FlowPanel, Label, Orientation, ProgressBar, ScrollPane, TextField}
@@ -326,7 +327,7 @@ object SVMModelObjView extends ObjListView.Factory {
       lazy val actionCreate: Action = Action("Create") {
         updateConfig()
         val numCoeff = mNumFeatures.getNumber.intValue >> 1
-        val procOpt = if (mList.isEmpty) None else impl.cursor.step { implicit tx =>
+        val procOpt: Option[Processor[Trained[S]]] = if (mList.isEmpty) None else impl.cursor.step { implicit tx =>
           implicit val itx: InTxn = tx.peer
           if (processor().nonEmpty) None else {
             val n: List[Negatum[S]] = mList.iterator.map(_.negatumH()).toList
@@ -343,7 +344,7 @@ object SVMModelObjView extends ObjListView.Factory {
               if (processor.single().contains(p))
                 defer(ggProgress.value = res.toInt)
           }
-          import de.sciss.synth.proc.SoundProcesses.executionContext
+          import ExecutionContext.Implicits.global
           p.onComplete { tr =>
             impl.cursor.step { implicit tx =>
               implicit val itx: InTxn = tx.peer
