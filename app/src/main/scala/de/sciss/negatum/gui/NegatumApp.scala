@@ -128,10 +128,13 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
     // ---- type extensions ----
 
     Mellite.initTypes()
-    Negatum .init()
-    SVMModel.init()
-    SOM     .init()
-    NegatumObjView.init()
+    Negatum         .init()
+    SVMModel        .init()
+    SOM             .init()
+
+    NegatumObjView  .init()
+    SVMModelObjView .init()
+    SOMObjView      .init()
 
     if (config.hibernation) {
       Hibernation.registerActions()

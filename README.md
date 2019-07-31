@@ -20,12 +20,35 @@ To contact the author, send an email to `contact at sciss.de`
 This project builds against Scala 2.13, 2.12, 2.11 using sbt.
 To build the application:
 
-    sbt assembly
+    sbt negatum-app/assembly
+    
+Then to run:
+
+    java -jar app/Negatum.jar
 
 ## project structure
 
-An attempt at isolating components that could go "as a library" into Mellite is made in the module `core`,
-whereas "the rest", including the piece from "Imperfect...", is contained in module `app`.
+The project is now a hybrid between Mellite "extensions" and the original sound piece, with the
+following sbt modules in place:
+
+ - `negatum-core`: contains the SoundProcesses based objects for genetic programming (`Negatum`)
+ - `negatum-views`: contains the Mellite views for core (e.g. `NegatumView`)
+ - `negatum-app`: contains a standalone application with the original sound piece 
+ 
+In the future, more abstractions (SOM, SVM) will be moved to the core module.
+The dependency structure is now a bit tricky:
+
+ - `negatum-core` depends on SoundProcesses
+ - `negatum-views` depends on `negatum-core` and `mellite-core`
+ - `mellite` (full) depends on `negatum-views`
+ - `negatum` (full) depends on `mellite` (full)
+ 
+So when building with locally published artifacts, the build/publish order is:
+
+ 1. `mellite-core`
+ 2. `negatum-views`
+ 3. `mellite` (full)
+ 4. `negatum` (full)
 
 ## contributing
 

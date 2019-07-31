@@ -16,8 +16,8 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
-    val fscape                  = "2.27.1-SNAPSHOT"
-    val soundProcesses          = "3.29.4-SNAPSHOT"
+    val fscape                  = "2.28.0"
+    val soundProcesses          = "3.30.0"
   }
   val views = new {
     val mellite                 = "2.38.0-SNAPSHOT"
@@ -92,7 +92,8 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
       "com.datumbox"      %  "libsvm"                     % deps.app.libSVM,
       "com.github.scopt"  %% "scopt"                      % deps.app.scopt,           // parsing command line options
       "de.sciss"          %% "scalacollider-trace"        % deps.test.trace % Test
-    )
+    ),
+    packagedArtifacts := Map.empty    // don't send this to Sonatype
   )
 
 // ---- assembly ----

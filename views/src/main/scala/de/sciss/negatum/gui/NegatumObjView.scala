@@ -21,11 +21,10 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Sys
-import de.sciss.mellite.{ObjListView, ObjView}
-import de.sciss.mellite.gui.impl.audiocue.AudioCueObjView
 import de.sciss.mellite.impl.WindowImpl
 import de.sciss.mellite.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
 import de.sciss.mellite.impl.objview.ObjViewImpl
+import de.sciss.mellite.{AudioCueObjView, ObjListView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.processor.Processor.Aborted
 import de.sciss.synth.proc.{AudioCue, Universe}
@@ -46,14 +45,14 @@ object NegatumObjView extends ObjListView.Factory {
 
   def init(): Unit = {
     _init
-    SVMModelObjView.init()
-    SOMObjView     .init()
+//    SVMModelObjView.init()
+//    SOMObjView     .init()
   }
 
   def mkListView[S <: Sys[S]](obj: Negatum[S])(implicit tx: S#Tx): NegatumObjView[S] with ObjListView[S] =
     new Impl(tx.newHandle(obj)).initAttrs(obj)
 
-  final case class Config[S <: stm.Sys[S]](name: String, audioCue: AudioCueObjView.Config1[S])
+  final case class Config[S <: stm.Sys[S]](name: String, audioCue: AudioCueObjView.SingleConfig[S])
 
   def canMakeObj: Boolean = true
 
