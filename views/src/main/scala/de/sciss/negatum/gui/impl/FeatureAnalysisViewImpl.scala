@@ -17,32 +17,30 @@ import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
 
-import de.sciss.audiowidgets.Transport
+import de.sciss.audiowidgets.{Transport => GUITransport}
 import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
+import de.sciss.lucre.stm.{Cursor, Disposable, Obj}
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.{Synth, Sys, Txn}
+import de.sciss.lucre.synth.Sys
 import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.FeatureAnalysisView
 import de.sciss.negatum.impl.{Evaluation, Weight}
-import de.sciss.sonogram
 import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{AudioCue, Proc, Universe}
+import de.sciss.synth.proc.{AudioCue, Proc, Transport, Universe}
 import de.sciss.synth.{SynthGraph, proc}
-import de.sciss.{desktop, numbers}
+import de.sciss.{desktop, numbers, sonogram}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import javax.swing.{JComponent, JTable, TransferHandler}
 
 import scala.annotation.switch
 import scala.collection.mutable
-import scala.concurrent.stm.{Ref, atomic}
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.swing.Table.IntervalMode
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Graphics2D, ProgressBar, ScrollPane, Table}
@@ -50,29 +48,49 @@ import scala.util.Failure
 
 object FeatureAnalysisViewImpl {
   def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): FeatureAnalysisView[S] = {
-    new Impl[S](tx.newHandle(negatum), negatum.template.value).init(negatum)
+    val sys = tx.system
+    type I  = sys.I
+    implicit val iCsr : Cursor[I] = sys.inMemory
+    implicit val itx  : I#Tx      = sys.inMemoryTx(tx)
+    val ui  = Universe.dummy[I]
+    val tr  = Transport[I](ui)
+    val pi  = Proc[I]()
+    tr.addObject(pi)
+    implicit val bridge: S#Tx => I#Tx = sys.inMemoryTx
+    new Impl[I, S](tx.newHandle(negatum), negatum.template.value, tr, itx.newHandle(pi)).init(negatum)
   }
 
-  private final class Impl[S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]],
-                                        template: AudioCue)(implicit val universe: Universe[S])
+  private final class Impl[I <: Sys[I], S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]], template: AudioCue,
+                                                     playT: Transport[I], playH: stm.Source[I#Tx, Proc[I]])
+                                                    (implicit val universe: Universe[S], bridge: S#Tx => I#Tx)
     extends FeatureAnalysisView[S] with ComponentHolder[Component] {
 
     type C = Component
 
     @volatile
-    private[this] var _disposedGUI = false
+    private[this] var _disposedGUI  = false
+
+    private[this] var disposables   = List.empty[Disposable[S#Tx]]
+
+//    private[this] val synthRef      = Ref(Option.empty[Synth])
+//    private[this] val synthRef      = Ref(Option.empty[Synth])
+
+    val sonConfig                   = sonogram.OverviewManager.Config()
+    private[this] var sonMgr: sonogram.OverviewManager = _
+
+    private[this] var ggTable: Table = _
 
     def dispose()(implicit tx: S#Tx): Unit = {
-      import TxnLike.peer
-      synthRef.swap(None).foreach(_.dispose())
+//      import TxnLike.peer
+      implicit val itx: I#Tx = bridge(tx)
+      playT.dispose()
+//      synthRef.swap(None).foreach(_.dispose())
       disposables.foreach(_.dispose())
       deferTx {
         _disposedGUI = true
         sonMgr.dispose()
-      }
+      } (tx)
     }
-
-    private[this] var disposables = List.empty[Disposable[S#Tx]]
 
     // XXX TODO --- could observe obj for changes in name, fitness, def
     private[this] def mkRow(obj: Obj[S], fIdx: Int)(implicit tx: S#Tx): Option[Row] = obj match {
@@ -228,11 +246,6 @@ object FeatureAnalysisViewImpl {
         }
     }
 
-    private[this] val synthRef = Ref(Option.empty[Synth])
-
-    val sonConfig   = sonogram.OverviewManager.Config()
-    private[this] var sonMgr: sonogram.OverviewManager = _
-
     private object TH extends TransferHandler {
       // ---- export ----
 
@@ -387,8 +400,6 @@ object FeatureAnalysisViewImpl {
 //      }
 //    }
 
-    private[this] var ggTable: Table = _
-
     private def selectedRow: Option[Row] = ggTable.selection.rows.headOption
       .map { viewRowIdx =>
         val rowIdx = ggTable.peer.convertRowIndexToModel(viewRowIdx)
@@ -472,20 +483,20 @@ object FeatureAnalysisViewImpl {
       val ggToggleSel = GUI.toolButton(actionToggle, raphael.Shapes.CheckboxSelected, "Toggle Selection (T)")
 
       def actionStop(): Unit =
-        atomic { implicit itx =>
-          implicit val tx: Txn = Txn.wrap(itx)
-          synthRef.swap(None).foreach(_.dispose())
+        cursor.step { implicit tx =>
+          implicit val itx: I#Tx = bridge(tx)
+          playT.stop()
         }
 
       def actionPlay(): Unit =
         selectedRow.foreach { r =>
-          atomic { implicit itx =>
-            implicit val tx: Txn = Txn.wrap(itx)
-            Application.auralSystem.serverOption.foreach { s =>
-              synthRef.swap(None).foreach(_.dispose())
-              val syn = Synth.play(r.graph, nameHint = Some(r.name))(s.defaultGroup)
-              synthRef() = Some(syn)
-            }
+          cursor.step { implicit tx =>
+            implicit val itx: I#Tx = bridge(tx)
+            val proc = playH()
+            playT.stop()
+            proc.graph() = r.graph
+            playT.seek(0L)
+            playT.play()
           }
         }
 
@@ -597,15 +608,18 @@ object FeatureAnalysisViewImpl {
         loop(clumps)
       }
 
-      val ggTransport = Transport.makeButtonStrip(Seq(
-        Transport.Stop(actionStop()), Transport.Play(actionPlay())
+      val ggTransport = GUITransport.makeButtonStrip(Seq(
+        GUITransport.Stop(actionStop()), GUITransport.Play(actionPlay())
       ))
-      val ggStop = ggTransport.button(Transport.Stop).get
-      val ggPlay = ggTransport.button(Transport.Play).get
+      val ggStop = ggTransport.button(GUITransport.Stop).get
+      val ggPlay = ggTransport.button(GUITransport.Play).get
 
       desktop.Util.addGlobalKey(ggToggleSel, KeyStrokes.plain + 't')
       ggStop.peer.getActionMap.put("click", Action(null) {
-        val isPlaying = synthRef.single.get.isDefined
+        val isPlaying = cursor.step { implicit tx =>
+          implicit val itx: I#Tx = bridge(tx)
+          playT.isPlaying
+        }
         (if (isPlaying) ggStop else ggPlay).doClick()
       }.peer)
       ggStop.peer.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStrokes.plain + ' ', "click")

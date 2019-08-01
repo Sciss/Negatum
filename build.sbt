@@ -2,7 +2,7 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.8.0",
+  version             := "0.8.1",
   organization        := "de.sciss",
   scalaVersion        := "2.12.8",
   crossScalaVersions  := Seq("2.13.0", "2.12.8", "2.11.12"),

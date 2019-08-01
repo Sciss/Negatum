@@ -133,7 +133,7 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
     SVMModel        .init()
     SOM             .init()
 
-    NegatumObjView  .init()
+//    NegatumObjView  .init()
     SVMModelObjView .init()
     SOMObjView      .init()
 

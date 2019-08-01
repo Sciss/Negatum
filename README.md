@@ -1,6 +1,7 @@
 # Negatum
 
 [![Build Status](https://travis-ci.org/Sciss/Negatum.svg?branch=master)](https://travis-ci.org/Sciss/Negatum)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.12)
 
 ## statement
 
@@ -49,6 +50,15 @@ So when building with locally published artifacts, the build/publish order is:
  2. `negatum-views`
  3. `mellite` (full)
  4. `negatum` (full)
+
+## linking
+
+To use this project as a library, use the following artifact:
+
+    libraryDependencies += "de.sciss" %% "negatum-core"  % v
+    libraryDependencies += "de.sciss" %% "negatum-views" % v
+
+The current version `v` is `"0.8.1"`
 
 ## contributing
 
