@@ -18,7 +18,8 @@ To contact the author, send an email to `contact at sciss.de`
 
 ## requirements / installation
 
-This project builds against Scala 2.13, 2.12, 2.11 using sbt.
+This project builds against Scala 2.13, 2.12 using sbt (the last version to support Scala 2.11 was 0.8.1).
+
 To build the application:
 
     sbt negatum-app/assembly
@@ -58,7 +59,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"0.8.1"`
+The current version `v` is `"0.9.0"`
 
 ## contributing
 
