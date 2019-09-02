@@ -25,7 +25,7 @@ import de.sciss.span.Span
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Action, AudioCue, Ensemble, FadeSpec, ObjKeys, Proc, TimeRef, Timeline, graph}
+import de.sciss.synth.proc.{Action, ActionRaw, AudioCue, Ensemble, FadeSpec, ObjKeys, Proc, TimeRef, Timeline, graph}
 import de.sciss.synth.{Curve, SynthGraph}
 
 object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
@@ -41,7 +41,7 @@ object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {
         val Some(artIn)     = attr.$[Artifact]  ("file-in")
         val Some(artOut)    = attr.$[Artifact]  ("file-out")
         val Some(side)      = attr.$[BooleanObj]("side")
-        val Some(restart)   = attr.$[Action]    ("restart")
+        val Some(restart)   = attr.$[ActionRaw] ("restart")
         val Some(ensPlay)   = attr.$[Ensemble]  ("ens-play")
 
         val Some(sideVar)   = BooleanObj.Var.unapply(side)

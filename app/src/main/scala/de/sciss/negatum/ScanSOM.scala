@@ -25,7 +25,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object ScanSOM {
-//  private[this] lazy val init: Unit = Action.registerPredef(id, body)
+//  private[this] lazy val init: Unit = ActionRaw.registerPredef(id, body)
 
   sealed trait ConfigLike {
     /** Mean duration in seconds. */

@@ -20,6 +20,7 @@ import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.{logComp, logCompErr, mkDateString}
 import de.sciss.synth.io.AudioFile
+import de.sciss.synth.proc
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc._
@@ -112,8 +113,8 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
   }
 
   // step 2
-  def negatumDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]])
-                               (implicit tx: S#Tx, universe: Universe[S]): Unit = {
+  def negatumDone[S <: SSys[S]](selfH: stm.Source[S#Tx, ActionRaw[S]])
+                               (implicit tx: S#Tx, universe: proc.Universe[S]): Unit = {
     val self = selfH()
     val attr = self.attr
     logComp("Negatum done.")
@@ -143,8 +144,8 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
   }
 
   // step 3
-  def svmDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]], svmNum: Int)
-                           (implicit tx: S#Tx, universe: Universe[S]): Unit = {
+  def svmDone[S <: SSys[S]](selfH: stm.Source[S#Tx, ActionRaw[S]], svmNum: Int)
+                           (implicit tx: S#Tx, universe: proc.Universe[S]): Unit = {
     val dsl = DSL[S]
     import dsl._
 
@@ -187,8 +188,8 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
   }
 
   // step 4
-  def somDone[S <: SSys[S]](selfH: stm.Source[S#Tx, Action[S]], som: SOM[S], somNum: Int)
-                          (implicit tx: S#Tx, universe: Universe[S]): Unit = {
+  def somDone[S <: SSys[S]](selfH: stm.Source[S#Tx, ActionRaw[S]], som: SOM[S], somNum: Int)
+                          (implicit tx: S#Tx, universe: proc.Universe[S]): Unit = {
     val dsl = DSL[S]
     import dsl._
     val self = selfH()
@@ -202,13 +203,13 @@ object ActionNegatumRecDone extends NamedAction("negatum-rec-done") {
     val Some(ensSOMPlay) = attr.$[Ensemble]("som-play")
     if (ensSOMPlay.folder.isEmpty && somCount >= 100) {
       logComp(s"SOM addition sufficient to start timeline creation")
-      val Some(aSOMTimeline) = attr.$[Action]("som-timeline")
+      val Some(aSOMTimeline) = attr.$[ActionRaw]("som-timeline")
       val univ1 = Action.Universe(aSOMTimeline)
       aSOMTimeline.execute(univ1)
     }
 
     logComp("Restarting negatum process")
-    val Some(aNegStart) = attr.$[Action]("restart")
+    val Some(aNegStart) = attr.$[ActionRaw]("restart")
     val univ1 = Action.Universe(aNegStart)
     aNegStart.execute(univ1)
   }

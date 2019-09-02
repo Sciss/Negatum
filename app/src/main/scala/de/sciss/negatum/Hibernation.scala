@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.numbers.Implicits._
-import de.sciss.synth.proc.{Action, Workspace, graph}
+import de.sciss.synth.proc.{Action, ActionRaw, Workspace, graph}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
@@ -52,7 +52,7 @@ object Hibernation {
   def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
     implicit val tx: TxnLike = TxnLike.wrap(itx)
     actions.foreach { a =>
-      Action.registerPredef(a.name, a)
+      ActionRaw.registerPredef(a.name, a)
     }
   }
 

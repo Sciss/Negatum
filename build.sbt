@@ -82,7 +82,7 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
     name        := s"$baseName-App",
     description := "Negatum sound piece / stand alone application",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "mellite"                    % deps.app.mellite,
+      "de.sciss"          %% "mellite-app"                % deps.app.mellite,
       "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,
       "de.sciss"          %% "scalacolliderugens-core"    % deps.app.scalaColliderUGens,
       "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.scalaColliderUGens,

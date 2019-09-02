@@ -30,7 +30,7 @@ import de.sciss.mellite._
 import de.sciss.mellite.{Application, GUI, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralSystem, Code, Durable, Ensemble, SynthGraphObj, Universe, Workspace}
+import de.sciss.synth.proc.{AuralSystem, Code, Durable, Ensemble, Runner, SynthGraphObj, Universe, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.swing.Action
@@ -200,11 +200,14 @@ object NegatumApp extends SwingApplicationImpl[Application.Document]("Negatum") 
         } { ens =>
           ens.play()
           val ensFrame = EnsembleFrame[S](ens)
-          val ensView  = ensFrame.ensembleView
-          val ensT     = ensView.transport
-          ensT.stop()
-          ensT.seek(0L)
-          ensT.play()
+          val r         = Runner(ensFrame.ensembleView.ensemble)
+//          val ensView  = ensFrame.ensembleView
+//          val ensT     = ensView.transport
+//          ensT.stop()
+//          ensT.seek(0L)
+//          ensT.play()
+          r.stop()
+          r.run()
         }
     }
   }

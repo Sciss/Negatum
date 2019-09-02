@@ -16,7 +16,7 @@ package de.sciss.negatum
 import de.sciss.lucre.artifact.ArtifactLocation
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, Ensemble, Proc}
+import de.sciss.synth.proc.{Action, ActionRaw, Ensemble, Proc}
 import Composition.{logComp, mkDateString}
 import de.sciss.synth.proc.Implicits._
 
@@ -31,7 +31,7 @@ object ActionNegatumRec extends NamedAction("negatum-rec") {
     val Some(ens)     = attr.$[Ensemble]        ("context")
     val Some(p)       = attr.$[Proc]            ("proc")
     val Some(dir)     = attr.$[ArtifactLocation]("dir")
-    val Some(done)    = attr.$[Action]          ("done")
+    val Some(done)    = attr.$[ActionRaw]       ("done")
 
     import de.sciss.negatum.impl.Util._
     import DefaultRandom._

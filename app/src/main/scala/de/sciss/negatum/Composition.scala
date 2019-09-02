@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.{Action, Durable, Workspace}
+import de.sciss.synth.proc.{Action, ActionRaw, Durable, Workspace}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
@@ -156,7 +156,7 @@ object Composition {
   def registerActions(): Unit = TxnExecutor.defaultAtomic { implicit itx =>
     implicit val tx: TxnLike = TxnLike.wrap(itx)
     actions.foreach { a =>
-      Action.registerPredef(a.name, a)
+      ActionRaw.registerPredef(a.name, a)
     }
   }
 

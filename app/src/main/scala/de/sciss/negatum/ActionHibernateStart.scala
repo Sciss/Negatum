@@ -16,11 +16,10 @@ package de.sciss.negatum
 import de.sciss.lucre.artifact.ArtifactLocation
 import de.sciss.lucre.expr.BooleanObj
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.negatum.Hibernation.mkDateString
+import de.sciss.negatum.Hibernation.{logComp, mkDateString}
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, Ensemble, Proc}
 import de.sciss.synth.proc.Implicits._
-import Hibernation.logComp
+import de.sciss.synth.proc.{ActionRaw, Ensemble, Proc}
 
 object ActionHibernateStart extends NamedAction("hibernate-start") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {
@@ -28,7 +27,7 @@ object ActionHibernateStart extends NamedAction("hibernate-start") {
     import dsl._
     import universe._
     val attr          = self.attr
-    val Some(done)    = attr.$[Action]          ("done")
+    val Some(done)    = attr.$[ActionRaw]       ("done")
     val Some(ensList) = attr.$[Ensemble]        ("context")
     val Some(p)       = attr.$[Proc]            ("proc")
     val Some(dir)     = attr.$[ArtifactLocation]("dir")

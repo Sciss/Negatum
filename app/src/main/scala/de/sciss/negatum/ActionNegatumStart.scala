@@ -16,7 +16,7 @@ package de.sciss.negatum
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.logComp
-import de.sciss.synth.proc.Action
+import de.sciss.synth.proc.{Action, ActionRaw}
 import de.sciss.synth.proc.Action.Universe
 
 object ActionNegatumStart extends NamedAction("negatum-start") {
@@ -26,8 +26,8 @@ object ActionNegatumStart extends NamedAction("negatum-start") {
     import universe._
     val attr            = self.attr
     val Some(fNegatum)  = attr.$[Folder]("negatum-folder")
-    val Some(rec)       = attr.$[Action]("rec")
-    val Some(done)      = attr.$[Action]("done")
+    val Some(rec)       = attr.$[ActionRaw]("rec")
+    val Some(done)      = attr.$[ActionRaw]("done")
     val hasOpenNeg = fNegatum.lastOption.exists {
       case n: Negatum[S] =>
         val count = n.attrInt("count", 0)

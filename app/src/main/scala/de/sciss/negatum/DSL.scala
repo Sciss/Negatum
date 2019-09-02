@@ -114,9 +114,9 @@ object DSLAux {
 //  private val registeredActions = TSet.empty[String]
 
   final class ActionBuilder[S <: Sys[S]](private val name: String) extends AnyVal {
-    def in(f: Folder[S])(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
+    def in(f: Folder[S])(body: Action.Body)(implicit tx: S#Tx): ActionRaw[S] = {
       val exists = f.iterator.collectFirst {
-        case a: Action[S] if a.name == name => a
+        case a: ActionRaw[S] if a.name == name => a
       }
       exists.getOrElse {
         val a = mkAction(body)
@@ -125,21 +125,21 @@ object DSLAux {
       }
     }
 
-    def at(kv: (Obj[S], String))(body: Action.Body)(implicit tx: S#Tx): Action /* .Var */ [S] = {
+    def at(kv: (Obj[S], String))(body: Action.Body)(implicit tx: S#Tx): ActionRaw /* .Var */ [S] = {
       val (obj, key) = kv
       val attr = obj.attr
-      attr.$[Action](key).getOrElse {
+      attr.$[ActionRaw](key).getOrElse {
         val a = mkAction(body)
         attr.put(key, a)
         a
       }
     }
 
-    private def mkAction(body: Action.Body)(implicit tx: S#Tx): Action[S] = {
+    private def mkAction(body: Action.Body)(implicit tx: S#Tx): ActionRaw[S] = {
 //      if (registeredActions.add(name)(tx.peer)) {
 //        Action.registerPredef(name, body)
 //      }
-      val a = Action.predef[S](name)
+      val a = ActionRaw.predef[S](name)
       a.name = name
       a
     }
