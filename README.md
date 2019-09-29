@@ -59,7 +59,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"0.9.0"`
+The current version `v` is `"0.10.0"`
 
 ## contributing
 
