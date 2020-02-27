@@ -2,7 +2,7 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.12.0",
+  version             := "0.12.1",
   organization        := "de.sciss",
   scalaVersion        := "2.12.10",
   crossScalaVersions  := Seq("2.13.1", "2.12.10"),
@@ -16,11 +16,13 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
-    val fscape                  = "2.33.0"
+    val fscape                  = "2.33.5"
+    val melliteCore             = "2.42.2"
     val soundProcesses          = "3.33.0"
   }
   val views = new {
-    val mellite                 = "2.42.0"
+    def melliteCore: String     = core.melliteCore
+    val melliteApp              = "2.43.3"
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }
@@ -29,9 +31,9 @@ lazy val deps = new {
     val fileUtil                = "1.1.3"
     val kollFlitz               = "0.2.3"
     val libSVM                  = "3.23"
-    def mellite: String         = views.mellite
+    def melliteApp: String      = views.melliteApp
     val scalaCollider           = "1.28.5"
-    val scalaColliderUGens      = "1.19.5"
+    val scalaColliderUGens      = "1.19.6"
     val scopt                   = "3.7.1"
   }
   val test = new {
@@ -54,6 +56,7 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
     name        := s"$baseName-core",
     description := "Genetic Algorithms (core abstractions)",
     libraryDependencies ++= Seq(
+      "de.sciss"        %% "mellite-core"               % deps.core.melliteCore,
       "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
       "de.sciss"        %% "filecache-txn"              % deps.core.fileCache,
       "de.sciss"        %% "fscape-lucre"               % deps.core.fscape,
@@ -68,7 +71,7 @@ lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
     name        := s"$baseName-views",
     description := "Genetic Algorithms (GUI components)",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "mellite-core"               % deps.views.mellite,
+      "de.sciss"        %% "mellite-core"               % deps.views.melliteCore,
       "de.sciss"        %% "sonogramoverview"           % deps.views.sonogram,
       "de.sciss"        %% "soundprocesses-views"       % deps.views.soundProcesses,
     )
@@ -82,7 +85,7 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
     name        := s"$baseName-App",
     description := "Negatum sound piece / stand alone application",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "mellite-app"                % deps.app.mellite,
+      "de.sciss"          %% "mellite-app"                % deps.app.melliteApp,
       "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,
       "de.sciss"          %% "scalacolliderugens-core"    % deps.app.scalaColliderUGens,
       "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.scalaColliderUGens,

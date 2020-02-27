@@ -15,7 +15,9 @@ package de.sciss.negatum
 package impl
 
 import de.sciss.file._
+import de.sciss.lucre.swing.LucreSwing.defer
 import de.sciss.lucre.synth.InMemory
+import de.sciss.mellite.{Application, Prefs}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.numbers
 import de.sciss.processor.Processor
@@ -24,7 +26,8 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.control.NonFatal
 
 object Evaluation {
   private[this] val inMemory = InMemory()
@@ -79,7 +82,19 @@ object Evaluation {
 
   def bounce1(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
              (implicit exec: ExecutionContext): Future[Any] = {
-    def invoke() = bounce2(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
+    def invoke(): Future[Any] = {
+      val p = Promise[Any]()
+      defer {
+        try {
+          val res = bounce2(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
+          p.completeWith(res)
+        } catch {
+          case NonFatal(ex) =>
+            p.failure(ex)
+        }
+      }
+      p.future
+    }
 
     def recover(f: Future[Any]): Future[Any] =
       f.recoverWith {
@@ -94,6 +109,7 @@ object Evaluation {
     proc3
   }
 
+  // must run on EDT because of preferences
   private def bounce2(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
                      (implicit exec: ExecutionContext): Processor[Any] = {
     type I  = InMemory
@@ -110,13 +126,16 @@ object Evaluation {
 
     val bncCfg              = Bounce.Config[I]
     bncCfg.group            = objH :: Nil
-    // val audioF           = File.createTemp(prefix = "muta_bnc", suffix = ".aif")
+    Application.applyAudioPreferences(bncCfg.server, bncCfg.client, useDevice = false, pickPort = false)
     val sCfg                = bncCfg.server
     sCfg.nrtOutputPath      = audioF.path
     sCfg.inputBusChannels   = 0
     sCfg.outputBusChannels  = 1
-    sCfg.wireBuffers        = 1024 // higher than default
-    sCfg.blockSize          = 64   // keep it compatible to real-time. XXX TODO --- should be configurable to match Mellite preferences
+    val numPrivate = Prefs.audioNumPrivate.getOrElse(Prefs.defaultAudioNumPrivate)
+    import numbers.Implicits._
+    sCfg.audioBusChannels   = (sCfg.outputBusChannels + numPrivate).nextPowerOfTwo
+    sCfg.wireBuffers        = math.max(sCfg.wireBuffers, 1024) // possibly higher than default
+//    sCfg.blockSize          = 64   // configurable through Mellite preferences now
     sCfg.sampleRate         = sampleRate
     // bc.init : (S#Tx, Server) => Unit
     bncCfg.span             = Span(0L, (duration * TimeRef.SampleRate).toLong)

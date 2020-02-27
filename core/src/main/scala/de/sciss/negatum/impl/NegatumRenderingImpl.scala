@@ -60,7 +60,8 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
 //    DEBUG_ARRAY = pop
 
     var i = 0
-    while (i < popIn.size) {
+    val sz0 = math.min(popIn.size, population)
+    while (i < sz0) {
       pop(i) = popIn(i)
       i += 1
     }
