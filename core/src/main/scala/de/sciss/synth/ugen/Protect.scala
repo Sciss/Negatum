@@ -2,7 +2,7 @@
  *  Protect.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -40,10 +40,6 @@ object Protect {
       case (_ , false) if !hiThresh.isInfinity && (loOk || loThresh.isInfinity) =>
         in.min(hiThresh)
       case (false, false) if !hiThresh.isInfinity && !loThresh.isInfinity =>
-        // XXX TODO: Is this still the case in 2019?
-        // N.B. Clip.ar seems to be broken
-        // inGE0.clip(loThresh, hiThresh)
-//        in.max(loThresh).min(hiThresh)
         in.clip(loThresh, hiThresh)
 
       case _ => in

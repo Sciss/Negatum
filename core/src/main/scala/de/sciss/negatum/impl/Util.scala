@@ -2,7 +2,7 @@
  *  Util.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -19,7 +19,6 @@ import de.sciss.synth.ugen.{BinaryOpUGen, UnaryOpUGen}
 
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.language.higherKinds
 import scala.util.Random
 
 object Util {

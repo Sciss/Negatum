@@ -1,7 +1,7 @@
 # Negatum
 
 [![Build Status](https://travis-ci.org/Sciss/Negatum.svg?branch=master)](https://travis-ci.org/Sciss/Negatum)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.12)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.13)
 
 ## statement
 
@@ -11,7 +11,7 @@ the same name that was part of the exhibition "Imperfect Reconstruction".
 In the future, its extensions to SoundProcesses will become part of
 SoundProcesses/Mellite.
 
-This project is (C)opyright 2016&ndash;2019 by Hanns Holger Rutz. All rights reserved.
+This project is (C)opyright 2016&ndash;2020 by Hanns Holger Rutz. All rights reserved.
 It is released under the [GNU Affero General Public License](https://git.iem.at/sciss/Negatum/raw/master/LICENSE) v3+
 and comes with absolutely no warranties. 
 To contact the author, send an email to `contact at sciss.de`
@@ -59,7 +59,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"0.12.1"`
+The current version `v` is `"0.13.0"`
 
 ## contributing
 

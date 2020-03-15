@@ -1,1 +1,1 @@
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.9") // cross-platform standalone
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.10") // cross-platform standalone

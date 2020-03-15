@@ -2,9 +2,9 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.12.1",
+  version             := "0.13.0-SNAPSHOT",
   organization        := "de.sciss",
-  scalaVersion        := "2.12.10",
+  scalaVersion        := "2.13.1",
   crossScalaVersions  := Seq("2.13.1", "2.12.10"),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xsource:2.13", "-encoding", "utf8", "-Xlint"),
   homepage            := Some(url(s"https://git.iem.at/sciss/${name.value}")),
@@ -16,13 +16,13 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
-    val fscape                  = "2.33.5"
-    val melliteCore             = "2.42.2"
-    val soundProcesses          = "3.33.0"
+    val fscape                  = "2.34.0-SNAPSHOT"
+    val melliteCore             = "2.44.0-SNAPSHOT"
+    val soundProcesses          = "3.34.0-SNAPSHOT"
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
-    val melliteApp              = "2.43.3"
+    val melliteApp              = "2.44.0-SNAPSHOT"
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }
