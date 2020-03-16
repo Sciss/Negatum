@@ -2,7 +2,7 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.13.0-SNAPSHOT",
+  version             := "0.13.0",
   organization        := "de.sciss",
   scalaVersion        := "2.13.1",
   crossScalaVersions  := Seq("2.13.1", "2.12.10"),
@@ -16,13 +16,13 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
-    val fscape                  = "2.34.0-SNAPSHOT"
-    val melliteCore             = "2.44.0-SNAPSHOT"
-    val soundProcesses          = "3.34.0-SNAPSHOT"
+    val fscape                  = "2.34.0"
+    val melliteCore             = "2.44.0"
+    val soundProcesses          = "3.34.0"
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
-    val melliteApp              = "2.44.0-SNAPSHOT"
+    val melliteApp              = "2.44.0"
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }
