@@ -90,7 +90,7 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
     // audio DP: volume
     // video HH: shutdown, reboot
     // raspis  : shutdown, reboot
-    // master volume
+    // main volume
     // shutdown all
 
     def shutdownRaspi(): Unit =
@@ -232,7 +232,7 @@ final class ImperfectFrame(mainFrame: MainFrame, defaultRattleVolume: Double, de
 
     updateVolumes()
     // david's computer occasionally crashes and then comes back with full
-    // volume; so if stuff had master turned down, this results in people
+    // volume; so if stuff had main volume turned down, this results in people
     // believing the sound is on, when only half of it is audible. We simply
     // resend the fader positions once every minute.
     val timer = new Timer(60 * 1000, Swing.ActionListener(_ => updateVolumes()))
