@@ -23,6 +23,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util.scramble
+import de.sciss.synth.proc.Bounce.ServerFailed
 import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{AudioCue, Proc, SynthGraphObj}
 import de.sciss.synth.{SynthGraph, proc}
@@ -105,7 +106,13 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
               val message = if (ex.isInstanceOf[TimeoutException]) {
                 if (REPORT_TIME_OUT) "timeout" else ""
               } else {
-                s"failed - ${ex.getClass.getSimpleName}${if (ex.getMessage == null) "" else " - " + ex.getMessage}"
+                val base = s"failed - ${ex.getClass.getSimpleName}${if (ex.getMessage == null) "" else " - " + ex.getMessage}"
+                if (ex.isInstanceOf[ServerFailed]) base else {
+                  val st = ex.getStackTrace
+                  if (st.isEmpty) base else {
+                    s"$base\n  at ${st(0)}"
+                  }
+                }
               }
               if (!message.isEmpty) Console.err.println(s"Negatum: evaluation $message")
               if (STORE_BAD_DEFINITIONS) {
