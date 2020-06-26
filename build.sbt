@@ -2,7 +2,7 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val commonSettings = Seq(
-  version             := "0.15.0",
+  version             := "0.15.1-SNAPSHOT",
   organization        := "de.sciss",
   scalaVersion        := "2.13.1",
   crossScalaVersions  := Seq("2.13.1", "2.12.11"),
@@ -16,9 +16,9 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
-    val fscape                  = "2.36.0"
+    val fscape                  = "2.36.1"
     val melliteCore             = "2.45.0"
-    val soundProcesses          = "3.35.0"
+    val soundProcesses          = "3.35.5"
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
@@ -28,12 +28,12 @@ lazy val deps = new {
   }
   val app = new {
     val dsp                     = "1.3.2"
-    val fileUtil                = "1.1.3"
+    val fileUtil                = "1.1.4"
     val kollFlitz               = "0.2.3"
     val libSVM                  = "3.23"
     def melliteApp: String      = views.melliteApp
     val scalaCollider           = "1.28.5"
-    val scalaColliderUGens      = "1.19.6"
+    val scalaColliderUGens      = "1.19.7"
     val scopt                   = "3.7.1"
   }
   val test = new {

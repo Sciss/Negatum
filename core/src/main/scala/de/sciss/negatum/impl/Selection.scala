@@ -18,20 +18,21 @@ import de.sciss.negatum.Negatum.Config
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.collection.{IndexedSeq => CVec}
 import scala.util.Random
 
 object Selection {
   /* Runs the selection stage of the algorithm, using `all` inputs which
    * are chromosomes paired with their fitness values.
    */
-  def apply(config: Config, all: IndexedSeq[Individual])(implicit random: Random): Vec[Individual] = {
+  def apply(config: Config, all: CVec[Individual])(implicit random: Random): Vec[Individual] = {
     import config.breed.selectFraction
     val pop   = all.size
     val n     = (pop * selectFraction + 0.5).toInt
     val outB  = Vector.newBuilder[Individual]
     outB.sizeHint(n)
 
-    @tailrec def loop(rem: Int, in: IndexedSeq[Individual]): Unit =
+    @tailrec def loop(rem: Int, in: CVec[Individual]): Unit =
       if (rem == 0 || in.isEmpty) () else {
         val sum     = in.iterator.map(_.fitness).sum
         val rem1    = rem - 1
@@ -64,7 +65,7 @@ object Selection {
   }
 
   /* Selects the best matching chromosomes. */
-  def elitism(config: Config, all: IndexedSeq[Individual]): Vec[Individual] = {
+  def elitism(config: Config, all: CVec[Individual]): Vec[Individual] = {
     import config.breed.{elitism => numElitism}
     if (numElitism == 0) Vector.empty else {
       // ensure that elite choices are distinct (don't want to accumulate five identical chromosomes over time)!

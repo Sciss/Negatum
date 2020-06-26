@@ -14,7 +14,7 @@ SoundProcesses/Mellite.
 This project is (C)opyright 2016&ndash;2020 by Hanns Holger Rutz. All rights reserved.
 It is released under the [GNU Affero General Public License](https://git.iem.at/sciss/Negatum/raw/main/LICENSE) v3+
 and comes with absolutely no warranties. 
-To contact the author, send an email to `contact at sciss.de`
+To contact the author, send an e-mail to `contact at sciss.de`
 
 ## requirements / installation
 
@@ -59,7 +59,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"0.15.0"`
+The current version `v` is `"0.15.1"`
 
 ## contributing
 

@@ -43,8 +43,16 @@ object Chromosome {
     g
   }
 
-  def mkUGen()(implicit random: Random): Vertex.UGen = {
+  def XXXmkUGen()(implicit random: Random): Vertex.UGen = {
     val spec = choose(UGens.seq)
+    Vertex.UGen(spec)
+  }
+
+  def mkUGen(config: Config)(implicit random: Random): Vertex.UGen = {
+    val setNot  = config.gen.allowedUGens
+    val seqFull = UGens.seq
+    val seq     = if (setNot.isEmpty) seqFull else seqFull.filter(spec => setNot.contains(spec.name))
+    val spec    = choose(seq)
     Vertex.UGen(spec)
   }
 

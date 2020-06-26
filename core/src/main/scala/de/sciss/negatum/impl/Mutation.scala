@@ -144,7 +144,7 @@ object Mutation {
       pred.addVertex(v)
 
     } else {
-      val v   = Chromosome.mkUGen()
+      val v   = Chromosome.mkUGen(config)
       val t1  = pred.addVertex(v)
       Chromosome.completeUGenInputs(config, t1, v)
     }
@@ -201,7 +201,7 @@ object Mutation {
         else
           Vertex.Constant(f * expRand(0.9, 1.0/0.9).toFloat) // gradual change
       case _ =>
-        Chromosome.mkUGen()
+        Chromosome.mkUGen(config)
     }
 
     val oldInletNames: Vec[String] = vOld match {
