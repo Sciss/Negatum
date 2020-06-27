@@ -1,8 +1,11 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
+lazy val coreVersion = "0.15.1"
+lazy val appVersion  = "0.16.0-SNAPSHOT"
+
 lazy val commonSettings = Seq(
-  version             := "0.15.1-SNAPSHOT",
+  version             := coreVersion,
   organization        := "de.sciss",
   scalaVersion        := "2.13.1",
   crossScalaVersions  := Seq("2.13.1", "2.12.11"),
@@ -22,7 +25,6 @@ lazy val deps = new {
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
-    val melliteApp              = "2.45.0"
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }
@@ -31,7 +33,7 @@ lazy val deps = new {
     val fileUtil                = "1.1.4"
     val kollFlitz               = "0.2.3"
     val libSVM                  = "3.23"
-    def melliteApp: String      = views.melliteApp
+    val melliteApp              = "2.48.0-SNAPSHOT"
     val scalaCollider           = "1.28.5"
     val scalaColliderUGens      = "1.19.7"
     val scopt                   = "3.7.1"
@@ -84,6 +86,7 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
   .settings(
     name        := s"$baseName-App",
     description := "Negatum sound piece / stand alone application",
+    version     := appVersion,
     libraryDependencies ++= Seq(
       "de.sciss"          %% "mellite-app"                % deps.app.melliteApp,
       "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,

@@ -58,7 +58,7 @@ object ParamRanges {
   val binOrDyn  : Dynamic = Dynamic.Or (Dynamic.In("a"), Dynamic.In("b"))
   val binAndDyn : Dynamic = Dynamic.And(Dynamic.In("a"), Dynamic.In("b"))
 
-  val map: Map[String, Info] = Map(
+  var map: Map[String, Info] = Map(
     // ---- Chaos ----
     "CuspN" -> Info(dynamic = ifOver("freq"), params = Map(
       "freq" -> Spec(),
