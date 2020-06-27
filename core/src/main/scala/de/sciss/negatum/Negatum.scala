@@ -92,11 +92,26 @@ object Negatum extends Obj.Type {
                numMFCC    : Int     = 42,
                maxBoost   : Double  = 10.0,
                timeWeight : Double  = 0.3
-    ): Evaluation = new Impl(minFreq = minFreq, maxFreq = maxFreq, numMFCC = numMFCC, numMel = numMel,
-      maxBoost = maxBoost, timeWeight = timeWeight)
+             ): Evaluation =
+      apply2(minFreq = minFreq, maxFreq = maxFreq, numMel = numMel, maxBoost = maxBoost,
+        timeWeight = timeWeight)
+
+    //
+    def apply2(
+               minFreq    : Int     = 32,
+               maxFreq    : Int     = 16000,
+               numMel     : Int     = 42,
+               numMFCC    : Int     = 42,
+               maxBoost   : Double  = 10.0,
+               timeWeight : Double  = 0.3,
+               timeOut    : Double  = 6.0,
+    ): Evaluation =
+      new Impl(minFreq = minFreq, maxFreq = maxFreq, numMFCC = numMFCC, numMel = numMel,
+        maxBoost = maxBoost, timeWeight = timeWeight, timeOut = timeOut)
 
     private class Impl(val minFreq: Int, val maxFreq: Int, val numMFCC: Int, val numMel: Int, val maxBoost: Double,
-                       val timeWeight: Double) extends Evaluation
+                       val timeWeight: Double, override val timeOut: Double)
+      extends Evaluation
   }
   trait Evaluation {
     def minFreq     : Int
@@ -105,6 +120,8 @@ object Negatum extends Obj.Type {
     def numMel      : Int
     def maxBoost    : Double
     def timeWeight  : Double
+
+    def timeOut     : Double = 6.0
   }
 
   object Penalty {
