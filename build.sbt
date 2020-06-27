@@ -2,7 +2,7 @@ lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
 lazy val coreVersion = "0.15.1"
-lazy val appVersion  = "0.16.0-SNAPSHOT"
+lazy val appVersion  = "0.15.1"
 
 lazy val commonSettings = Seq(
   version             := coreVersion,
@@ -33,7 +33,7 @@ lazy val deps = new {
     val fileUtil                = "1.1.4"
     val kollFlitz               = "0.2.3"
     val libSVM                  = "3.23"
-    val melliteApp              = "2.48.0-SNAPSHOT"
+    val melliteApp              = "2.45.0" // oh well
     val scalaCollider           = "1.28.5"
     val scalaColliderUGens      = "1.19.7"
     val scopt                   = "3.7.1"
