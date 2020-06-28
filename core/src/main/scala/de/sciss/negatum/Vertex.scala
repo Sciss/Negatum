@@ -80,13 +80,16 @@ object Vertex {
       private def mkBinOpUGen(ins: Vec[(AnyRef, Class[_])]): GE = {
         val id = info.name.substring(4).toInt
         val op = BinaryOpUGen.Op(id)
-        op.make(ins(0)._1.asInstanceOf[GE], ins(1)._1.asInstanceOf[GE])
+        // avoid issue #8 --- make sure we don't create a Constant here
+//        op.make(ins(0)._1.asInstanceOf[GE], ins(1)._1.asInstanceOf[GE])
+        BinaryOpUGen(op, ins(0)._1.asInstanceOf[GE], ins(1)._1.asInstanceOf[GE])
       }
 
       private def mkUnOpUGen(ins: Vec[(AnyRef, Class[_])]): GE = {
         val id = info.name.substring(3).toInt
         val op = UnaryOpUGen.Op(id)
-        op.make(ins(0)._1.asInstanceOf[GE])
+//        op.make(ins(0)._1.asInstanceOf[GE])
+        UnaryOpUGen(op, ins(0)._1.asInstanceOf[GE])
       }
 
       private def mkRegularUGen(ins: Vec[(AnyRef, Class[_])]): GE = {

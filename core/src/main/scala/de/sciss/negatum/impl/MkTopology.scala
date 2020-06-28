@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.negatum.Negatum.SynthGraphT
 import de.sciss.negatum.impl.Util.graphElemName
-import de.sciss.synth.ugen.{Constant, Mix, NegatumIn, NegatumOut, Protect}
+import de.sciss.synth.ugen.{Constant, GESeq, Mix, NegatumIn, NegatumOut, Protect}
 import de.sciss.synth.{GE, SynthGraph, UndefinedRate}
 import de.sciss.topology.Topology
 
@@ -50,9 +50,42 @@ object MkTopology {
       lz match {
         // `Nyquist` is not lazy, thus can never appear in the `sources`
         // case Nyquist() =>
-        case _: NegatumOut | _: NegatumIn /*| _: Protect */ =>
+
+        case Mix(GESeq(elems)) =>
+          // issue #8 -- since constants are always
+          // dropped from the mix when reconstructing the
+          // mix, convert them to DCs here. they may be
+          // the result of UnaryOpGen or BinaryOpUGen optimisation.
+          // (this should be fixed now, but we keep it to fix existing graphs)
+          // XXX TODO drop this in future versions
+          var dc = 0.0
+          elems.foreach {
+            case Constant(f) => dc += f
+            case _ =>
+          }
+          if (dc != 0.0) {
+            val f     = dc.toFloat
+            val c     = Constant(f)
+            val name  = "DC"
+            val spec  = UGens.mapAll(name)
+            val v     = Vertex.UGen(spec)
+            top       = top.addVertex(v)
+            vertexMap += lz -> v
+            if (mkMap) sourceMap += lzIdx -> v
+
+            {
+              val inp   = spec.inputs.head
+              val vIn   = Vertex.Constant(f)
+              top       = top.addVertex(vIn)
+              vertexMap += c -> vIn
+              val e = Edge(sourceVertex = v, targetVertex = vIn, inlet = inp.arg)
+              top   = top.addEdge(e).get._1
+            }
+          }
+
+        case _: NegatumOut | _: NegatumIn /*| _: Protect */ | _: Mix =>
+          // N.B.: `Mix` is only ever used to group the inputs before they go into `NegatumOut`
         case _: Protect if removeProtect =>
-        case _: Mix =>  // N.B.: `Mix` is only ever used to group the inputs before they go into `NegatumOut`
         case _ =>
           val name  = graphElemName(lz)
           val spec  = UGens.mapAll(name)

@@ -103,10 +103,13 @@ object Optimize extends ProcessorFactory {
         val sigB    = List.newBuilder[GE]
         graphIn.sources.iterator.zipWithIndex.foreach { case (lz, idxLazy) =>
           lz match {
-            // issue #8 -- capture DC constants in Mix
+            // issue #8 -- capture DC constants in Mix.
+            // the constants may be result of UnaryOpGen or BinaryOpUGen optimisation.
+            // (this should be fixed now, but we keep it to fix existing graphs)
+            // XXX TODO drop this in future versions
             case Mix(GESeq(elems)) =>
               elems.foreach {
-                case Constant(c) => rootsOutDC += c
+                case Constant(f) => rootsOutDC += f
                 case _ =>
               }
 

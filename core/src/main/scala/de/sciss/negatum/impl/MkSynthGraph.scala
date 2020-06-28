@@ -18,6 +18,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.negatum.Negatum.SynthGraphT
 import de.sciss.negatum.impl.ParamRanges.Dynamic
 import de.sciss.negatum.impl.Util.{getGraphRoots, graphElemName}
+import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.ugen.{Constant, Protect}
 import de.sciss.synth.{GE, SynthGraph, UGenSource, UGenSpec, UndefinedRate, ugen}
 
@@ -202,12 +203,18 @@ object MkSynthGraph {
       val vertices    = c.vertices
       val verticesRev = vertices.reverseIterator.toList
       val map         = loop(verticesRev, Map.empty)
-      val ugens       = vertices.collect {
+      val ugens: Vec[Vertex.UGen] = vertices.collect {
         case ugen: Vertex.UGen => ugen
       }
       if (ugens.nonEmpty) {
-        val roots = getGraphRoots(c)
-        val sig0: GE = if (roots.isEmpty) map(ugens.head /* choose(ugens) */) else Mix(roots.map(map.apply))
+        val roots: Vec[Vertex.UGen] = getGraphRoots(c)
+        val sig0: GE = if (roots.isEmpty) map(ugens.head /* choose(ugens) */) else {
+          val elems: Vec[GE] = roots.map(map.apply)
+//          if (elems.exists(_.isInstanceOf[Constant])) {
+//            println("CONSTANT!")
+//          }
+          Mix(elems)
+        }
         if (specialIO) {
           if (expandIO) NegatumOut.expand(sig0)
           else          NegatumOut.apply (sig0)
