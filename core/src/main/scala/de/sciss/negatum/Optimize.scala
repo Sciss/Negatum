@@ -94,12 +94,22 @@ object Optimize extends ProcessorFactory {
         }
         _graphIn
       }
+
+      var rootsOutDC = 0.0
+
       val graphAdd = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
         val sigB    = List.newBuilder[GE]
         graphIn.sources.iterator.zipWithIndex.foreach { case (lz, idxLazy) =>
           lz match {
+            // issue #8 -- capture DC constants in Mix
+            case Mix(GESeq(elems)) =>
+              elems.foreach {
+                case Constant(c) => rootsOutDC += c
+                case _ =>
+              }
+
             case _: NegatumOut | _: NegatumIn /*| _: Protect*/ | _: Mix =>  // these are filtered by MkTopology
 //            case p @ Protect(in, _, _, _) =>
 //              val idxPeer = graphIn.sources.indexOf(in)
@@ -224,8 +234,6 @@ object Optimize extends ProcessorFactory {
             }
             println()
           }
-
-          var rootsOutDC = 0.0
 
           val topOut0 = analysis.foldLeft(topIn) {
             case (topTemp, (ch, eth)) =>

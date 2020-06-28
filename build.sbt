@@ -22,6 +22,7 @@ lazy val deps = new {
     val fscape                  = "2.36.1"
     val melliteCore             = "2.45.0"
     val soundProcesses          = "3.35.5"
+    val ugens                   = "1.19.7"
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
@@ -35,7 +36,7 @@ lazy val deps = new {
     val libSVM                  = "3.23"
     val melliteApp              = "2.45.0" // oh well
     val scalaCollider           = "1.28.5"
-    val scalaColliderUGens      = "1.19.7"
+    def ugens: String           = core.ugens
     val scopt                   = "3.7.1"
   }
   val test = new {
@@ -58,10 +59,12 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
     name        := s"$baseName-core",
     description := "Genetic Algorithms (core abstractions)",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "mellite-core"               % deps.core.melliteCore,
-      "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
       "de.sciss"        %% "filecache-txn"              % deps.core.fileCache,
       "de.sciss"        %% "fscape-lucre"               % deps.core.fscape,
+      "de.sciss"        %% "mellite-core"               % deps.core.melliteCore,
+      "de.sciss"        %% "scalacolliderugens-core"    % deps.app.ugens,
+      "de.sciss"        %  "scalacolliderugens-spec"    % deps.app.ugens,
+      "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
     )
   )
 
@@ -90,8 +93,8 @@ lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
     libraryDependencies ++= Seq(
       "de.sciss"          %% "mellite-app"                % deps.app.melliteApp,
       "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,
-      "de.sciss"          %% "scalacolliderugens-core"    % deps.app.scalaColliderUGens,
-      "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.scalaColliderUGens,
+      "de.sciss"          %% "scalacolliderugens-core"    % deps.app.ugens,
+      "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.ugens,
       "de.sciss"          %% "scissdsp"                   % deps.app.dsp,
       "de.sciss"          %% "fileutil"                   % deps.app.fileUtil,   // (sbt bug)
       "de.sciss"          %% "kollflitz"                  % deps.app.kollFlitz,
