@@ -56,7 +56,7 @@ object OptimizeTest {
 
   val gIn2: SynthGraph = SynthGraph {
     import de.sciss.synth.ugen._
-    import de.sciss.synth.{GE, _}
+    import de.sciss.synth.GE
     NegatumIn()
     val freq_5          = Protect(21000.0, 0.1, 20000.0, false)
     val impulse         = Impulse.ar(freq = freq_5, phase = 0.0)

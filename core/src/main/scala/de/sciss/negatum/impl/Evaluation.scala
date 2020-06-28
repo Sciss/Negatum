@@ -18,22 +18,35 @@ import de.sciss.file._
 import de.sciss.lucre.swing.LucreSwing.defer
 import de.sciss.lucre.synth.InMemory
 import de.sciss.mellite.{Application, Prefs}
+import de.sciss.model.impl.ModelImpl
 import de.sciss.negatum.Negatum.Config
 import de.sciss.numbers
 import de.sciss.processor.Processor
+import de.sciss.processor.impl.FutureProxy
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.control.NonFatal
 
 object Evaluation {
   private[this] val inMemory = InMemory()
 
+  private final class Apply(bounce: Processor[Any], val peerFuture: Future[Float])
+                           (implicit exec: ExecutionContext)
+    extends Processor[Float]
+      with FutureProxy[Float]
+      with ModelImpl[Processor.Update[Float, Processor[Float]]] {
+
+    def abort() : Unit    = bounce.abort()
+    def progress: Double  = if (peerFuture.isCompleted) 1.0 else bounce.progress
+
+    peerFuture.onComplete(res => dispatch(Processor.Result(this, res)))
+  }
+
   def apply(config: Config, graph: SynthGraph, inputSpec: AudioFileSpec,
-            inputExtr: File, numVertices: Int)(implicit exec: ExecutionContext): Future[Float] = {
+            inputExtr: File, numVertices: Int)(implicit exec: ExecutionContext): Processor[Float] = {
     import config.eval
     import config.eval._
     import config.gen._
@@ -60,11 +73,12 @@ object Evaluation {
         sim0 - numVertices.clip(minVertices, maxVertices).linLin(minVertices, maxVertices, 0, pen)
       sim.toFloat // new Evaluated(cH, sim)
     }
-    res.onComplete(_ =>
-      audioF.delete())
-    res
-  }
+    res.onComplete { _ =>
+      audioF.delete()
+    }
 
+    new Apply(bnc0, res)
+  }
 
   /** Bounces a synth def to an audio file.nce
     *
@@ -74,39 +88,56 @@ object Evaluation {
     * @param duration0   the duration to bounce in seconds or `-1` to bounce the duration of the target sound
     */
   def bounce(graph: SynthGraph, audioF: File, inputSpec: AudioFileSpec, duration0: Double = -1)
-            (implicit exec: ExecutionContext): Future[Any] = {
+            (implicit exec: ExecutionContext): Processor[Any] = {
     val duration    = if (duration0 > 0) duration0 else inputSpec.numFrames.toDouble / inputSpec.sampleRate
     val sampleRate  = inputSpec.sampleRate.toInt
     bounce1(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
   }
 
-  def bounce1(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
-             (implicit exec: ExecutionContext): Future[Any] = {
-    def invoke(): Future[Any] = {
-      val p = Promise[Any]()
-      defer {
-        try {
-          val res = bounce2(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
-          p.completeWith(res)
-        } catch {
-          case NonFatal(ex) =>
-            p.failure(ex)
-        }
-      }
-      p.future
+  private final class DeferredBounce(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
+                                    (implicit exec: ExecutionContext)
+    extends Processor[Any]
+      with FutureProxy[Any]
+      with ModelImpl[Processor.Update[Any, Processor[Any]]] {
+
+    private[this] val p = Promise[Any]()
+
+    lazy val processor: Processor[Any] = {
+      val res = bounce2(graph = graph, audioF = audioF, duration = duration, sampleRate = sampleRate)
+      p.completeWith(res)
+      res
     }
 
-    def recover(f: Future[Any]): Future[Any] =
-      f.recoverWith {
-        case ex: Processor.Aborted => Future.failed(ex)
-        case _ => invoke()
-      }
+    defer {
+      processor
+    }
 
-    // scsynth seems to crash randomly. give it three chances
-    val proc1 = invoke()
-    val proc2 = recover(proc1)
-    val proc3 = recover(proc2)
-    proc3
+    protected def peerFuture: Future[Any] = p.future
+
+    def abort(): Unit = defer {
+      processor.abort()
+    }
+
+    def progress: Double = if (peerFuture.isCompleted) 1.0 else 0.0 // bounce.progress
+  }
+
+  def bounce1(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
+             (implicit exec: ExecutionContext): Processor[Any] = {
+
+    new DeferredBounce(graph = graph, audioF = audioF, duration = duration,
+      sampleRate = sampleRate)
+
+//    def recover(f: Future[Any]): Future[Any] =
+//      f.recoverWith {
+//        case ex: Processor.Aborted => Future.failed(ex)
+//        case _ => invoke()
+//      }
+
+//    // scsynth seems to crash randomly. give it three chances
+//    val proc1 = invoke()
+//    val proc2 = recover(proc1)
+//    val proc3 = recover(proc2)
+//    proc3
   }
 
   // must run on EDT because of preferences

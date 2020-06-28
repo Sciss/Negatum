@@ -103,6 +103,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
             Await.result(fut, Duration(config.eval.timeOut, TimeUnit.SECONDS))
           } catch {
             case NonFatal(ex) =>
+              fut.abort()
               val message = if (ex.isInstanceOf[TimeoutException]) {
                 if (REPORT_TIME_OUT) "timeout" else ""
               } else {

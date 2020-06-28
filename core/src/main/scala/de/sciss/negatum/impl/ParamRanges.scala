@@ -247,34 +247,34 @@ object ParamRanges {
     // ---- Filter ----
     "Ramp" -> Info(dynamic = ifUnder("dur"), params = Map(
       "in" -> Spec(dynamic = true),
-      "dur" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "dur" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "Lag" -> Info(dynamic = ifUnder("time", 1.0), params = Map(
       "in" -> Spec(dynamic = true),
-      "time" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "time" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "Lag2" -> Info(dynamic = ifUnder("time", 1.0), params = Map(
       "in" -> Spec(dynamic = true),
-      "time" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "time" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "Lag3" -> Info(dynamic = ifUnder("time", 1.0), params = Map(
       "in" -> Spec(dynamic = true),
-      "time" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "time" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "LagUD" -> Info(dynamic = Dynamic.And(Dynamic.IfUnder("timeUp", 1.0), Dynamic.IfUnder("timeUp", 1.0)), params = Map(
       "in" -> Spec(dynamic = true),
-      "timeUp" -> Spec(lo = 0.0, hi = 30.0), // arbitrary hi
-      "timeDown" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "timeUp" -> Spec(lo = 1.0e-6, hi = 30.0), // arbitrary hi
+      "timeDown" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "Lag2UD" -> Info(dynamic = Dynamic.And(Dynamic.IfUnder("timeUp", 1.0), Dynamic.IfUnder("timeUp", 1.0)), params = Map(
       "in" -> Spec(dynamic = true),
-      "timeUp" -> Spec(lo = 0.0, hi = 30.0), // arbitrary hi
-      "timeDown" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "timeUp" -> Spec(lo = 1.0e-6, hi = 30.0), // arbitrary hi
+      "timeDown" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "Lag3UD" -> Info(dynamic = Dynamic.And(Dynamic.IfUnder("timeUp", 1.0), Dynamic.IfUnder("timeUp", 1.0)), params = Map(
       "in" -> Spec(dynamic = true),
-      "timeUp" -> Spec(lo = 0.0, hi = 30.0), // arbitrary hi
-      "timeDown" -> Spec(lo = 0.0, hi = 30.0) // arbitrary hi
+      "timeUp" -> Spec(lo = 1.0e-6, hi = 30.0), // arbitrary hi
+      "timeDown" -> Spec(lo = 1.0e-6, hi = 30.0) // arbitrary hi
     )),
     "OnePole" -> Info(dynamic = true, params = Map(
       "in" -> Spec(dynamic = true),
@@ -296,12 +296,12 @@ object ParamRanges {
     )),
     "Decay" -> Info(dynamic = ifUnder("time", 1.0), params = Map(
       "in" -> Spec(dynamic = true),
-      "time" -> Spec(lo = 0.0, hi = 30.0) // hi arbitrary
+      "time" -> Spec(lo = 1.0e-6, hi = 30.0) // hi arbitrary
     )),
     "Decay2" -> Info(dynamic = Dynamic.And(Dynamic.IfUnder("attack", 1.0), Dynamic.IfUnder("release", 1.0)), params = Map(
       "in" -> Spec(dynamic = true),
-      "attack" -> Spec(lo = 0.0, hi = 30.0), // hi arbitrary
-      "release" -> Spec(lo = 0.0, hi = 30.0)  // hi arbitrary
+      "attack" -> Spec(lo = 1.0e-6, hi = 30.0), // hi arbitrary
+      "release" -> Spec(lo = 1.0e-6, hi = 30.0)  // hi arbitrary
     )),
     "Delay1" -> Info(dynamic = true, params = Map(
       "in" -> Spec(dynamic = true)
@@ -481,7 +481,7 @@ object ParamRanges {
     s"Bin_${BinaryOpUGen.Atan2    .id}" -> Info(dynamic = binOrDyn),
     s"Bin_${BinaryOpUGen.Hypot    .id}" -> Info(dynamic = binOrDyn),
     s"Bin_${BinaryOpUGen.Hypotx   .id}" -> Info(dynamic = binOrDyn),
-    s"Bin_${BinaryOpUGen.Pow      .id}" -> Info(dynamic = binOrDyn),
+    s"Bin_${BinaryOpUGen.Pow      .id}" -> Info(dynamic = binOrDyn, outLo = 0.0, params = Map("a" -> Spec(lo = 0.0))),
     s"Bin_${BinaryOpUGen.Ring1    .id}" -> Info(dynamic = binOrDyn),
     s"Bin_${BinaryOpUGen.Ring2    .id}" -> Info(dynamic = binOrDyn),
     s"Bin_${BinaryOpUGen.Ring3    .id}" -> Info(dynamic = binOrDyn),
@@ -507,16 +507,16 @@ object ParamRanges {
     s"Un_${UnaryOpUGen.Signum     .id}" -> Info(dynamic = unDyn, outLo = -1.0, outHi = 1.0),
     s"Un_${UnaryOpUGen.Squared    .id}" -> Info(dynamic = unDyn),
     s"Un_${UnaryOpUGen.Cubed      .id}" -> Info(dynamic = unDyn),
-    s"Un_${UnaryOpUGen.Sqrt       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Sqrt       .id}" -> Info(dynamic = unDyn, outLo = 0.0, params = Map("a" -> Spec(lo = 0.0))),
     s"Un_${UnaryOpUGen.Exp        .id}" -> Info(dynamic = unDyn),
     s"Un_${UnaryOpUGen.Midicps    .id}" -> Info(dynamic = unDyn),
-    s"Un_${UnaryOpUGen.Cpsmidi    .id}" -> Info(dynamic = unDyn),
-    s"Un_${UnaryOpUGen.Log        .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Cpsmidi    .id}" -> Info(dynamic = unDyn, params = Map("a" -> Spec(lo = 1.0e-6))),
+    s"Un_${UnaryOpUGen.Log        .id}" -> Info(dynamic = unDyn, params = Map("a" -> Spec(lo = 1.0e-6))),
     s"Un_${UnaryOpUGen.Sin        .id}" -> Info(dynamic = unDyn, outLo = -1.0, outHi = 1.0),
     s"Un_${UnaryOpUGen.Cos        .id}" -> Info(dynamic = unDyn, outLo = -1.0, outHi = 1.0),
     s"Un_${UnaryOpUGen.Tan        .id}" -> Info(dynamic = unDyn, outLo = -math.Pi, outHi = math.Pi),
-    s"Un_${UnaryOpUGen.Sinh       .id}" -> Info(dynamic = unDyn),
-    s"Un_${UnaryOpUGen.Cosh       .id}" -> Info(dynamic = unDyn),
+    s"Un_${UnaryOpUGen.Sinh       .id}" -> Info(dynamic = unDyn, params = Map("a" -> Spec(lo = -20.0, hi = 20.0))), // arbitrary
+    s"Un_${UnaryOpUGen.Cosh       .id}" -> Info(dynamic = unDyn, params = Map("a" -> Spec(lo = -20.0, hi = 20.0))), // arbitrary
     s"Un_${UnaryOpUGen.Tanh       .id}" -> Info(dynamic = unDyn),
     s"Un_${UnaryOpUGen.Distort    .id}" -> Info(dynamic = unDyn, outLo = -1.0, outHi = 1.0),
     s"Un_${UnaryOpUGen.Softclip   .id}" -> Info(dynamic = unDyn, outLo = -1.0, outHi = 1.0),
