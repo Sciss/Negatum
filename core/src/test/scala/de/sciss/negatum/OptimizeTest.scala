@@ -14,11 +14,11 @@ object OptimizeTest {
 
   def run(): Unit = {
     val oCfg = Optimize.Config(
-      graph         = gIn,
+      graph         = gIn2,
       sampleRate    = 44100,
       analysisDur   = 5.9,
       blockSize     = 64,
-      expandProtect = true, // true,
+      expandProtect = true,
       expandIO      = false, // true,
     )
     val o = Optimize(oCfg)
@@ -36,7 +36,7 @@ object OptimizeTest {
     }
   }
 
-  val gIn: SynthGraph = SynthGraph {
+  val gIn1: SynthGraph = SynthGraph {
     import de.sciss.synth.ugen._
     import de.sciss.synth.{GE, _}
     val inf = Float.PositiveInfinity
@@ -51,6 +51,16 @@ object OptimizeTest {
     val lFPulse         = LFPulse.ar(freq = 337.99133, iphase = 0.0, width = 1.0)
     val mix             = Mix(
       Seq[GE](min, lFDNoise3, 1.0, lFDNoise1, lFPulse))
+    NegatumOut(mix)
+  }
+
+  val gIn2: SynthGraph = SynthGraph {
+    import de.sciss.synth.ugen._
+    import de.sciss.synth.{GE, _}
+    NegatumIn()
+    val freq_5          = Protect(21000.0, 0.1, 20000.0, false)
+    val impulse         = Impulse.ar(freq = freq_5, phase = 0.0)
+    val mix             = Mix(Seq[GE](impulse))
     NegatumOut(mix)
   }
 }

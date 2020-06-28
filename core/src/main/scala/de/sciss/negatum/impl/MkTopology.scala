@@ -102,8 +102,8 @@ object MkTopology {
           spec.inputs.foreach { inp =>
             val m       = clazz.getMethod(inp.arg)
             val argVal  = m.invoke(lz) match {
-              case Protect(in, _, _, _)  => in
-              case p: Product            => p
+              case Protect(in, _, _, _) if removeProtect  => in
+              case p: Product                             => p
             }
             val arg     = spec.argMap(inp.arg)
             val df1     = arg.defaults.get(rate)

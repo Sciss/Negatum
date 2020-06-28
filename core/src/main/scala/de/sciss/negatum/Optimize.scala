@@ -87,8 +87,8 @@ object Optimize extends ProcessorFactory {
 
         val topTmp    = MkTopology(graphIn0)
         val _graphIn  = MkSynthGraph(topTmp, protect = true, expandProtect = true)
-        val sourceTmp = MkSynthGraphSource(_graphIn)
         if (DEBUG) {
+          val sourceTmp = MkSynthGraphSource(_graphIn)
           println("AFTER EXPAND-PROTECT:")
           println(sourceTmp)
         }
@@ -107,7 +107,7 @@ object Optimize extends ProcessorFactory {
             // the constants may be result of UnaryOpGen or BinaryOpUGen optimisation.
             // (this should be fixed now, but we keep it to fix existing graphs)
             // XXX TODO drop this in future versions
-            case Mix(GESeq(elems)) =>
+            case Mix(GESeq(elems)) if config.expandProtect => // XXX TODO this is all messy
               elems.foreach {
                 case Constant(f) => rootsOutDC += f
                 case _ =>
@@ -325,7 +325,11 @@ object Optimize extends ProcessorFactory {
 
           if (DEBUG) println(s"Removing ${protects.size} Protect elements now")
           val topOut4 = protects.foldLeft(topOut3) { (topTmp1, pr) =>
-            Chromosome.removeVertex(topTmp1, pr)
+//            Chromosome.removeVertex(topTmp1, pr)
+            val inSet = topTmp1.edgeMap(pr)
+            assert (inSet.size == 1)
+            val in = inSet.head.targetVertex
+            Chromosome.replaceVertex(topTmp1, pr, in)
           }
 
           @tailrec
