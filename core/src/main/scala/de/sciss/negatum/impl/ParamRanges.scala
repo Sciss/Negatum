@@ -167,52 +167,52 @@ object ParamRanges {
     // BufAllpassN, BufAllpassL, BufAllpassC
     "DelayN" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
     )),
     "DelayL" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
     )),
     "DelayC" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
     )),
     "CombN" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
     "CombL" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
     "CombC" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
     "AllpassN" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
     "AllpassL" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
     "AllpassC" -> Info(dynamic = true, params = Map(
       "in"            -> Spec(dynamic = true),
-      "maxDelayTime"  -> Spec(lo = 0.0, hi = 20.0, scalar = true),
+      "maxDelayTime"  -> Spec(lo = 0.01, hi = 20.0, scalar = true),
       "delayTime"     -> Spec(lo = 0.0, lessThan = "maxDelayTime")
       // "decayTime"     -> Spec()
     )),
