@@ -15,10 +15,10 @@ package de.sciss.negatum
 
 import de.sciss.lucre.artifact.ArtifactLocation
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.negatum.Composition.{logComp, mkDateString}
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, ActionRaw, Ensemble, Proc}
-import Composition.{logComp, mkDateString}
 import de.sciss.synth.proc.Implicits._
+import de.sciss.synth.proc.{ActionRaw, Ensemble, Proc}
 
 object ActionNegatumRec extends NamedAction("negatum-rec") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {

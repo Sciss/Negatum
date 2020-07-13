@@ -67,7 +67,7 @@ object ActionHibernateRecDone extends NamedAction("hibernate-rec-done") {
 
 //    implicit val ctx = GenContext[S]
 
-    implicit val u: Universe[S] = universe
+//    implicit val u: Universe[S] = universe
 
     /* val renderFSc = */ fsc.run(config)
 //    val selfH     = tx.newHandle(self)

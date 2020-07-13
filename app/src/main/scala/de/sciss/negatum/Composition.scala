@@ -17,11 +17,11 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import de.sciss.file._
-import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
 import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.{Action, ActionRaw, Durable, Workspace}
+import de.sciss.synth.proc.{ActionRaw, Durable, Workspace}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor

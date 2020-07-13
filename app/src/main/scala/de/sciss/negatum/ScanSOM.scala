@@ -115,7 +115,7 @@ object ScanSOM {
     import kollflitz.Ops._
     val trjLens = trajectory.mapPairs { (pt1, pt2) =>
       require(pt1.size == dim && pt2.size == dim)
-      val ds = (pt1, pt2).zipped.map { (c1, c2) => val d: Double = c1 - c2; d * d }
+      val ds = (pt1 zip pt2).map { case (c1, c2) => val d: Double = c1 - c2; d * d }
       math.sqrt(ds.sum)
     }
     val lensInt           = (0.0 +: trjLens).integrate // [Array[Double]](Numeric.DoubleIsFractional, breakOut)

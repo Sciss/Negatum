@@ -1,8 +1,7 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
-lazy val coreVersion = "0.15.3-SNAPSHOT"
-lazy val appVersion  = "0.15.2"
+lazy val coreVersion = "0.15.3"
 
 lazy val commonSettings = Seq(
   version             := coreVersion,
@@ -12,7 +11,6 @@ lazy val commonSettings = Seq(
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xsource:2.13", "-encoding", "utf8", "-Xlint"),
   homepage            := Some(url(s"https://git.iem.at/sciss/${name.value}")),
   licenses            := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
-  // resolvers           += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions       := updateOptions.value.withLatestSnapshots(false)
 )
 
@@ -20,8 +18,8 @@ lazy val deps = new {
   val core = new {
     val fileCache               = "0.5.1"
     val fscape                  = "2.36.1"
-    val melliteCore             = "2.45.0"
-    val soundProcesses          = "3.35.5"
+    val melliteCore             = "2.45.6"
+    val soundProcesses          = "3.35.7"
     val ugens                   = "1.19.7"
   }
   val views = new {
@@ -29,27 +27,21 @@ lazy val deps = new {
     val sonogram                = "1.11.2"
     def soundProcesses: String  = core.soundProcesses
   }
-  val app = new {
-    val dsp                     = "1.3.2"
-    val fileUtil                = "1.1.4"
-    val kollFlitz               = "0.2.3"
-    val libSVM                  = "3.23"
-    val melliteApp              = "2.45.0" // oh well
-    val scalaCollider           = "1.28.5"
-    def ugens: String           = core.ugens
-    val scopt                   = "3.7.1"
-  }
-  val test = new {
-    val trace                   = "0.4.0"
-  }
 }
 
 lazy val root = project.in(file("."))
-  .aggregate(core, views, app)
+  .aggregate(core, views)
+  .dependsOn(core, views)
+  .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name              := baseName,
     description       := "Genetic Algorithms",
-    packagedArtifacts := Map.empty
+//    packagedArtifacts := Map.empty
+    publishArtifact in (Compile, packageBin) := false, // there are no binaries
+    publishArtifact in (Compile, packageDoc) := false, // there are no javadocs
+    publishArtifact in (Compile, packageSrc) := false, // there are no sources
+    autoScalaLibrary := false,
   )
 
 lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
@@ -59,12 +51,12 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
     name        := s"$baseName-core",
     description := "Genetic Algorithms (core abstractions)",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "filecache-txn"              % deps.core.fileCache,
-      "de.sciss"        %% "fscape-lucre"               % deps.core.fscape,
-      "de.sciss"        %% "mellite-core"               % deps.core.melliteCore,
-      "de.sciss"        %% "scalacolliderugens-core"    % deps.app.ugens,
-      "de.sciss"        %  "scalacolliderugens-spec"    % deps.app.ugens,
-      "de.sciss"        %% "soundprocesses-core"        % deps.core.soundProcesses,
+      "de.sciss"  %% "filecache-txn"            % deps.core.fileCache,
+      "de.sciss"  %% "fscape-lucre"             % deps.core.fscape,
+      "de.sciss"  %% "mellite-core"             % deps.core.melliteCore,
+      "de.sciss"  %% "scalacolliderugens-core"  % deps.core.ugens,
+      "de.sciss"  %  "scalacolliderugens-spec"  % deps.core.ugens,
+      "de.sciss"  %% "soundprocesses-core"      % deps.core.soundProcesses,
     )
   )
 
@@ -76,50 +68,11 @@ lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
     name        := s"$baseName-views",
     description := "Genetic Algorithms (GUI components)",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "mellite-core"               % deps.views.melliteCore,
-      "de.sciss"        %% "sonogramoverview"           % deps.views.sonogram,
-      "de.sciss"        %% "soundprocesses-views"       % deps.views.soundProcesses,
+      "de.sciss"  %% "mellite-core"             % deps.views.melliteCore,
+      "de.sciss"  %% "sonogramoverview"         % deps.views.sonogram,
+      "de.sciss"  %% "soundprocesses-views"     % deps.views.soundProcesses,
     )
   )
-
-lazy val app = project.withId(s"$baseNameL-app").in(file("app"))
-  .dependsOn(core, views)
-  .settings(commonSettings)
-  .settings(assemblySettings)
-  .settings(
-    name        := s"$baseName-App",
-    description := "Negatum sound piece / stand alone application",
-    version     := appVersion,
-    libraryDependencies ++= Seq(
-      "de.sciss"          %% "mellite-app"                % deps.app.melliteApp,
-      "de.sciss"          %% "scalacollider"              % deps.app.scalaCollider,
-      "de.sciss"          %% "scalacolliderugens-core"    % deps.app.ugens,
-      "de.sciss"          %% "scalacolliderugens-plugins" % deps.app.ugens,
-      "de.sciss"          %% "scissdsp"                   % deps.app.dsp,
-      "de.sciss"          %% "fileutil"                   % deps.app.fileUtil,   // (sbt bug)
-      "de.sciss"          %% "kollflitz"                  % deps.app.kollFlitz,
-      "com.datumbox"      %  "libsvm"                     % deps.app.libSVM,
-      "com.github.scopt"  %% "scopt"                      % deps.app.scopt,           // parsing command line options
-      "de.sciss"          %% "scalacollider-trace"        % deps.test.trace % Test
-    ),
-    packagedArtifacts := Map.empty    // don't send this to Sonatype
-  )
-
-// ---- assembly ----
-
-lazy val assemblySettings = Seq(
-  mainClass             in assembly := Some("de.sciss.negatum.gui.NegatumApp"),
-  target                in assembly := baseDirectory.value,
-  assemblyJarName       in assembly := s"$baseName.jar",
-  assemblyMergeStrategy in assembly := {
-    case PathList("org", "xmlpull", _ @ _*)                   => MergeStrategy.first
-    case PathList("org", "w3c", "dom", "events", _ @ _*)      => MergeStrategy.first // bloody Apache Batik
-    case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
-    case x =>
-      val oldStrategy = (assemblyMergeStrategy in assembly).value
-      oldStrategy(x)
-  }
-)
 
 // ---- publishing ----
 
