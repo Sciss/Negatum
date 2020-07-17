@@ -18,6 +18,8 @@ package ugen
 import de.sciss.synth.proc.graph.Ops.stringToControl
 
 object NegatumOut {
+  /** If `true` (default), creates a mono-sum of the input signal */
+  var MONO      = true
   /** If `true` (default), adds a `clip2(1.0)` to the input signal */
   var CLIP      = true
   /** If `true` (default), wraps the input signal in a `LeakDC` UGen */
@@ -36,7 +38,7 @@ object NegatumOut {
   var FADE_IN   = false
 
   def expand(in: GE): Unit = {
-    val sig0  = Mix.mono(in)
+    val sig0  = if (!MONO)      in   else Mix.mono(in)
     val isOk  = CheckBadValues.ar(sig0, post = 0) sig_== 0
     val sig1  = Gate.ar(sig0, isOk)
     val sig2  = if (!CLIP     ) sig1 else sig1.clip2(1f)
