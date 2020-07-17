@@ -215,7 +215,7 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
     folder.clear()  // XXX TODO --- re-use existing processes?
     popOut.foreach { individual =>
       val gObj  = SynthGraphObj.newConst[S](individual.graph)
-      val p     = Proc[S]
+      val p     = Proc[S]()
       import proc.Implicits._
       val attr  = p.attr
       p.name    = mkGraphName(individual.graph)

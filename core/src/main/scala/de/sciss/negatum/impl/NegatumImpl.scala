@@ -173,7 +173,7 @@ object NegatumImpl {
     protected val targets: Targets[S] = Targets[S](tx0)
 
     val template  : AudioCue.Obj.Var[S] = AudioCue.Obj.newVar[S](temp0)
-    val population: Folder[S]           = Folder[S]
+    val population: Folder[S]           = Folder[S]()
     connect()(tx0)
   }
 

@@ -149,13 +149,13 @@ object Evaluation {
     // val exp = ExprImplicits[I]
 
     val (objH, _u) = inMemory.step { implicit tx =>
-      val proc      = Proc[I]
+      val proc      = Proc[I]()
       proc.graph()  = graph
       tx.newHandle(proc) -> Universe.dummy[I]
     }
     implicit val u: Universe[I] = _u
 
-    val bncCfg              = Bounce.Config[I]
+    val bncCfg              = Bounce.Config[I]()
     bncCfg.group            = objH :: Nil
     Application.applyAudioPreferences(bncCfg.server, bncCfg.client, useDevice = false, pickPort = false)
     val sCfg                = bncCfg.server

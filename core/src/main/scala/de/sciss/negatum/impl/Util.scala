@@ -89,7 +89,7 @@ object Util {
   }
 
   def expRand(lo: Double, hi: Double)(implicit random: Random): Double =
-    lo * math.exp(math.log(hi / lo) * random.nextDouble)
+    lo * math.exp(math.log(hi / lo) * random.nextDouble())
 
   def rangeRand(lo: Double, hi: Double)(implicit random: Random): Double =
     random.nextDouble() * (hi - lo) + lo

@@ -1,7 +1,7 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
-lazy val coreVersion = "0.15.4"
+lazy val coreVersion = "0.15.5"
 
 lazy val commonSettings = Seq(
   version             := coreVersion,

@@ -36,6 +36,9 @@ object Optimize extends ProcessorFactory {
 
   var DEBUG = false
 
+  /** maximum memory size in mega-bytes */
+  var MAX_MEM_SIZE_MB = 128
+
   /** The processor result.
     *
     * @param graph      the optimized graph
@@ -175,7 +178,7 @@ object Optimize extends ProcessorFactory {
       bCfg.server.wireBuffers       = 1024  // crude guess :-/
       bCfg.server.blockSize         = config.blockSize
       bCfg.group    = cursor.step { implicit tx =>
-        val p = Proc[S]
+        val p = Proc[S]()
         p.graph() = graphBnc
         tx.newHandle(p) :: Nil
       }
@@ -187,31 +190,118 @@ object Optimize extends ProcessorFactory {
       try {
         val afBnc = blocking { AudioFile.openRead(fBnc) }
         try {
+          val numChannels = afBnc.numChannels
+          val numFrames   = afBnc.numFrames.toInt
           assert (afBnc.numChannels == numSignals)
           checkAborted()
 
           // println(f"Bounce length: ${afBnc.numFrames / afBnc.sampleRate}%1.1f sec.")
-          val buf = afBnc.buffer(afBnc.numFrames.toInt)
-          blocking { afBnc.read(buf) }
+          // limit memory usage (for Pi)
+          val maxSamples  = MAX_MEM_SIZE_MB * (1024 * 1024 / 4)
+          val blockSize   = math.min(numFrames, math.max(8192, maxSamples / numChannels))
+          val hasBlocks   = blockSize < numFrames
+          val buf         = afBnc.buffer(blockSize)
           var analysisMap = Map.empty[Int, Either[Float, Int]]
-          for (ch1 <- buf.indices) {
-            val b1 = buf(ch1)
-            val v0 = b1(0)
-            if (b1.forall(_ == v0)) {
-              analysisMap += ch1 -> Left(v0)
-            } else {
-              for (ch2 <- 0 until ch1; if !analysisMap.contains(ch1) && !analysisMap.contains(ch2)) {
-                val b2 = buf(ch2)
-                if (b1 sameElements b2) {
-                  analysisMap += ch1 -> Right(ch2)
+          var off         = 0
+          val v0a         = new Array[Float   ](numChannels)
+          val chanDiff    = new Array[Boolean ](numChannels)
+          while (off < numFrames) {
+            val chunkSize = math.min(numFrames - off, blockSize)
+            blocking { afBnc.read(buf, 0, chunkSize) }
+            var ch1 = 0
+            while (ch1 < numChannels) {
+              if (!chanDiff(ch1)) {
+                val b1 = buf(ch1)
+                val v0 = if (off == 0) {
+                  val v = b1(0)
+                  v0a(ch1) = v
+                  v
+                } else {
+                  v0a(ch1)
+                }
+                var i = 0
+                while (i < chunkSize) {
+                  if (b1(i) == v0) {
+                    i += 1
+                  } else {
+                    chanDiff(ch1) = true
+                    i = chunkSize
+                  }
                 }
               }
+              ch1 += 1
             }
-
-            checkAborted()
-//            progress = 0.5 + 0.5 * (ch1 + 1) / numSignals
-            progress = 0.5 + 0.5 * ch1 / numSignals
+            off += chunkSize
           }
+
+          if (hasBlocks) {
+            blocking { afBnc.position = 0L }
+          }
+
+          val interDiff = new Array[Boolean](numChannels * numChannels)
+          off = 0
+          while (off < numFrames) {
+            val chunkSize = math.min(numFrames - off, blockSize)
+            if (hasBlocks) blocking { afBnc.read(buf, 0, chunkSize) }
+            var ch1 = 0
+            while (ch1 < numChannels) {
+              if (chanDiff(ch1)) {
+                val b1 = buf(ch1)
+                var ch2 = 0
+                while (ch2 < ch1) {
+                  if (chanDiff(ch2)) {
+                    val cc = ch1 * numChannels + ch2
+                    if (!interDiff(cc)) {
+                      val b2 = buf(ch2)
+                      var i = 0
+                      while (i < chunkSize) {
+                        if (b1(i) == b2(i)) {
+                          i += 1
+                        } else {
+                          interDiff(cc) = true
+                          i = chunkSize
+                        }
+                      }
+                    }
+                  }
+                  ch2 += 1
+                }
+              }
+              ch1 += 1
+            }
+            off += chunkSize
+          }
+
+          {
+            var ch1 = 0
+            while (ch1 < numChannels) {
+              if (!chanDiff(ch1)) {
+                analysisMap += ch1 -> Left(v0a(ch1))
+              } else {
+                // we find the _highest_ ch2 which is identical to ch1
+                // (I don't think this is necessary and we could have gone
+                // from low to high, but this matches an earlier implementation)
+                var ch2 = ch1 - 1 // 0
+                while (ch2 >= 0) { // < ch1
+                  if (chanDiff(ch2)) {
+                    val cc = ch1 * numChannels + ch2
+                    if (!interDiff(cc)) {
+                      analysisMap += ch1 -> Right(ch2)
+                      chanDiff(ch1) = false // "mark as replaced" so we do not encounter it later
+  //                    ch2 = ch1
+                      ch2 = 0
+                    }
+                  }
+                  ch2 -=1 // += 1
+                }
+              }
+              ch1 += 1
+            }
+          }
+
+          checkAborted()
+          progress = 0.9
+//          progress = 0.5 + 0.5 * ch1 / numSignals
 
           // _NOT_: highest indices first, so the successive indices
           // stay valid while we manipulate the topology
