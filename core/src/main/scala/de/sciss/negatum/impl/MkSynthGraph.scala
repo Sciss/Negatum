@@ -14,7 +14,7 @@
 package de.sciss.negatum
 package impl
 
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.negatum.Negatum.SynthGraphT
 import de.sciss.negatum.impl.ParamRanges.Dynamic
 import de.sciss.negatum.impl.Util.{getGraphRoots, graphElemName}
@@ -76,7 +76,7 @@ object MkSynthGraph {
     * @param expandIO      if `true`, expands the UGens that would otherwise be
     *                      encapsulated in the `NegatumIn` and `NegatumOut` graph element.
     */
-  def apply[S <: Sys[S]](c            : SynthGraphT,
+  def apply[T <: Txn[T]](c            : SynthGraphT,
                          specialIO    : Boolean = true,
                          protect      : Boolean = true,
                          mono         : Boolean = true,
@@ -152,10 +152,10 @@ object MkSynthGraph {
                     }
                     x match {
                       case UGenSpec.ArgumentValue.Boolean(v)    => ugen.Constant(if (v) 1 else 0)
-                      case UGenSpec.ArgumentValue.DoneAction(v) => ugen.Constant(v.id)
+                      case UGenSpec.ArgumentValue.DoneAction(v) => ugen.Constant(v.id.toFloat)
                       case UGenSpec.ArgumentValue.Float(v)      => ugen.Constant(v)
                       case UGenSpec.ArgumentValue.Inf           => ugen.Constant(Float.PositiveInfinity)
-                      case UGenSpec.ArgumentValue.Int(v)        => ugen.Constant(v)
+                      case UGenSpec.ArgumentValue.Int(v)        => ugen.Constant(v.toFloat)
                       case UGenSpec.ArgumentValue.Nyquist       => ugen.Nyquist()
                       case UGenSpec.ArgumentValue.String(v)     => UGenSource.stringArg(v)
                     }

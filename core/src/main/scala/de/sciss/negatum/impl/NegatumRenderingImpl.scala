@@ -18,9 +18,7 @@ import java.io.FileOutputStream
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import de.sciss.file._
-import de.sciss.lucre.expr.DoubleObj
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Folder, Sys}
+import de.sciss.lucre.{Cursor, DoubleObj, Folder, Source, Txn}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util.scramble
 import de.sciss.synth.proc.Bounce.ServerFailed
@@ -39,11 +37,11 @@ object NegatumRenderingImpl {
   var STORE_BAD_DEFINITIONS = false // if `true`, writes to `~Documents/temp/negatum_broken`
   var REPORT_TIME_OUT       = false
 }
-final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue,
-                                              popIn: Vec[Individual], populationH: stm.Source[S#Tx, Folder[S]],
+final class NegatumRenderingImpl[T <: Txn[T]](config: Config, template: AudioCue,
+                                              popIn: Vec[Individual], populationH: Source[T, Folder[T]],
                                               numIterations: Int)
-                                             (implicit protected val cursor: stm.Cursor[S])
-  extends RenderingImpl[S, Unit, Vec[Individual]] {
+                                             (implicit protected val cursor: Cursor[T])
+  extends RenderingImpl[T, Unit, Vec[Individual]] {
 
 //  NegatumRenderingImpl.instance = this
 
@@ -210,23 +208,23 @@ final class NegatumRenderingImpl[S <: Sys[S]](config: Config, template: AudioCue
 //    fillResult(DEBUG_ARRAY.toVector)
 //  }
 
-  protected def fillResult(popOut: Vec[Individual])(implicit tx: S#Tx): Unit = {
+  protected def fillResult(popOut: Vec[Individual])(implicit tx: T): Unit = {
     val folder = populationH()
     folder.clear()  // XXX TODO --- re-use existing processes?
     popOut.foreach { individual =>
-      val gObj  = SynthGraphObj.newConst[S](individual.graph)
-      val p     = Proc[S]()
+      val gObj  = SynthGraphObj.newConst[T](individual.graph)
+      val p     = Proc[T]()
       import proc.Implicits._
       val attr  = p.attr
       p.name    = mkGraphName(individual.graph)
       p.graph() = gObj
       if (!individual.fitness.isNaN) {
-        attr.put(Negatum.attrFitness, DoubleObj.newConst[S](individual.fitness))
+        attr.put(Negatum.attrFitness, DoubleObj.newConst[T](individual.fitness))
       }
       // XXX TODO --- should we store fitness or not?
       folder.addLast(p)
     }
   }
 
-  override def stop()(implicit tx: S#Tx): Unit = tx.afterCommit { _shouldStop = true }
+  override def stop()(implicit tx: T): Unit = tx.afterCommit { _shouldStop = true }
 }

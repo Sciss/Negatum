@@ -161,14 +161,15 @@ object Optimize extends ProcessorFactory {
       val graphBnc = graphIn.copy(sources = graphIn.sources ++ graphAdd.sources)
 
       type S = InMemory
+      type T = InMemory.Txn
       implicit val cursor: S = InMemory()
 
-      implicit val u: Universe[S] = cursor.step { implicit tx =>
+      implicit val u: Universe[T] = cursor.step { implicit tx =>
         Universe.dummy
       }
 
-      val bnc       = Bounce[S]()
-      val bCfg      = Bounce.Config[S]()
+      val bnc       = Bounce[T]()
+      val bCfg      = Bounce.Config[T]()
       bCfg.realtime = false
       bCfg.span     = Span(0L, (config.analysisDur * TimeRef.SampleRate).toLong)
       bCfg.server.outputBusChannels = numSignals
@@ -178,7 +179,7 @@ object Optimize extends ProcessorFactory {
       bCfg.server.wireBuffers       = 1024  // crude guess :-/
       bCfg.server.blockSize         = config.blockSize
       bCfg.group    = cursor.step { implicit tx =>
-        val p = Proc[S]()
+        val p = Proc[T]()
         p.graph() = graphBnc
         tx.newHandle(p) :: Nil
       }

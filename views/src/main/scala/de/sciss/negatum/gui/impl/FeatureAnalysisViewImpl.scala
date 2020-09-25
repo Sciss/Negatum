@@ -21,12 +21,10 @@ import de.sciss.audiowidgets.{Transport => GUITransport}
 import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj}
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Cursor, Disposable, Obj}
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{BooleanObj, Cursor, Disposable, DoubleObj, ListObj, Obj, Source}
 import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.FeatureAnalysisView
@@ -47,30 +45,29 @@ import scala.swing.{Action, BorderPanel, Component, FlowPanel, Graphics2D, Progr
 import scala.util.Failure
 
 object FeatureAnalysisViewImpl {
-  def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): FeatureAnalysisView[S] = {
-    val sys = tx.system
-    type I  = sys.I
-    implicit val iCsr : Cursor[I] = sys.inMemory
-    implicit val itx  : I#Tx      = sys.inMemoryTx(tx)
+  def apply[T <: Txn[T]](negatum: Negatum[T])(implicit tx: T, universe: Universe[T]): FeatureAnalysisView[T] = {
+    type I  = tx.I
+    implicit val iCsr : Cursor[I] = ??? // LUCRE4 tx.system.inMemory // sys.inMemory
+    implicit val itx  : I      = tx.inMemory // sys.inMemoryTx(tx)
     val ui  = Universe.dummy[I]
     val tr  = Transport[I](ui)
     val pi  = Proc[I]()
     tr.addObject(pi)
-    implicit val bridge: S#Tx => I#Tx = sys.inMemoryTx
-    new Impl[I, S](tx.newHandle(negatum), negatum.template.value, tr, itx.newHandle(pi)).init(negatum)
+    implicit val bridge: T => I = tx.inMemoryBridge // sys.inMemoryTx
+    new Impl[I, T](tx.newHandle(negatum), negatum.template.value, tr, itx.newHandle(pi)).init(negatum)
   }
 
-  private final class Impl[I <: Sys[I], S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]], template: AudioCue,
-                                                     playT: Transport[I], playH: stm.Source[I#Tx, Proc[I]])
-                                                    (implicit val universe: Universe[S], bridge: S#Tx => I#Tx)
-    extends FeatureAnalysisView[S] with ComponentHolder[Component] {
+  private final class Impl[I <: Txn[I], T <: Txn[T]](negatumH: Source[T, Negatum[T]], template: AudioCue,
+                                                     playT: Transport[I], playH: Source[I, Proc[I]])
+                                                    (implicit val universe: Universe[T], bridge: T => I)
+    extends FeatureAnalysisView[T] with ComponentHolder[Component] {
 
     type C = Component
 
     @volatile
     private[this] var _disposedGUI  = false
 
-    private[this] var disposables   = List.empty[Disposable[S#Tx]]
+    private[this] var disposables   = List.empty[Disposable[T]]
 
 //    private[this] val synthRef      = Ref(Option.empty[Synth])
 //    private[this] val synthRef      = Ref(Option.empty[Synth])
@@ -80,9 +77,9 @@ object FeatureAnalysisViewImpl {
 
     private[this] var ggTable: Table = _
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
 //      import TxnLike.peer
-      implicit val itx: I#Tx = bridge(tx)
+      implicit val itx: I = bridge(tx)
       playT.dispose()
 //      synthRef.swap(None).foreach(_.dispose())
       disposables.foreach(_.dispose())
@@ -93,8 +90,8 @@ object FeatureAnalysisViewImpl {
     }
 
     // XXX TODO --- could observe obj for changes in name, fitness, def
-    private[this] def mkRow(obj: Obj[S], fIdx: Int)(implicit tx: S#Tx): Option[Row] = obj match {
-      case p: Proc[S] =>
+    private[this] def mkRow(obj: Obj[T], fIdx: Int)(implicit tx: T): Option[Row] = obj match {
+      case p: Proc[T] =>
         val attr = p.attr
         import proc.Implicits._
         val fitness   = attr.$[DoubleObj ](Negatum.attrFitness ).map   (_.value).getOrElse(Double.NaN)
@@ -104,8 +101,8 @@ object FeatureAnalysisViewImpl {
 //            case Obj.AttrAdded(Negatum.attrSelected)
 //          }
 //        }
-        
-        val r = new Row(name = p.name, graph = p.graph.value, fitness = fitness, selected = selected, 
+
+        val r = new Row(name = p.name, graph = p.graph.value, fitness = fitness, selected = selected,
           folderIdx = fIdx)
         Some(r)
       case _ => None
@@ -142,11 +139,11 @@ object FeatureAnalysisViewImpl {
 //      def auralStopped()(implicit tx: Txn): Unit = ...
 //    }
 
-    def init(negatum: Negatum[S])(implicit tx: S#Tx): this.type = {
+    def init(negatum: Negatum[T])(implicit tx: T): this.type = {
       val f = negatum.population
       disposables ::= f.changed.react { implicit tx => upd =>
         upd.changes.foreach {
-          case stm.List.Added  (fIdx, elem) =>
+          case ListObj.Added  (fIdx, elem) =>
             val rowOpt = mkRow(elem, fIdx)
             deferTx {
               val d     = mTable.data
@@ -159,7 +156,7 @@ object FeatureAnalysisViewImpl {
               rowOpt.foreach(mTable.insert(ins, _))
             }
 
-          case stm.List.Removed(fIdx, _) =>
+          case ListObj.Removed(fIdx, _) =>
             deferTx {
               val d     = mTable.data
               val mIdx  = binarySearch(d)(_.folderIdx.compareTo(fIdx))
@@ -182,14 +179,14 @@ object FeatureAnalysisViewImpl {
     }
 
     private class Row(var name: String, var graph: SynthGraph, var fitness: Double, var selected: Boolean,
-                      var folderIdx: Int /* , observer: Disposable[S#Tx] */)
-      /* extends Disposable[S#Tx] */ {
-      
+                      var folderIdx: Int /* , observer: Disposable[S] */)
+      /* extends Disposable[S] */ {
+
       var rendered  = Option.empty[Future[AudioCue]]
       var son       = Option.empty[sonogram.Overview]
       var features  = Option.empty[Weight]
-      
-      // def dispose()(implicit tx: S#Tx): Unit = observer.dispose()  
+
+      // def dispose()(implicit tx: S): Unit = observer.dispose()
     }
 
     private[this] object mTable extends AbstractTableModel {
@@ -259,7 +256,7 @@ object FeatureAnalysisViewImpl {
           negatumH().population.get(sel.head.folderIdx).map { obj =>
             val view = ObjListView(obj)
             DragAndDrop.Transferable(ObjView.Flavor) {
-              new ObjView.Drag[S](universe, view)
+              new ObjView.Drag[T](universe, view)
             }
           } .orNull
         }
@@ -294,7 +291,7 @@ object FeatureAnalysisViewImpl {
           case ovr: sonogram.Overview => Some(ovr)
           case _ => None
         }
-        comp.sono = ovrOpt
+        comp.sonogram = ovrOpt
         comp
       }
     }
@@ -484,14 +481,14 @@ object FeatureAnalysisViewImpl {
 
       def actionStop(): Unit =
         cursor.step { implicit tx =>
-          implicit val itx: I#Tx = bridge(tx)
+          implicit val itx: I = bridge(tx)
           playT.stop()
         }
 
       def actionPlay(): Unit =
         selectedRow.foreach { r =>
           cursor.step { implicit tx =>
-            implicit val itx: I#Tx = bridge(tx)
+            implicit val itx: I = bridge(tx)
             val proc = playH()
             playT.stop()
             proc.graph() = r.graph
@@ -504,7 +501,7 @@ object FeatureAnalysisViewImpl {
         selectedRow.foreach { r =>
           cursor.step { implicit tx =>
             negatumH().population.apply(r.folderIdx) match {
-              case p: Proc[S] =>
+              case p: Proc[T] =>
                 import Application.compiler
                 CodeFrame.proc(p)
               case _ =>
@@ -617,7 +614,7 @@ object FeatureAnalysisViewImpl {
       desktop.Util.addGlobalKey(ggToggleSel, KeyStrokes.plain + 't')
       ggStop.peer.getActionMap.put("click", Action(null) {
         val isPlaying = cursor.step { implicit tx =>
-          implicit val itx: I#Tx = bridge(tx)
+          implicit val itx: I = bridge(tx)
           playT.isPlaying
         }
         (if (isPlaying) ggStop else ggPlay).doClick()

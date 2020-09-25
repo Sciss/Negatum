@@ -14,7 +14,7 @@ remaining in a dedicated `app` project.
 This project is (C)opyright 2016&ndash;2020 by Hanns Holger Rutz. All rights reserved.
 It is released under the [GNU Affero General Public License](https://git.iem.at/sciss/Negatum/raw/main/LICENSE) v3+
 and comes with absolutely no warranties. 
-To contact the author, send an e-mail to `contact at sciss.de`
+To contact the author, send an e-mail to `contact at sciss.de`.
 
 ## requirements / installation
 
@@ -35,7 +35,7 @@ The project is a hybrid between Mellite "extensions" and the original sound piec
 following sbt modules in place:
 
  - `negatum-core`: contains the SoundProcesses based objects for genetic programming (`Negatum`)
- - `negatum-views`: contains the Mellite views for core (e.g. `NegatumView`)
+ - `negatum-views`: contains the Mellite views for `core` (e.g. `NegatumView`)
  - `negatum-app`: (in separate directory `app`) contains a standalone application with the original sound piece 
  
 In the future, more abstractions (SOM, SVM) will be moved to the core module.
@@ -60,7 +60,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"0.15.5"`
+The current version `v` is `"1.0.0"`
 
 ## contributing
 

@@ -143,8 +143,8 @@ object Evaluation {
   // must run on EDT because of preferences
   private def bounce2(graph: SynthGraph, audioF: File, duration: Double, sampleRate: Int)
                      (implicit exec: ExecutionContext): Processor[Any] = {
-    type I  = InMemory
-    implicit val iCursor: I = inMemory
+    type I  = InMemory.Txn
+    implicit val iCursor: InMemory = inMemory
 
     // val exp = ExprImplicits[I]
 
@@ -168,7 +168,7 @@ object Evaluation {
     sCfg.wireBuffers        = math.max(sCfg.wireBuffers, 1024) // possibly higher than default
 //    sCfg.blockSize          = 64   // configurable through Mellite preferences now
     sCfg.sampleRate         = sampleRate
-    // bc.init : (S#Tx, Server) => Unit
+    // bc.init : (T, Server) => Unit
     bncCfg.span             = Span(0L, (duration * TimeRef.SampleRate).toLong)
     val bnc0                = Bounce[I]().apply(bncCfg)
     // tx.afterCommit {

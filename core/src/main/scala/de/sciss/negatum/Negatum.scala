@@ -13,11 +13,11 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.event.Publisher
-import de.sciss.lucre.stm.{Folder, Obj, Sys}
+import de.sciss.lucre.Publisher
+import de.sciss.lucre.{Folder, Obj, Txn}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.serial.{DataInput, TFormat}
 import de.sciss.synth.proc.{AudioCue, Universe}
 import de.sciss.topology.Topology
 
@@ -37,28 +37,28 @@ object Negatum extends Obj.Type {
 
   // ---- creation ----
 
-  def apply[S <: Sys[S]](template: AudioCue.Obj[S]   )(implicit tx: S#Tx): Negatum[S] = Impl[S](template)
-  def read [S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Negatum[S] = Impl.read(in, access)
+  def apply[T <: Txn[T]](template: AudioCue.Obj[T]   )(implicit tx: T): Negatum[T] = Impl[T](template)
+  def read [T <: Txn[T]](in: DataInput)(implicit tx: T): Negatum[T] = Impl.read(in)
 
   // ----
 
-  def attrToConfig[S <: Sys[S]](obj: Obj[S])(implicit tx: S#Tx): Config = Impl.attrToConfig(obj)
+  def attrToConfig[T <: Txn[T]](obj: Obj[T])(implicit tx: T): Config = Impl.attrToConfig(obj)
 
-  implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Negatum[S]] = Impl.serializer[S]
+  implicit def format[T <: Txn[T]]: TFormat[T, Negatum[T]] = Impl.format[T]
 
-  override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-    Impl.readIdentifiedObj(in, access)
+  override def readIdentifiedObj[T <: Txn[T]](in: DataInput)(implicit tx: T): Obj[T] =
+    Impl.readIdentifiedObj(in)
 
   // ---- events ----
 
   /** An update is a sequence of changes */
-  final case class Update[S <: Sys[S]](n: Negatum[S], changes: Vec[Change[S]])
+  final case class Update[T <: Txn[T]](n: Negatum[T], changes: Vec[Change[T]])
 
   /** A change is either a state change, or a scan or a grapheme change */
-  sealed trait Change[S <: Sys[S]]
+  sealed trait Change[T <: Txn[T]]
 
-  final case class TemplateChange  [S <: Sys[S]](peer: model.Change[AudioCue]) extends Change[S]
-  final case class PopulationChange[S <: Sys[S]](peer: Folder.Update[S])       extends Change[S]
+  final case class TemplateChange  [T <: Txn[T]](peer: model.Change[AudioCue]) extends Change[T]
+  final case class PopulationChange[T <: Txn[T]](peer: Folder.Update[T])       extends Change[T]
 
   object Generation {
     def apply(
@@ -267,12 +267,12 @@ object Negatum extends Obj.Type {
   /** Attribute for optimize settings: whether to expand IO elements. Type `Boolean` */
   final val attrOptExpandIO       = "optimize-expand-io"
 }
-trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
+trait Negatum[T <: Txn[T]] extends Obj[T] with Publisher[T, Negatum.Update[T]] {
 
   def run(config: Negatum.Config, iterations: Int = 1)
-         (implicit tx: S#Tx, universe: Universe[S]): Rendering[S, Unit]
+         (implicit tx: T, universe: Universe[T]): Rendering[T, Unit]
 
-  def template: AudioCue.Obj.Var[S]
+  def template: AudioCue.Obj.Var[T]
 
   /** The folder's children are of type `Proc`.
     *
@@ -280,5 +280,5 @@ trait Negatum[S <: Sys[S]] extends Obj[S] with Publisher[S, Negatum.Update[S]] {
     * map contains (after evaluation) the key `attrFitness`, and (after selection)
     * the attribute `attrSelected`.
     */
-  def population: Folder[S]
+  def population: Folder[T]
 }

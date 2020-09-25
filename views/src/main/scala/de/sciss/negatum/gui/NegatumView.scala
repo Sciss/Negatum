@@ -13,20 +13,19 @@
 
 package de.sciss.negatum.gui
 
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{Txn, synth}
 import de.sciss.mellite.UniverseView
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.impl.NegatumViewImpl
 import de.sciss.synth.proc.Universe
 
 object NegatumView {
-  def apply[S <: SSys[S]](n: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): NegatumView[S] =
+  def apply[T <: synth.Txn[T]](n: Negatum[T])(implicit tx: T, universe: Universe[T]): NegatumView[T] =
     NegatumViewImpl(n)
 }
-trait NegatumView[S <: Sys[S]] extends UniverseView[S] with View.Editable[S] {
-  def negatum(implicit tx: S#Tx): Negatum[S]
+trait NegatumView[T <: Txn[T]] extends UniverseView[T] with View.Editable[T] {
+  def negatum(implicit tx: T): Negatum[T]
 
 //  def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]
 }

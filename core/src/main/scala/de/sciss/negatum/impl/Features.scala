@@ -19,7 +19,7 @@ import de.sciss.filecache
 import de.sciss.filecache.{TxnConsumer, TxnProducer}
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph}
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
@@ -179,7 +179,7 @@ object Features {
   protected def any2stringadd: Any = ()
 
   object Config {
-    implicit object serializer extends ImmutableSerializer[Config] {
+    implicit object serializer extends ConstFormat[Config] {
       def write(v: Config, out: DataOutput): Unit = {
         import v._
         out.writeInt(stepSize )
@@ -284,7 +284,7 @@ object Features {
   // ---- private ----
 
   private object CacheValue {
-    implicit object serializer extends ImmutableSerializer[CacheValue] {
+    implicit object serializer extends ConstFormat[CacheValue] {
       def write(v: CacheValue, out: DataOutput): Unit = {
         out.writeLong(v.lastModified)
         out.writeUTF (v.feature.getCanonicalPath)

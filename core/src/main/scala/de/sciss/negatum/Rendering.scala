@@ -13,8 +13,8 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.event.Observable
-import de.sciss.lucre.stm.{Disposable, Sys}
+import de.sciss.lucre.Observable
+import de.sciss.lucre.{Disposable, Txn}
 import de.sciss.processor.Processor
 
 import scala.util.Try
@@ -33,15 +33,15 @@ object Rendering {
   val  Cancelled: Processor.Aborted.type  = Processor.Aborted
   type Cancelled                          = Processor.Aborted
 }
-trait Rendering[S <: Sys[S], A] extends Observable[S#Tx, Rendering.State[A]] with Disposable[S#Tx] {
-  def state(implicit tx: S#Tx): Rendering.State[A]
+trait Rendering[T <: Txn[T], A] extends Observable[T, Rendering.State[A]] with Disposable[T] {
+  def state(implicit tx: T): Rendering.State[A]
 
   /** Like `react` but invokes the function immediately with the current state. */
-  def reactNow(fun: S#Tx => Rendering.State[A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
+  def reactNow(fun: T => Rendering.State[A] => Unit)(implicit tx: T): Disposable[T]
 
   /** Cancels the process and does not keep results. */
-  def cancel()(implicit tx: S#Tx): Unit
+  def cancel()(implicit tx: T): Unit
 
   /** Stops process at the next possible moment, and return current results. */
-  def stop  ()(implicit tx: S#Tx): Unit
+  def stop  ()(implicit tx: T): Unit
 }

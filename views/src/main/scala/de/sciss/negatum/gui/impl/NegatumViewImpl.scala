@@ -15,13 +15,12 @@ package de.sciss.negatum.gui.impl
 
 import de.sciss.desktop.UndoManager
 import de.sciss.icons.raphael
-import de.sciss.lucre.expr.{BooleanObj, CellView, DoubleObj, IntObj}
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.TxnLike.{peer => txPeer}
+import de.sciss.lucre.Txn.{peer => txPeer}
+import de.sciss.lucre.expr.CellView
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.{BooleanObj, DoubleObj, IntObj, Source, synth}
 import de.sciss.mellite.{DragAndDrop, GUI, ObjView, Prefs}
 import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
 import de.sciss.negatum.{Negatum, Optimize, Rendering}
@@ -37,22 +36,22 @@ import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Dimension,
 import scala.util.{Failure, Success}
 
 object NegatumViewImpl {
-  def apply[S <: Sys[S]](n: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): NegatumView[S] = {
+  def apply[T <: synth.Txn[T]](n: Negatum[T])(implicit tx: T, universe: Universe[T]): NegatumView[T] = {
     implicit val undo: UndoManager = UndoManager()
-    val res = new Impl[S](tx.newHandle(n))
+    val res = new Impl[T](tx.newHandle(n))
     res.init(n)
   }
 
-  private final class Impl[S <: Sys[S]](negatumH: stm.Source[S#Tx, Negatum[S]])
-                                       (implicit val universe: Universe[S], val undoManager: UndoManager)
-    extends NegatumView[S] with ComponentHolder[Component] {
+  private final class Impl[T <: synth.Txn[T]](negatumH: Source[T, Negatum[T]])
+                                             (implicit val universe: Universe[T], val undoManager: UndoManager)
+    extends NegatumView[T] with ComponentHolder[Component] {
 
     type C = Component
 
-    private[this] val renderRef   = Ref(Option.empty[Rendering[S, Unit]])
+    private[this] val renderRef   = Ref(Option.empty[Rendering[T, Unit]])
     private[this] val optimizeRef = Ref(Option.empty[Processor[Any]])
 
-    private def defaultOptAnaDur(n: Negatum[S])(implicit tx: S#Tx): Double = {
+    private def defaultOptAnaDur(n: Negatum[T])(implicit tx: T): Double = {
       val t     = n.template()
       val sr    = t.sampleRate
       math.max(2.0, t.numFrames / sr)
@@ -94,8 +93,8 @@ object NegatumViewImpl {
           val td = DragAndDrop.getTransferData(t, ObjView.Flavor)
           td.universe.workspace == universe.workspace && (td.view.factory.tpe == Proc && {
             universe.cursor.step { implicit tx =>
-              optimizeRef().isEmpty && (td.view.asInstanceOf[ObjView[S]].obj match {
-                case p: Proc[S] =>
+              optimizeRef().isEmpty && (td.view.asInstanceOf[ObjView[T]].obj match {
+                case p: Proc[T] =>
                   import Negatum._
                   val obj   = negatumH()
                   val attr  = obj.attr
@@ -117,7 +116,7 @@ object NegatumViewImpl {
                   )
                   val o = Optimize(cfg)
                   optimizeRef() = Some(o)
-                  val procH = tx.newHandle(p: Proc[S])
+                  val procH = tx.newHandle(p: Proc[T])
                   import ExecutionContext.Implicits.global
                   o.onComplete {
                     case Success(res) =>
@@ -151,31 +150,31 @@ object NegatumViewImpl {
       tooltip = "Drop Proc to optimize"
     }
 
-    def init(n: Negatum[S])(implicit tx: S#Tx): this.type = {
+    def init(n: Negatum[T])(implicit tx: T): this.type = {
       val attr  = n.attr
       implicit val intEx    : IntObj    .type = IntObj
       implicit val doubleEx : DoubleObj .type = DoubleObj
 //      implicit val booleanEx: BooleanObj.type = BooleanObj
 
-      class Field(name: String, view: View[S]) {
+      class Field(name: String, view: View[T]) {
         lazy val label : Label      = new Label(s"$name:")
         def      editor: Component  = view.component
       }
 
       def mkIntField(name: String, key: String, default: Int): Field = {
-        val view = IntSpinnerView.optional[S](CellView.attr[S, Int, IntObj](attr, key),
+        val view = IntSpinnerView.optional[T](CellView.attr[T, Int, IntObj](attr, key),
           name = name, default = Some(default))
         new Field(name, view)
       }
 
       def mkDoubleField(name: String, key: String, default: Double): Field = {
-        val view = DoubleSpinnerView.optional[S](CellView.attr[S, Double, DoubleObj](attr, key),
+        val view = DoubleSpinnerView.optional[T](CellView.attr[T, Double, DoubleObj](attr, key),
           name = name, default = Some(default))
         new Field(name, view)
       }
 
       def mkBooleanField(name: String, key: String, default: Boolean): Field = {
-        val view = BooleanCheckBoxView.optional[S](CellView.attr[S, Boolean, BooleanObj](attr, key),
+        val view = BooleanCheckBoxView.optional[T](CellView.attr[T, Boolean, BooleanObj](attr, key),
           name = name, default = default)
         new Field(name, view) {
           override lazy val editor: Component = {
@@ -193,7 +192,7 @@ object NegatumViewImpl {
 
       val fSeed = {
         val name = "Seed"
-        val view = IntSpinnerView.optional[S](CellView.attr[S, Int, IntObj](attr, attrSeed),
+        val view = IntSpinnerView.optional[T](CellView.attr[T, Int, IntObj](attr, attrSeed),
           name = name, default = None)
         new Field(name, view)
       }
@@ -261,8 +260,8 @@ object NegatumViewImpl {
       this
     }
 
-    def negatum  (implicit tx: S#Tx): Negatum[S]                  = negatumH()
-    def rendering(implicit tx: S#Tx): Option[Rendering[S, Unit]]  = renderRef()
+    def negatum  (implicit tx: T): Negatum[T]                  = negatumH()
+    def rendering(implicit tx: T): Option[Rendering[T, Unit]]  = renderRef()
 
     private def guiInit(panelParams: Component, panelOpt: Component): Unit = {
 
@@ -328,7 +327,7 @@ object NegatumViewImpl {
               val config    = Negatum.Config(seed = seed, generation = cGen, breeding = cBreed, evaluation = cEval,
                 penalty = cPenalty)
 
-              def finished()(implicit tx: S#Tx): Unit = {
+              def finished()(implicit tx: T): Unit = {
                 renderRef() = None
                 deferTx {
                   actionCancel.enabled  = false
@@ -398,7 +397,7 @@ object NegatumViewImpl {
       }
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       renderRef   .swap(None).foreach(_.cancel ())
       optimizeRef .swap(None).foreach(_.abort  ())
     }

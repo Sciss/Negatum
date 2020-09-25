@@ -15,19 +15,19 @@ package de.sciss.negatum
 package gui
 package impl
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.{Txn, synth}
 import de.sciss.mellite.impl.WindowImpl
 import de.sciss.synth.proc.Universe
 
 object FeatureAnalysisFrameImpl {
-  def apply[S <: Sys[S]](negatum: Negatum[S])(implicit tx: S#Tx, universe: Universe[S]): FeatureAnalysisFrame[S] = {
-    val view = FeatureAnalysisView[S](negatum)
-    val res = new Impl[S](view)
+  def apply[T <: synth.Txn[T]](negatum: Negatum[T])(implicit tx: T, universe: Universe[T]): FeatureAnalysisFrame[T] = {
+    val view = FeatureAnalysisView[T](negatum)
+    val res = new Impl[T](view)
     res.init()
     res
   }
 
-  private final class Impl[S <: Sys[S]](val view: FeatureAnalysisView[S])
-    extends WindowImpl[S] with FeatureAnalysisFrame[S] {
+  private final class Impl[T <: Txn[T]](val view: FeatureAnalysisView[T])
+    extends WindowImpl[T] with FeatureAnalysisFrame[T] {
   }
 }

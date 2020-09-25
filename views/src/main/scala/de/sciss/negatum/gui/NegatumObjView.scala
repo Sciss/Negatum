@@ -17,10 +17,9 @@ import de.sciss.desktop
 import de.sciss.desktop.OptionPane
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.CellView
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.{Obj, Source, Txn => LTxn}
 import de.sciss.lucre.swing.{View, Window}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.mellite.impl.WindowImpl
 import de.sciss.mellite.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
 import de.sciss.mellite.impl.objview.ObjViewImpl
@@ -33,7 +32,7 @@ import javax.swing.Icon
 import scala.util.{Failure, Success}
 
 object NegatumObjView extends ObjListView.Factory {
-  type E[~ <: stm.Sys[~]] = Negatum[~]
+  type E[~ <: LTxn[~]] = Negatum[~]
   val icon          : Icon      = ObjViewImpl.raphaelIcon(raphael.Shapes.Biohazard)
   val prefix        : String    = "Negatum"
   def humanName     : String    = prefix
@@ -49,24 +48,24 @@ object NegatumObjView extends ObjListView.Factory {
 //    SOMObjView     .init()
   }
 
-  def mkListView[S <: Sys[S]](obj: Negatum[S])(implicit tx: S#Tx): NegatumObjView[S] with ObjListView[S] =
+  def mkListView[T <: Txn[T]](obj: Negatum[T])(implicit tx: T): NegatumObjView[T] with ObjListView[T] =
     new Impl(tx.newHandle(obj)).initAttrs(obj)
 
-  final case class Config[S <: stm.Sys[S]](name: String, audioCue: AudioCueObjView.SingleConfig[S])
+  final case class Config[T <: LTxn[T]](name: String, audioCue: AudioCueObjView.SingleConfig[T])
 
   def canMakeObj: Boolean = true
 
-  override def initMakeCmdLine[S <: Sys[S]](args: List[String])(implicit universe: Universe[S]): MakeResult[S] =
+  override def initMakeCmdLine[T <: Txn[T]](args: List[String])(implicit universe: Universe[T]): MakeResult[T] =
     Failure(new NotImplementedError("Make Negatum from command line"))
 
-  def initMakeDialog[S <: Sys[S]](window: Option[desktop.Window])(done: MakeResult[S] => Unit)
-                                 (implicit universe: Universe[S]): Unit = {
+  def initMakeDialog[T <: Txn[T]](window: Option[desktop.Window])(done: MakeResult[T] => Unit)
+                                 (implicit universe: Universe[T]): Unit = {
     val opt = OptionPane.textInput(message = s"Enter initial ${prefix.toLowerCase} name:",
       messageType = OptionPane.Message.Question, initial = prefix)
     opt.title = s"New $prefix"
     val res = opt.show(window)
     res.foreach { name =>
-      AudioCueObjView.initMakeDialog[S](window) {
+      AudioCueObjView.initMakeDialog[T](window) {
         case Success(cueConfig) =>
           cueConfig.headOption match {
             case Some(audioCue) =>
@@ -83,47 +82,47 @@ object NegatumObjView extends ObjListView.Factory {
     }
   }
 
-  def makeObj[S <: Sys[S]](config: Config[S])(implicit tx: S#Tx): List[Obj[S]] = {
+  def makeObj[T <: Txn[T]](config: Config[T])(implicit tx: T): List[Obj[T]] = {
     val res1 = AudioCueObjView.makeObj(config.audioCue :: Nil)
     val templateOpt = res1.collectFirst {
-      case a: AudioCue.Obj[S] => a
+      case a: AudioCue.Obj[T] => a
     }
     templateOpt.fold(res1) { template =>
-      val obj  = Negatum[S](template)
+      val obj  = Negatum[T](template)
       import de.sciss.synth.proc.Implicits._
       if (!config.name.isEmpty) obj.name = config.name
       obj :: obj.population :: res1 // expose population until we have a proper editor
     }
   }
 
-  final class Impl[S <: Sys[S]](val objH: stm.Source[S#Tx, Negatum[S]])
-    extends NegatumObjView[S]
-      with ObjListView[S]
-      with ObjViewImpl.Impl[S]
-      with EmptyRenderer[S]
-      with NonEditable[S]
-      /* with NonViewable[S] */ {
+  final class Impl[T <: Txn[T]](val objH: Source[T, Negatum[T]])
+    extends NegatumObjView[T]
+      with ObjListView[T]
+      with ObjViewImpl.Impl[T]
+      with EmptyRenderer[T]
+      with NonEditable[T]
+      /* with NonViewable[T] */ {
 
-    override def obj(implicit tx: S#Tx): Negatum[S] = objH()
+    override def obj(implicit tx: T): Negatum[T] = objH()
 
-    type E[~ <: stm.Sys[~]] = Negatum[~]
+    type E[~ <: LTxn[~]] = Negatum[~]
 
     def factory: ObjView.Factory = NegatumObjView
 
     def isViewable = true
 
-    def openView(parent: Option[Window[S]])(implicit tx: S#Tx, universe: Universe[S]): Option[Window[S]] = {
+    def openView(parent: Option[Window[T]])(implicit tx: T, universe: Universe[T]): Option[Window[T]] = {
       val _obj      = objH()
       val title     = CellView.name(_obj)
       val _view     = NegatumView(_obj)
-      val frame: WindowImpl[S] = new WindowImpl[S](title) {
-        val view: View[S] = _view
+      val frame: WindowImpl[T] = new WindowImpl[T](title) {
+        val view: View[T] = _view
       }
       frame.init()
       Some(frame)
     }
   }
 }
-trait NegatumObjView[S <: stm.Sys[S]] extends ObjView[S] {
-  type Repr = Negatum[S]
+trait NegatumObjView[T <: LTxn[T]] extends ObjView[T] {
+  type Repr = Negatum[T]
 }
