@@ -47,8 +47,8 @@ import scala.util.Failure
 object FeatureAnalysisViewImpl {
   def apply[T <: Txn[T]](negatum: Negatum[T])(implicit tx: T, universe: Universe[T]): FeatureAnalysisView[T] = {
     type I  = tx.I
-    implicit val iCsr : Cursor[I] = ??? // LUCRE4 tx.system.inMemory // sys.inMemory
-    implicit val itx  : I      = tx.inMemory // sys.inMemoryTx(tx)
+    implicit val iCsr : Cursor[I] = tx.inMemoryCursor
+    implicit val itx  : I         = tx.inMemory
     val ui  = Universe.dummy[I]
     val tr  = Transport[I](ui)
     val pi  = Proc[I]()
