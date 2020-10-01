@@ -16,7 +16,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val core = new {
-    val fileCache               = "1.0.0-SNAPSHOT"
+    val fileCache               = "1.0.0"
     val fscape                  = "3.0.0-SNAPSHOT"
     val melliteCore             = "3.0.0-SNAPSHOT"
     val soundProcesses          = "4.0.0-SNAPSHOT"
@@ -24,7 +24,7 @@ lazy val deps = new {
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
-    val sonogram                = "2.0.0-SNAPSHOT"
+    val sonogram                = "2.0.0"
     def soundProcesses: String  = core.soundProcesses
   }
 }
