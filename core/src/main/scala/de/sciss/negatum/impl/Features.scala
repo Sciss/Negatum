@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph}
 import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.stm.TxnExecutor
@@ -105,8 +105,9 @@ object Features {
       val specFeat = AudioFile.readSpec(inputFeatureF)
       require (specFeat.numChannels == 1)
       import de.sciss.fscape.graph._
+      import de.sciss.fscape.Ops._
       val (featSize, _ /*sampleRate*/, loudA0, mfccA0) = mkExtraction(bounceF, config)
-      val sigB: GE = AudioFileIn(inputFeatureF, numChannels = 1)
+      val sigB: GE = AudioFileIn(inputFeatureF.toURI, numChannels = 1)
 //      sigA.poll(sigA.isNaN, "sigA-NaN")
 //      sigB.poll(sigB.isNaN, "sigB-NaN")
 
@@ -216,10 +217,11 @@ object Features {
   private def mkExtraction(fIn: File, config: Config): (Int, Double, GE, GE) = {
     import config._
     import de.sciss.fscape.graph._
+    import de.sciss.fscape.Ops._
 
     val specIn      = AudioFile.readSpec(fIn)
     import specIn.{numChannels, numFrames, sampleRate}
-    def mkIn()      = AudioFileIn(fIn, numChannels = numChannels)
+    def mkIn()      = AudioFileIn(fIn.toURI, numChannels = numChannels)
     val in          = mkIn()
     val numSteps    = (numFrames + stepSize - 1) / stepSize
     //      val numMFCCOut  = numSteps * numMFCC
@@ -256,6 +258,7 @@ object Features {
     import config._
     val g = Graph {
       import de.sciss.fscape.graph._
+      import de.sciss.fscape.Ops._
       val (featSize, sampleRate, loud, mfcc) = mkExtraction(fIn, config)
       // XXX TODO why do we need this amount of buffers? seems a short coming of ResizeWindow
       val sig = ResizeWindow(mfcc.elastic(numMFCC), numMFCC, start = -1) + ResizeWindow(loud, 1, stop = +numMFCC)
@@ -272,7 +275,7 @@ object Features {
         numChannels   = 1, // featSize,
         sampleRate    = sampleRate / stepSize * featSize
       )
-      AudioFileOut(sig, fOut, specOut)
+      AudioFileOut(sig, fOut.toURI, specOut)
     }
 
     val cfg = Control.Config()

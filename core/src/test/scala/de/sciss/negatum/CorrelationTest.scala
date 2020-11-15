@@ -2,7 +2,7 @@ package de.sciss.negatum
 
 import de.sciss.file._
 import de.sciss.negatum.impl.Features
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

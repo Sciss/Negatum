@@ -39,7 +39,7 @@ object Util {
   }
 
   /** Mutates `a` by multiplying its contents with `b`. */
-  def mul(a: Array[Float], aOff: Int, b: Array[Float], bOff: Int, len: Int): Unit = {
+  def mul(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, len: Int): Unit = {
     var ai = aOff
     val stop = ai + len
     var bi = bOff
@@ -73,7 +73,7 @@ object Util {
   }
 
   /** Calculates RMS */
-  def energy(in: Array[Float], off: Int, len: Int): Double = {
+  def energy(in: Array[Double], off: Int, len: Int): Double = {
     var sum = 0.0
     var i = off
     val j = i + len

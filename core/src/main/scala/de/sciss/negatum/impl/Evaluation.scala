@@ -25,7 +25,7 @@ import de.sciss.processor.Processor
 import de.sciss.processor.impl.FutureProxy
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}

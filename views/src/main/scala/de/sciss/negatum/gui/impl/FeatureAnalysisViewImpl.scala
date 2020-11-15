@@ -30,7 +30,7 @@ import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.FeatureAnalysisView
 import de.sciss.negatum.impl.{Evaluation, Weight}
 import de.sciss.sonogram.SonogramComponent
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc.{AudioCue, Proc, Transport, Universe}
 import de.sciss.synth.{SynthGraph, proc}
 import de.sciss.{desktop, numbers, sonogram}
@@ -529,7 +529,7 @@ object FeatureAnalysisViewImpl {
           val fut = proc.map { _ =>
             // println(s"here we are [0]: $audioF - ${audioF.isFile}")
             val spec = AudioFile.readSpec(audioF)
-            AudioCue(audioF, spec, 0L, 1.0)
+            AudioCue(audioF.toURI, spec, 0L, 1.0)
           }
           val fut1: Future[AudioCue] = fut.flatMap { cue =>
             // println(s"here we are [1]: $audioF - ${audioF.isFile}")

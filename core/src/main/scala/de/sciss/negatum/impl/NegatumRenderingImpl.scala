@@ -28,8 +28,8 @@ import de.sciss.synth.{SynthGraph, proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, blocking}
-import scala.util.Random
+import scala.concurrent.{Await, Future, blocking}
+import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
 
 object NegatumRenderingImpl {
@@ -78,7 +78,13 @@ final class NegatumRenderingImpl[T <: Txn[T]](config: Config, template: AudioCue
         numMel  = e.numMel,
         numMFCC = e.numMFCC
       )
-      val fut = Features.extract(template.artifact, featCfg)
+      val fut = {
+        val fOpt = Try(new File(template.artifact))
+        fOpt match {
+          case Success(f)   => Features.extract(f, featCfg)
+          case Failure(ex)  => Future.failed(ex)
+        }
+      }
       Await.result(fut, Duration(config.eval.timeOut, TimeUnit.SECONDS))._1
     }
 

@@ -23,7 +23,7 @@ import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.processor.{Processor, ProcessorFactory}
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc.impl.MkSynthGraphSource
 import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.synth.ugen.{BinaryOpUGen, Protect}
@@ -186,7 +186,7 @@ object Optimize extends ProcessorFactory {
 
       val pBnc: Processor[File] = bnc.run(bCfg)(Model.EmptyListener)
 
-      val fBnc = await(pBnc, weight = 0.5)
+      val fBnc = await(pBnc, target = 0.5)
 
       try {
         val afBnc = blocking { AudioFile.openRead(fBnc) }
@@ -215,7 +215,7 @@ object Optimize extends ProcessorFactory {
                 val b1 = buf(ch1)
                 val v0 = if (off == 0) {
                   val v = b1(0)
-                  v0a(ch1) = v
+                  v0a(ch1) = v.toFloat
                   v
                 } else {
                   v0a(ch1)

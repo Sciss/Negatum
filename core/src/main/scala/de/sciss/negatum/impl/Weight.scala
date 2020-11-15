@@ -16,7 +16,7 @@ package de.sciss.negatum.impl
 import de.sciss.dsp
 import de.sciss.file.File
 import de.sciss.negatum.impl.Util.{add, dct, energy, mul}
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 
 object Weight {
   def apply(f: File, numCoeff: Int = 24 /* 13 */): Option[Weight] = {
@@ -34,7 +34,7 @@ object Weight {
     val af = AudioFile.openRead(f)
     try {
       val inBuf   = af.buffer(fftSize)
-      val winBuf  = new Array[Float](fftSize)
+      val winBuf  = new Array[Double](fftSize)
       val win     = dsp.Window.Kaiser6.create(fftSize)
       var off     = 0
       val numFrames = af.numFrames
