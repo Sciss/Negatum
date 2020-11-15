@@ -23,7 +23,7 @@ import de.sciss.negatum.Negatum.Config
 import de.sciss.negatum.impl.Util.scramble
 import de.sciss.synth.proc.Bounce.ServerFailed
 import de.sciss.synth.proc.impl.MkSynthGraphSource
-import de.sciss.synth.proc.{AudioCue, Proc, SynthGraphObj}
+import de.sciss.synth.proc.{AudioCue, Proc}
 import de.sciss.synth.{SynthGraph, proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -218,7 +218,7 @@ final class NegatumRenderingImpl[T <: Txn[T]](config: Config, template: AudioCue
     val folder = populationH()
     folder.clear()  // XXX TODO --- re-use existing processes?
     popOut.foreach { individual =>
-      val gObj  = SynthGraphObj.newConst[T](individual.graph)
+      val gObj  = Proc.GraphObj.newConst[T](individual.graph)
       val p     = Proc[T]()
       import proc.Implicits._
       val attr  = p.attr
