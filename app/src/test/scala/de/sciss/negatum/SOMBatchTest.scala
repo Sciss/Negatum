@@ -5,7 +5,7 @@ import de.sciss.lucre.expr.{DoubleVector, IntObj}
 import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.Durable
+import de.sciss.proc.Durable
 
 import scala.util.{Failure, Success}
 

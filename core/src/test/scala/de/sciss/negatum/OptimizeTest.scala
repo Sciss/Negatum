@@ -1,7 +1,7 @@
 package de.sciss.negatum
 
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.impl.MkSynthGraphSource
+import de.sciss.proc.impl.MkSynthGraphSource
 
 import scala.concurrent.ExecutionContext.Implicits._
 

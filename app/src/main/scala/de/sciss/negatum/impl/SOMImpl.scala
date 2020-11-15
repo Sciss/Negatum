@@ -27,7 +27,7 @@ import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys}
 import de.sciss.negatum.SOM.{Config, Node}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Serializer}
-import de.sciss.synth.proc.SoundProcesses
+import de.sciss.proc.SoundProcesses
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.duration.Duration

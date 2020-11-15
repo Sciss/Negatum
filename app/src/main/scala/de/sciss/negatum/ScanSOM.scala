@@ -18,7 +18,7 @@ import java.util
 import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{TimeRef, Timeline}
+import de.sciss.proc.{TimeRef, Timeline}
 import de.sciss.{kollflitz, numbers}
 
 import scala.collection.immutable.{IndexedSeq => Vec}

@@ -23,9 +23,9 @@ import de.sciss.negatum.Hibernation.logComp
 import de.sciss.numbers.Implicits._
 import de.sciss.span.Span
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Action, ActionRaw, AudioCue, Ensemble, FadeSpec, ObjKeys, Proc, TimeRef, Timeline, graph}
+import de.sciss.proc.Action.Universe
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{Action, ActionRaw, AudioCue, Ensemble, FadeSpec, ObjKeys, Proc, TimeRef, Timeline, graph}
 import de.sciss.synth.{Curve, SynthGraph}
 
 object ActionHibernateFScDone extends NamedAction("hibernate-fsc-done") {

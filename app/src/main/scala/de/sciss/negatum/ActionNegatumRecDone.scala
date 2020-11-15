@@ -20,10 +20,10 @@ import de.sciss.lucre.stm.Folder
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.{logComp, logCompErr, mkDateString}
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc._
+import de.sciss.proc
+import de.sciss.proc.Action.Universe
+import de.sciss.proc.Implicits._
+import de.sciss.proc._
 
 import scala.util.{Failure, Success}
 

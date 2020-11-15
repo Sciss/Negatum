@@ -24,8 +24,8 @@ import de.sciss.processor.{Processor, ProcessorFactory}
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.audiofile.AudioFile
-import de.sciss.synth.proc.impl.MkSynthGraphSource
-import de.sciss.synth.proc.{Bounce, Proc, TimeRef, Universe}
+import de.sciss.proc.impl.MkSynthGraphSource
+import de.sciss.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.synth.ugen.{BinaryOpUGen, Protect}
 
 import scala.annotation.tailrec

@@ -17,7 +17,7 @@ package gui
 import de.sciss.lucre.swing.Window
 import de.sciss.lucre.{Txn, synth}
 import de.sciss.negatum.gui.impl.FeatureAnalysisFrameImpl
-import de.sciss.synth.proc.Universe
+import de.sciss.proc.Universe
 
 object FeatureAnalysisFrame {
   def apply[T <: synth.Txn[T]](negatum: Negatum[T])(implicit tx: T,

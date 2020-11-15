@@ -26,7 +26,7 @@ import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
 import de.sciss.negatum.{Negatum, Optimize, Rendering}
 import de.sciss.processor.Processor
 import de.sciss.swingplus.{GroupPanel, Spinner}
-import de.sciss.synth.proc.{Proc, Universe}
+import de.sciss.proc.{Proc, Universe}
 import javax.swing.TransferHandler.TransferSupport
 import javax.swing.{JLabel, SpinnerNumberModel, TransferHandler}
 

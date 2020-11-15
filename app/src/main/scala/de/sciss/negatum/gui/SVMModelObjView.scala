@@ -31,8 +31,8 @@ import de.sciss.negatum.SVMConfig.{Kernel, Type}
 import de.sciss.negatum.SVMModel.Trained
 import de.sciss.processor.Processor
 import de.sciss.swingplus.{ComboBox, GroupPanel, ListView, Separator, Spinner}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Universe
+import de.sciss.proc
+import de.sciss.proc.Universe
 import javax.swing.TransferHandler.TransferSupport
 import javax.swing.{Icon, SpinnerNumberModel, TransferHandler}
 

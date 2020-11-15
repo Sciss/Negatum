@@ -27,8 +27,8 @@ import de.sciss.negatum.Delaunay.{TriangleIndex, Vector2}
 import de.sciss.negatum.Speakers._
 import de.sciss.numbers.Implicits._
 import de.sciss.synth
-import de.sciss.synth.proc.AuralSystem
-import de.sciss.synth.proc.AuralSystem.Client
+import de.sciss.proc.AuralSystem
+import de.sciss.proc.AuralSystem.Client
 import de.sciss.synth.swing.ServerStatusPanel
 import de.sciss.synth.{SynthGraph, addToHead, addToTail}
 

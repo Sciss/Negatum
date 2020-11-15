@@ -5,7 +5,7 @@ import de.sciss.file._
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.Durable
+import de.sciss.proc.Durable
 
 object SOMTest extends App {
   Mellite.initTypes()

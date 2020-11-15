@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.numbers.Implicits._
-import de.sciss.synth.proc.{ActionRaw, Workspace, graph}
+import de.sciss.proc.{ActionRaw, Workspace, graph}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor

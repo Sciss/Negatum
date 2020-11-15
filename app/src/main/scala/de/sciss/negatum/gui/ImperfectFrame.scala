@@ -23,7 +23,7 @@ import de.sciss.desktop.{DialogSource, Window, WindowHandler}
 import de.sciss.lucre.synth.Txn
 import de.sciss.mellite.MainFrame
 import de.sciss.osc.UDP
-import de.sciss.synth.proc.SoundProcesses
+import de.sciss.proc.SoundProcesses
 import de.sciss.{desktop, numbers, osc}
 import numbers.Implicits._
 

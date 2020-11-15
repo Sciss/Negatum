@@ -17,9 +17,9 @@ import de.sciss.lucre.artifact.ArtifactLocation
 import de.sciss.lucre.expr.BooleanObj
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Hibernation.{logComp, mkDateString}
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{ActionRaw, Ensemble, Proc}
+import de.sciss.proc.Action.Universe
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{ActionRaw, Ensemble, Proc}
 
 object ActionHibernateStart extends NamedAction("hibernate-start") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {

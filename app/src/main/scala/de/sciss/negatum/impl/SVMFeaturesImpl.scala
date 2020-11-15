@@ -23,7 +23,7 @@ import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, Proc, SoundProcesses}
+import de.sciss.proc.{AudioCue, Proc, SoundProcesses}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, blocking}

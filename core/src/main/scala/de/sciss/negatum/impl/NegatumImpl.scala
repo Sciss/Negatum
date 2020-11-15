@@ -20,7 +20,7 @@ import de.sciss.lucre.synth.AnyTxn
 import de.sciss.lucre.{Copy, DoubleObj, Elem, Folder, IntObj, Obj, Pull, Txn}
 import de.sciss.negatum.Negatum.Config
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc.{AudioCue, Proc, Universe}
+import de.sciss.proc.{AudioCue, Proc, Universe}
 
 object NegatumImpl {
   private final val SER_VERSION = 0x4e56  // "Ne"

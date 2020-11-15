@@ -17,6 +17,7 @@ import java.awt.datatransfer.Transferable
 import java.awt.geom.Line2D
 import java.awt.{BasicStroke, Color}
 
+import de.sciss.audiofile.AudioFile
 import de.sciss.audiowidgets.{Transport => GUITransport}
 import de.sciss.desktop.KeyStrokes
 import de.sciss.file.File
@@ -29,11 +30,10 @@ import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, 
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.FeatureAnalysisView
 import de.sciss.negatum.impl.{Evaluation, Weight}
+import de.sciss.proc.{AudioCue, Proc, Transport, Universe}
 import de.sciss.sonogram.SonogramComponent
-import de.sciss.audiofile.AudioFile
-import de.sciss.synth.proc.{AudioCue, Proc, Transport, Universe}
-import de.sciss.synth.{SynthGraph, proc}
-import de.sciss.{desktop, numbers, sonogram}
+import de.sciss.synth.SynthGraph
+import de.sciss.{desktop, numbers, proc, sonogram}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import javax.swing.{JComponent, JTable, TransferHandler}
 

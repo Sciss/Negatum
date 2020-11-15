@@ -18,7 +18,7 @@ import de.sciss.lucre.{Folder, Obj, Txn}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
 import de.sciss.serial.{DataInput, TFormat}
-import de.sciss.synth.proc.{AudioCue, Universe}
+import de.sciss.proc.{AudioCue, Universe}
 import de.sciss.topology.Topology
 
 import scala.collection.immutable.{IndexedSeq => Vec}

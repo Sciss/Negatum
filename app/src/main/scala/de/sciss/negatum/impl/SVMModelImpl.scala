@@ -27,7 +27,7 @@ import de.sciss.negatum.SVMModel.{FeatureStat, Stats, Trained}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.SoundProcesses
+import de.sciss.proc.SoundProcesses
 import libsvm.{svm, svm_model, svm_node, svm_problem}
 
 import scala.annotation.tailrec

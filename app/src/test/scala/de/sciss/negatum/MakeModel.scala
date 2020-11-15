@@ -6,8 +6,8 @@ import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.Mellite
 import de.sciss.negatum.SVMConfig.{Kernel, Type}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Workspace
+import de.sciss.proc
+import de.sciss.proc.Workspace
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.ExecutionContext

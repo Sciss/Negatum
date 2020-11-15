@@ -29,8 +29,8 @@ import de.sciss.mellite
 import de.sciss.mellite._
 import de.sciss.mellite.{Application, GUI, Mellite, Prefs}
 import de.sciss.numbers.Implicits._
-import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralSystem, Code, Durable, Ensemble, Runner, SynthGraphObj, Universe, Workspace}
+import de.sciss.proc
+import de.sciss.proc.{AuralSystem, Code, Durable, Ensemble, Runner, SynthGraphObj, Universe, Workspace}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.swing.Action

@@ -17,7 +17,7 @@ import de.sciss.lucre.{Txn, synth}
 import de.sciss.mellite.UniverseView
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.impl.FeatureAnalysisViewImpl
-import de.sciss.synth.proc.Universe
+import de.sciss.proc.Universe
 
 object FeatureAnalysisView {
   def apply[T <: synth.Txn[T]](negatum: Negatum[T])(implicit tx: T, universe: Universe[T]): FeatureAnalysisView[T] =

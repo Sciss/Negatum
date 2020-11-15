@@ -17,9 +17,9 @@ import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Hibernation.logComp
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc._
+import de.sciss.proc.Action.Universe
+import de.sciss.proc.Implicits._
+import de.sciss.proc._
 
 object ActionHibernateRecDone extends NamedAction("hibernate-rec-done") {
   def begin[S <: SSys[S]](universe: Universe[S])(implicit tx: S#Tx): Unit = {

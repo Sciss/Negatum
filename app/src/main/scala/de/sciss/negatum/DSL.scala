@@ -22,8 +22,8 @@ import de.sciss.lucre.stm.{Folder, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.negatum.Composition.NoSys
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc._
+import de.sciss.proc.Implicits._
+import de.sciss.proc._
 
 import scala.language.implicitConversions
 

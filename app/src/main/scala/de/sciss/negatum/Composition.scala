@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.stm.{Copy, Sys, Txn, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc.{ActionRaw, Durable, Workspace}
+import de.sciss.proc.{ActionRaw, Durable, Workspace}
 import de.sciss.synth.ugen
 
 import scala.concurrent.stm.TxnExecutor
@@ -215,7 +215,7 @@ object Composition {
     val ensSOMPlay = ensemble("som-play").in(ensMain)(initPlay = false)
 
     val pNegListen = proc("negatum-listen").in(ensNegListen) {
-      import de.sciss.synth.proc.graph._
+      import de.sciss.proc.graph._
       import Ops._
       import ugen._
 

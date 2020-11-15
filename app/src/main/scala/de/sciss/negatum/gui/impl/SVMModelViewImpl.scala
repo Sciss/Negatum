@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.mellite.{GUI, ObjView}
-import de.sciss.synth.proc.Universe
+import de.sciss.proc.Universe
 import javax.swing.TransferHandler
 import javax.swing.TransferHandler.TransferSupport
 

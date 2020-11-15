@@ -22,9 +22,9 @@ import de.sciss.negatum.Composition.{logComp, mkDateString}
 import de.sciss.negatum.Delaunay.Vector2
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc._
+import de.sciss.proc.Action.Universe
+import de.sciss.proc.Implicits._
+import de.sciss.proc._
 import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 
 import scala.annotation.switch

@@ -29,8 +29,8 @@ import de.sciss.mellite.{GUI, ObjListView, ObjView, UniverseView}
 import de.sciss.mellite.impl.objview.ObjViewImpl
 import de.sciss.processor.Processor.Aborted
 import de.sciss.swingplus.{GroupPanel, Spinner}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Universe
+import de.sciss.proc
+import de.sciss.proc.Universe
 import javax.swing.{Icon, SpinnerNumberModel}
 
 import scala.swing.{Action, BorderPanel, Component, FlowPanel, Label, TextField}

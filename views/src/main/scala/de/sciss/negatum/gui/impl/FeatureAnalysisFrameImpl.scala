@@ -17,7 +17,7 @@ package impl
 
 import de.sciss.lucre.{Txn, synth}
 import de.sciss.mellite.impl.WindowImpl
-import de.sciss.synth.proc.Universe
+import de.sciss.proc.Universe
 
 object FeatureAnalysisFrameImpl {
   def apply[T <: synth.Txn[T]](negatum: Negatum[T])(implicit tx: T, universe: Universe[T]): FeatureAnalysisFrame[T] = {

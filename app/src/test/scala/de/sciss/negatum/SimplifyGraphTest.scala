@@ -8,8 +8,8 @@ import de.sciss.numbers.Implicits._
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.impl.MkSynthGraphSource
-import de.sciss.synth.proc.{AuralSystem, Bounce, Proc, TimeRef, Universe}
+import de.sciss.proc.impl.MkSynthGraphSource
+import de.sciss.proc.{AuralSystem, Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
@@ -671,7 +671,7 @@ object SimplifyGraphTest {
     }
 
     // DO NOT USE THIS -- IT CREATES THREAD STARVATION
-//    import de.sciss.synth.proc.SoundProcesses.executionContext
+//    import de.sciss.proc.SoundProcesses.executionContext
     import ExecutionContext.Implicits.global
 
     val noObs: Model.Listener[Any] = { case _ => () }

@@ -5,8 +5,8 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.stm.{Copy, Folder, Sys}
 import de.sciss.mellite.Mellite
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Workspace
+import de.sciss.proc
+import de.sciss.proc.Workspace
 
 import scala.util.{Failure, Success}
 

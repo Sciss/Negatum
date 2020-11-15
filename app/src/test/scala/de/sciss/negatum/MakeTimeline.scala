@@ -8,7 +8,7 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.mellite.{Mellite, ObjTimelineView}
 import de.sciss.negatum.ScanSOM.Input
 import de.sciss.span.Span
-import de.sciss.synth.proc.{FadeSpec, ObjKeys, Proc, TimeRef, Timeline, Workspace}
+import de.sciss.proc.{FadeSpec, ObjKeys, Proc, TimeRef, Timeline, Workspace}
 import de.sciss.synth.{Curve, SynthGraph, proc, ugen}
 
 object MakeTimeline extends App {

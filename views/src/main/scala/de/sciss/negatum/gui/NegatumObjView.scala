@@ -26,7 +26,7 @@ import de.sciss.mellite.impl.objview.ObjViewImpl
 import de.sciss.mellite.{AudioCueObjView, ObjListView, ObjView}
 import de.sciss.negatum.Negatum
 import de.sciss.processor.Processor.Aborted
-import de.sciss.synth.proc.{AudioCue, Universe}
+import de.sciss.proc.{AudioCue, Universe}
 import javax.swing.Icon
 
 import scala.util.{Failure, Success}
@@ -89,7 +89,7 @@ object NegatumObjView extends ObjListView.Factory {
     }
     templateOpt.fold(res1) { template =>
       val obj  = Negatum[T](template)
-      import de.sciss.synth.proc.Implicits._
+      import de.sciss.proc.Implicits._
       if (!config.name.isEmpty) obj.name = config.name
       obj :: obj.population :: res1 // expose population until we have a proper editor
     }
