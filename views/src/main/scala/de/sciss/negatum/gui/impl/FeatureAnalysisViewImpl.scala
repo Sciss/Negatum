@@ -13,10 +13,6 @@
 
 package de.sciss.negatum.gui.impl
 
-import java.awt.datatransfer.Transferable
-import java.awt.geom.Line2D
-import java.awt.{BasicStroke, Color}
-
 import de.sciss.audiofile.AudioFile
 import de.sciss.audiowidgets.{Transport => GUITransport}
 import de.sciss.desktop.KeyStrokes
@@ -34,9 +30,12 @@ import de.sciss.proc.{AudioCue, Proc, Transport, Universe}
 import de.sciss.sonogram.SonogramComponent
 import de.sciss.synth.SynthGraph
 import de.sciss.{desktop, numbers, proc, sonogram}
+
+import java.awt.datatransfer.Transferable
+import java.awt.geom.Line2D
+import java.awt.{BasicStroke, Color}
 import javax.swing.table.{AbstractTableModel, TableCellRenderer}
 import javax.swing.{JComponent, JTable, TransferHandler}
-
 import scala.annotation.switch
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -72,7 +71,6 @@ object FeatureAnalysisViewImpl {
 //    private[this] val synthRef      = Ref(Option.empty[Synth])
 //    private[this] val synthRef      = Ref(Option.empty[Synth])
 
-    val sonConfig                   = sonogram.OverviewManager.Config()
     private[this] var sonMgr: sonogram.OverviewManager = _
 
     private[this] var ggTable: Table = _
@@ -256,7 +254,7 @@ object FeatureAnalysisViewImpl {
           negatumH().population.get(sel.head.folderIdx).map { obj =>
             val view = ObjListView(obj)
             DragAndDrop.Transferable(ObjView.Flavor) {
-              new ObjView.Drag[T](universe, view)
+              new ObjView.Drag[T](universe, view, Set.empty)
             }
           } .orNull
         }
@@ -632,6 +630,7 @@ object FeatureAnalysisViewImpl {
         add(pBottom , BorderPanel.Position.South )
       }
 
+      val sonConfig = sonogram.OverviewManager.Config()
       sonMgr = sonogram.OverviewManager(sonConfig)
 
       component = pBorder
