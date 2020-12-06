@@ -1,6 +1,6 @@
 # Negatum
 
-[![Build Status](https://travis-ci.org/Sciss/Negatum.svg?branch=main)](https://travis-ci.org/Sciss/Negatum)
+[![Build Status](https://github.com/Sciss/Negatum/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/Negatum/actions?query=workflow%3A%22Scala+CI%22)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/negatum-core_2.13)
 
 ## statement
@@ -60,7 +60,7 @@ To use this project as a library, use the following artifact:
     libraryDependencies += "de.sciss" %% "negatum-core"  % v
     libraryDependencies += "de.sciss" %% "negatum-views" % v
 
-The current version `v` is `"1.1.0"`
+The current version `v` is `"1.3.0"`
 
 ## contributing
 
