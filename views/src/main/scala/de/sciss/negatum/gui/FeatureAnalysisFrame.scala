@@ -2,7 +2,7 @@
  *  FeatureAnalysisFrame.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *

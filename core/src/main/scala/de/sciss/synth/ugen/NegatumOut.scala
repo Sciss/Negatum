@@ -2,7 +2,7 @@
  *  NegatumOut.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -14,10 +14,10 @@
 package de.sciss.synth
 package ugen
 
-//import de.sciss.synth.Ops.stringToControl
+import de.sciss.synth.UGenSource.{ProductReader, RefMapIn}
 import de.sciss.synth.proc.graph.Ops.stringToControl
 
-object NegatumOut {
+object NegatumOut extends ProductReader[NegatumOut] {
   /** If `true` (default), creates a mono-sum of the input signal */
   var MONO      = true
   /** If `true` (default), adds a `clip2(1.0)` to the input signal */
@@ -62,6 +62,12 @@ object NegatumOut {
       sig8 * ln
     }
     Out.ar(bus, sig)
+  }
+
+  override def read(in: RefMapIn, prefix: String, arity: Int): NegatumOut = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new NegatumOut(_in)
   }
 }
 final case class NegatumOut(in: GE) extends Lazy.Expander[Unit] {

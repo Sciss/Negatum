@@ -2,7 +2,7 @@
  *  Negatum.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -19,6 +19,7 @@ import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
 import de.sciss.serial.{DataInput, TFormat}
 import de.sciss.proc.{AudioCue, Universe}
+import de.sciss.synth.UGenSource
 import de.sciss.topology.Topology
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -28,12 +29,25 @@ object Negatum extends Obj.Type {
 
   type SynthGraphT = Topology[Vertex, Edge]
 
-//  /** Initializes this type and other related type such as `SVMModel`. */
-//  override def init(): Unit = {
-//    super   .init()
-//    SVMModel.init()
-//    SOM     .init()
-//  }
+  /** Initializes this type and other related type such as `SVMModel`. */
+  override def init(): Unit = {
+    super.init()
+
+    import de.sciss.synth.ugen._
+    UGenSource.addProductReaderSq(Seq(
+      EnvGen_ADSR,
+      EnvGen_ASR,
+      EnvGen_CutOff,
+      EnvGen_DADSR,
+      EnvGen_Linen,
+      EnvGen_Perc,
+      EnvGen_Sine,
+      EnvGen_Triangle,
+      NegatumIn,
+      NegatumOut,
+      Protect,
+    ))
+  }
 
   // ---- creation ----
 

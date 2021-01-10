@@ -2,7 +2,7 @@
  *  Protect.scala
  *  (Negatum)
  *
- *  Copyright (c) 2016-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2016-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -16,8 +16,9 @@ package ugen
 
 import de.sciss.negatum.impl.Util.graphElemName
 import de.sciss.negatum.impl.{MkSynthGraph, ParamRanges}
+import de.sciss.synth.UGenSource.{ProductReader, RefMapIn}
 
-object Protect {
+object Protect extends ProductReader[Protect] {
   def expand(in: GE, lo: Double, hi: Double, dynamic: Boolean): GE = {
     val inInfoOpt = ParamRanges.map.get(graphElemName(in))
 
@@ -48,6 +49,15 @@ object Protect {
 
     val inGE2: GE = if (!dynamic || MkSynthGraph.isDynamic(inGE1)) inGE1 else LeakDC.ar(inGE1)
     inGE2
+  }
+
+  override def read(in: RefMapIn, prefix: String, arity: Int): Protect = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _lo       = in.readDouble()
+    val _hi       = in.readDouble()
+    val _dynamic  = in.readBoolean()
+    new Protect(_in, _lo, _hi, _dynamic)
   }
 }
 final case class Protect(in: GE, lo: Double, hi: Double, dynamic: Boolean) extends GE.Lazy {
