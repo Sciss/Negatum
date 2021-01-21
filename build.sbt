@@ -20,7 +20,7 @@ lazy val deps = new {
     val fscape                  = "3.6.0-SNAPSHOT"
     val melliteCore             = "3.4.0-SNAPSHOT"
     val soundProcesses          = "4.7.0-SNAPSHOT"
-    val ugens                   = "1.21.0-SNAPSHOT"
+    val ugens                   = "1.21.0"
   }
   val views = new {
     def melliteCore: String     = core.melliteCore
