@@ -19,7 +19,7 @@ lazy val deps = new {
     val fileCache               = "1.1.1"
     val fscape                  = "3.6.0-SNAPSHOT"
     val melliteCore             = "3.4.0-SNAPSHOT"
-    val soundProcesses          = "4.7.0"
+    val soundProcesses          = "4.7.1"
     val ugens                   = "1.21.1"
   }
   val views = new {
