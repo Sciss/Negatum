@@ -1,13 +1,13 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
-lazy val coreVersion = "1.4.0-SNAPSHOT"
+lazy val coreVersion = "1.4.0"
 
 lazy val commonSettings = Seq(
   version             := coreVersion,
   organization        := "de.sciss",
-  scalaVersion        := "2.13.4",
-  crossScalaVersions  := Seq("2.13.4", "2.12.13"),
+  scalaVersion        := "2.13.5",
+  crossScalaVersions  := Seq("2.13.5", "2.12.13"),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xsource:2.13", "-encoding", "utf8", "-Xlint"),
   homepage            := Some(url(s"https://git.iem.at/sciss/${name.value}")),
   licenses            := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
@@ -17,9 +17,9 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "1.1.1"
-    val fscape                  = "3.6.0-SNAPSHOT"
-    val melliteCore             = "3.4.0-SNAPSHOT"
-    val soundProcesses          = "4.7.1"
+    val fscape                  = "3.6.0"
+    val melliteCore             = "3.4.0"
+    val soundProcesses          = "4.7.2"
     val ugens                   = "1.21.1"
   }
   val views = new {
