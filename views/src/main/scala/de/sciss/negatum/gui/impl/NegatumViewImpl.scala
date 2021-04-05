@@ -21,15 +21,15 @@ import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{BooleanCheckBoxView, DoubleSpinnerView, IntSpinnerView, TargetIcon, View}
 import de.sciss.lucre.{BooleanObj, DoubleObj, IntObj, Source, synth}
-import de.sciss.mellite.{DragAndDrop, GUI, ObjView, Prefs}
+import de.sciss.mellite.{DragAndDrop, GUI, ObjView, Prefs, ViewState}
 import de.sciss.negatum.gui.{FeatureAnalysisFrame, NegatumView}
 import de.sciss.negatum.{Negatum, Optimize, Rendering}
+import de.sciss.proc.{Proc, Universe}
 import de.sciss.processor.Processor
 import de.sciss.swingplus.{GroupPanel, Spinner}
-import de.sciss.proc.{Proc, Universe}
+
 import javax.swing.TransferHandler.TransferSupport
 import javax.swing.{JLabel, SpinnerNumberModel, TransferHandler}
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.stm.Ref
 import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Dimension, FlowPanel, Graphics2D, Label, Orientation, ProgressBar, Swing}
@@ -47,6 +47,8 @@ object NegatumViewImpl {
     extends NegatumView[T] with ComponentHolder[Component] {
 
     type C = Component
+
+    override def viewState: Set[ViewState] = Set.empty  // XXX TODO
 
     private[this] val renderRef   = Ref(Option.empty[Rendering[T, Unit]])
     private[this] val optimizeRef = Ref(Option.empty[Processor[Any]])

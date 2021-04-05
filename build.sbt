@@ -1,7 +1,7 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
-lazy val coreVersion = "1.4.0"
+lazy val coreVersion = "1.5.0"
 
 lazy val commonSettings = Seq(
   version             := coreVersion,
@@ -18,8 +18,8 @@ lazy val deps = new {
   val core = new {
     val fileCache               = "1.1.1"
     val fscape                  = "3.6.0"
-    val melliteCore             = "3.4.0"
-    val soundProcesses          = "4.7.2"
+    val melliteCore             = "3.5.0"
+    val soundProcesses          = "4.7.3"
     val ugens                   = "1.21.1"
   }
   val views = new {

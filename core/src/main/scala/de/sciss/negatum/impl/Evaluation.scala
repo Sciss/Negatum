@@ -14,6 +14,7 @@
 package de.sciss.negatum
 package impl
 
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.file._
 import de.sciss.lucre.swing.LucreSwing.defer
 import de.sciss.lucre.synth.InMemory
@@ -21,12 +22,11 @@ import de.sciss.mellite.{Application, Prefs}
 import de.sciss.model.impl.ModelImpl
 import de.sciss.negatum.Negatum.Config
 import de.sciss.numbers
+import de.sciss.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.processor.Processor
 import de.sciss.processor.impl.FutureProxy
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
-import de.sciss.audiofile.AudioFileSpec
-import de.sciss.proc.{Bounce, Proc, TimeRef, Universe}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 

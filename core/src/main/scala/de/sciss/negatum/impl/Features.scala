@@ -14,14 +14,14 @@
 package de.sciss.negatum
 package impl
 
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.{TxnConsumer, TxnProducer}
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph}
-import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
+import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.stm.TxnExecutor
@@ -104,8 +104,8 @@ object Features {
     val g = Graph {
       val specFeat = AudioFile.readSpec(inputFeatureF)
       require (specFeat.numChannels == 1)
-      import de.sciss.fscape.graph._
       import de.sciss.fscape.Ops._
+      import de.sciss.fscape.graph._
       val (featSize, _ /*sampleRate*/, loudA0, mfccA0) = mkExtraction(bounceF, config)
       val sigB: GE = AudioFileIn(inputFeatureF.toURI, numChannels = 1)
 //      sigA.poll(sigA.isNaN, "sigA-NaN")
@@ -216,8 +216,8 @@ object Features {
 
   private def mkExtraction(fIn: File, config: Config): (Int, Double, GE, GE) = {
     import config._
-    import de.sciss.fscape.graph._
     import de.sciss.fscape.Ops._
+    import de.sciss.fscape.graph._
 
     val specIn      = AudioFile.readSpec(fIn)
     import specIn.{numChannels, numFrames, sampleRate}
@@ -257,8 +257,8 @@ object Features {
   def runExtraction(fIn: File, fOut: File, config: Config = Config()): Future[Unit] = {
     import config._
     val g = Graph {
-      import de.sciss.fscape.graph._
       import de.sciss.fscape.Ops._
+      import de.sciss.fscape.graph._
       val (featSize, sampleRate, loud, mfcc) = mkExtraction(fIn, config)
       // XXX TODO why do we need this amount of buffers? seems a short coming of ResizeWindow
       val sig = ResizeWindow(mfcc.elastic(numMFCC), numMFCC, start = -1) + ResizeWindow(loud, 1, stop = +numMFCC)

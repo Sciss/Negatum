@@ -17,18 +17,18 @@ import de.sciss.desktop
 import de.sciss.desktop.OptionPane
 import de.sciss.icons.raphael
 import de.sciss.lucre.expr.CellView
-import de.sciss.lucre.{Obj, Source, Txn => LTxn}
 import de.sciss.lucre.swing.{View, Window}
 import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{Obj, Source, Txn => LTxn}
 import de.sciss.mellite.impl.WindowImpl
 import de.sciss.mellite.impl.objview.ObjListViewImpl.{EmptyRenderer, NonEditable}
 import de.sciss.mellite.impl.objview.ObjViewImpl
 import de.sciss.mellite.{AudioCueObjView, ObjListView, ObjView}
 import de.sciss.negatum.Negatum
-import de.sciss.processor.Processor.Aborted
 import de.sciss.proc.{AudioCue, Universe}
-import javax.swing.Icon
+import de.sciss.processor.Processor.Aborted
 
+import javax.swing.Icon
 import scala.util.{Failure, Success}
 
 object NegatumObjView extends ObjListView.Factory {
@@ -90,7 +90,7 @@ object NegatumObjView extends ObjListView.Factory {
     templateOpt.fold(res1) { template =>
       val obj  = Negatum[T](template)
       import de.sciss.proc.Implicits._
-      if (!config.name.isEmpty) obj.name = config.name
+      if (config.name.nonEmpty) obj.name = config.name
       obj :: obj.population :: res1 // expose population until we have a proper editor
     }
   }

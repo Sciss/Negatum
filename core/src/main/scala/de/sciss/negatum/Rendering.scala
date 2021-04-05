@@ -13,8 +13,7 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.Observable
-import de.sciss.lucre.{Disposable, Txn}
+import de.sciss.lucre.{Disposable, Observable, Txn}
 import de.sciss.processor.Processor
 
 import scala.util.Try

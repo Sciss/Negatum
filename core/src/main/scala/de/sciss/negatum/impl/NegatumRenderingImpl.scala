@@ -14,9 +14,6 @@
 package de.sciss.negatum
 package impl
 
-import java.io.FileOutputStream
-import java.util.concurrent.{TimeUnit, TimeoutException}
-
 import de.sciss.file._
 import de.sciss.lucre.{Cursor, DoubleObj, Folder, Source, Txn}
 import de.sciss.negatum.Negatum.Config
@@ -27,6 +24,8 @@ import de.sciss.proc.impl.MkSynthGraphSource
 import de.sciss.proc.{AudioCue, Proc}
 import de.sciss.synth.SynthGraph
 
+import java.io.FileOutputStream
+import java.util.concurrent.{TimeUnit, TimeoutException}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, blocking}

@@ -22,7 +22,7 @@ import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{BooleanObj, Cursor, Disposable, DoubleObj, ListObj, Obj, Source}
-import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, ObjView}
+import de.sciss.mellite.{Application, CodeFrame, DragAndDrop, GUI, ObjListView, ObjView, ViewState}
 import de.sciss.negatum.Negatum
 import de.sciss.negatum.gui.FeatureAnalysisView
 import de.sciss.negatum.impl.{Evaluation, Weight}
@@ -62,6 +62,8 @@ object FeatureAnalysisViewImpl {
     extends FeatureAnalysisView[T] with ComponentHolder[Component] {
 
     type C = Component
+
+    override def viewState: Set[ViewState] = Set.empty  // XXX TODO
 
     @volatile
     private[this] var _disposedGUI  = false

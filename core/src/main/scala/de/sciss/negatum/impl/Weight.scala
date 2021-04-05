@@ -13,10 +13,10 @@
 
 package de.sciss.negatum.impl
 
+import de.sciss.audiofile.AudioFile
 import de.sciss.dsp
 import de.sciss.file.File
 import de.sciss.negatum.impl.Util.{add, dct, energy, mul}
-import de.sciss.audiofile.AudioFile
 
 object Weight {
   def apply(f: File, numCoeff: Int = 24 /* 13 */): Option[Weight] = {

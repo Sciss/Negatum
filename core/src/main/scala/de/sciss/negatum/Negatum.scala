@@ -13,12 +13,11 @@
 
 package de.sciss.negatum
 
-import de.sciss.lucre.Publisher
-import de.sciss.lucre.{Folder, Obj, Txn}
+import de.sciss.lucre.{Folder, Obj, Publisher, Txn}
 import de.sciss.model
 import de.sciss.negatum.impl.{NegatumImpl => Impl}
-import de.sciss.serial.{DataInput, TFormat}
 import de.sciss.proc.{AudioCue, Universe}
+import de.sciss.serial.{DataInput, TFormat}
 import de.sciss.synth.UGenSource
 import de.sciss.topology.Topology
 

@@ -13,19 +13,19 @@
 
 package de.sciss.negatum
 
+import de.sciss.audiofile.AudioFile
 import de.sciss.file.File
 import de.sciss.lucre.synth.InMemory
 import de.sciss.model.Model
 import de.sciss.negatum.Negatum.SynthGraphT
 import de.sciss.negatum.impl.{Chromosome, MkSynthGraph, MkTopology, UGens, Util}
 import de.sciss.numbers
+import de.sciss.proc.impl.MkSynthGraphSource
+import de.sciss.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.processor.{Processor, ProcessorFactory}
 import de.sciss.span.Span
 import de.sciss.synth.SynthGraph
-import de.sciss.audiofile.AudioFile
-import de.sciss.proc.impl.MkSynthGraphSource
-import de.sciss.proc.{Bounce, Proc, TimeRef, Universe}
 import de.sciss.synth.ugen.{BinaryOpUGen, Protect}
 
 import scala.annotation.tailrec

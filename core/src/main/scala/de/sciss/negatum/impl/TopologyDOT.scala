@@ -14,10 +14,10 @@
 package de.sciss.negatum
 package impl
 
+import de.sciss.negatum.Negatum.SynthGraphT
+
 import java.text.NumberFormat
 import java.util.Locale
-
-import de.sciss.negatum.Negatum.SynthGraphT
 
 object TopologyDOT  {
   private val nameBoldFont: Boolean   = true
