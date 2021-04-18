@@ -16,9 +16,9 @@ package ugen
 
 import de.sciss.negatum.impl.Util.graphElemName
 import de.sciss.negatum.impl.{MkSynthGraph, ParamRanges}
-import de.sciss.synth.UGenSource.{ProductReader, RefMapIn}
+import de.sciss.synth.UGenSource.{ProductType, RefMapIn}
 
-object Protect extends ProductReader[Protect] {
+object Protect extends ProductType[Protect] {
   def expand(in: GE, lo: Double, hi: Double, dynamic: Boolean): GE = {
     val inInfoOpt = ParamRanges.map.get(graphElemName(in))
 
@@ -50,6 +50,8 @@ object Protect extends ProductReader[Protect] {
     val inGE2: GE = if (!dynamic || MkSynthGraph.isDynamic(inGE1)) inGE1 else LeakDC.ar(inGE1)
     inGE2
   }
+
+  override final val typeId = 710
 
   override def read(in: RefMapIn, prefix: String, arity: Int): Protect = {
     require (arity == 4)

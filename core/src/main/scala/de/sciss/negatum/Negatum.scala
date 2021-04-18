@@ -33,7 +33,7 @@ object Negatum extends Obj.Type {
     super.init()
 
     import de.sciss.synth.ugen._
-    UGenSource.addProductReaderSq(Seq(
+    UGenSource.addProductTypeSq(Seq(
       EnvGen_ADSR,
       EnvGen_ASR,
       EnvGen_CutOff,

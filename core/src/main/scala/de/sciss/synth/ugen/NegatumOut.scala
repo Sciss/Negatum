@@ -14,10 +14,10 @@
 package de.sciss.synth
 package ugen
 
-import de.sciss.synth.UGenSource.{ProductReader, RefMapIn}
+import de.sciss.synth.UGenSource.{ProductType, RefMapIn}
 import de.sciss.synth.proc.graph.Ops.stringToControl
 
-object NegatumOut extends ProductReader[NegatumOut] {
+object NegatumOut extends ProductType[NegatumOut] {
   /** If `true` (default), creates a mono-sum of the input signal */
   var MONO      = true
   /** If `true` (default), adds a `clip2(1.0)` to the input signal */
@@ -63,6 +63,8 @@ object NegatumOut extends ProductReader[NegatumOut] {
     }
     Out.ar(bus, sig)
   }
+
+  override final val typeId = 709
 
   override def read(in: RefMapIn, prefix: String, arity: Int): NegatumOut = {
     require (arity == 1)

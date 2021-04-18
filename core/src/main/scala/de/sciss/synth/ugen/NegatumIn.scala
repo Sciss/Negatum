@@ -14,10 +14,12 @@
 package de.sciss.synth
 package ugen
 
-import de.sciss.synth.UGenSource.{ProductReader, RefMapIn}
+import de.sciss.synth.UGenSource.{ProductType, RefMapIn}
 
-object NegatumIn extends ProductReader[NegatumIn] {
+object NegatumIn extends ProductType[NegatumIn] {
   def expand(): Unit = RandSeed.ir()
+
+  override final val typeId = 708
 
   override def read(in: RefMapIn, prefix: String, arity: Int): NegatumIn = {
     require (arity == 0)
