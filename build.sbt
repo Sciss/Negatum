@@ -1,13 +1,15 @@
 lazy val baseName   = "Negatum"
 lazy val baseNameL  = baseName.toLowerCase
 
-lazy val coreVersion = "1.5.0"
+lazy val projectVersion = "1.6.0"
+
+ThisBuild / version       := projectVersion
+ThisBuild / organization  := "de.sciss"
+ThisBuild / versionScheme := Some("pvp")
 
 lazy val commonSettings = Seq(
-  version             := coreVersion,
-  organization        := "de.sciss",
-  scalaVersion        := "2.13.5",
-  crossScalaVersions  := Seq("2.13.5", "2.12.13"),
+  scalaVersion        := "2.13.6",
+  crossScalaVersions  := Seq("2.13.6", "2.12.14"),
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xsource:2.13", "-encoding", "utf8", "-Xlint"),
   homepage            := Some(url(s"https://git.iem.at/sciss/${name.value}")),
   licenses            := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
@@ -17,9 +19,9 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val core = new {
     val fileCache               = "1.1.1"
-    val fscape                  = "3.6.0"
-    val melliteCore             = "3.5.0"
-    val soundProcesses          = "4.7.3"
+    val fscape                  = "3.7.0"
+    val melliteCore             = "3.6.0"
+    val soundProcesses          = "4.8.0"
     val ugens                   = "1.21.1"
   }
   val views = new {
@@ -38,9 +40,9 @@ lazy val root = project.in(file("."))
     name              := baseName,
     description       := "Genetic Algorithms",
 //    packagedArtifacts := Map.empty
-    publishArtifact in (Compile, packageBin) := false, // there are no binaries
-    publishArtifact in (Compile, packageDoc) := false, // there are no javadocs
-    publishArtifact in (Compile, packageSrc) := false, // there are no sources
+    Compile / packageBin / publishArtifact := false, // there are no binaries
+    Compile / packageDoc / publishArtifact := false, // there are no javadocs
+    Compile / packageSrc / publishArtifact := false, // there are no sources
     autoScalaLibrary := false,
   )
 
@@ -85,18 +87,18 @@ lazy val publishSettings = Seq(
       "Sonatype Releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
     )
   },
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   pomExtra := { val n = name.value
   <scm>
-    <url>git@git.iem.at:sciss/{n}.git</url>
-    <connection>scm:git:git@git.iem.at:sciss/{n}.git</connection>
+    <url>git@github.com:Sciss/{n}.git</url>
+    <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
   </scm>
   <developers>
     <developer>
       <id>sciss</id>
       <name>Hanns Holger Rutz</name>
-      <url>http://www.sciss.de</url>
+      <url>https://www.sciss.de</url>
     </developer>
   </developers>
   }
